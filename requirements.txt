@@ -1,0 +1,2 @@
+cocaine >= 0.11
+opster >= 4.0
