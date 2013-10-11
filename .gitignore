@@ -1,0 +1,16 @@
+# [Python]
+*.pyo
+*.pyc
+*.sw[o-s]
+
+# [IDE Specific]
+.idea/
+*.iml
+
+# [Build]
+build/
+dist/
+docs/_build
+manpages/
+*.egg-info/
+cocaine_toolc
