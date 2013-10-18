@@ -524,11 +524,11 @@ def group_refresh(options,
     })
 
 
-@dispatcher.group.command(name='app-add')
-def group_app_add(options,
-                  name,
-                  app,
-                  weight):
+@dispatcher.group.command(name='push')
+def group_push(options,
+               name,
+               app,
+               weight):
     """Add application with its weight into routing group"""
     options.executor.executeAction('group:app:add', **{
         'storage': options.getService('storage'),
@@ -538,10 +538,10 @@ def group_app_add(options,
     })
 
 
-@dispatcher.group.command(name='app-remove')
-def group_app_remove(options,
-                     name,
-                     app):
+@dispatcher.group.command(name='pop')
+def group_pop(options,
+              name,
+              app):
     """Remove application from routing group"""
     options.executor.executeAction('group:app:remove', **{
         'storage': options.getService('storage'),
