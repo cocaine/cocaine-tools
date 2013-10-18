@@ -274,35 +274,40 @@ def generate_info():
 
 
 def handle_request(request):
-    match = URL_REGEX.match(request.uri)
+    if "X-Cocaine-Service" in request.headers and "X-Cocaine-Event" in request.headers:
+        logger.debug('Dispatch by headers')
+        name = request.headers['X-Cocaine-Service']
+        event = request.headers['X-Cocaine-Event']
+    else:
+        logger.debug('Dispatch by uri')
+        match = URL_REGEX.match(request.uri)
+        if match is None:
+            if request.path == "/info":
+                message = generate_info()
+                request.write("%s 200 OK\r\nContent-Length: %d\r\n\r\n%s" % (
+                    request.version, len(message), message))
+                request.finish()
+                return
 
-    if match is None:
-        if request.path == "/info":
-            message = generate_info()
-            request.write("%s 200 OK\r\nContent-Length: %d\r\n\r\n%s" % (
+            message = "Invalid url"
+            request.write("%s 404 Not found\r\nContent-Length: %d\r\n\r\n%s" % (
                 request.version, len(message), message))
             request.finish()
             return
 
-        message = "Invalid url"
-        request.write("%s 404 Not found\r\nContent-Length: %d\r\n\r\n%s" % (
-            request.version, len(message), message))
-        request.finish()
-        return
+        name, event, other = match.groups()
+        if name == '' or event == '':
+            message = "Invalid request"
+            request.write("%s 404 Not found\r\nContent-Length: %d\r\n\r\n%s" % (
+                request.version, len(message), message))
+            request.finish()
+            return
 
-    name, event, other = match.groups()
-    if name == '' or event == '':
-        message = "Invalid request"
-        request.write("%s 404 Not found\r\nContent-Length: %d\r\n\r\n%s" % (
-            request.version, len(message), message))
-        request.finish()
-        return
-
-    # Drop from query appname and event's name
-    if not other.startswith('/'):
-        other = "/%s" % other
-    request.uri = other
-    request.path = other.partition("?")[0]
+        # Drop from query appname and event's name
+        if not other.startswith('/'):
+            other = "/%s" % other
+        request.uri = other
+        request.path = other.partition("?")[0]
 
     s = get_service(name)
     if s is None:
@@ -312,8 +317,7 @@ def handle_request(request):
         request.finish()
         return
         
-    data = pack_httprequest(request)
-    process(request, s, event, data)
+    process(request, s, event, pack_httprequest(request))
 
 
 def main():
