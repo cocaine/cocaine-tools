@@ -473,29 +473,43 @@ def crashlog_removeall(options,
     })
 
 
-@dispatcher.group.command(name='list')
+@dispatcher.group.command(name='list', usage='')
 def group_list(options):
-    """Show routing groups"""
+    """Show routing groups.
+    """
     options.executor.executeAction('group:list', **{
         'storage': options.getService('storage')
     })
 
 
-@dispatcher.group.command(name='view')
+@dispatcher.group.command(name='view', usage='NAME')
 def group_view(options,
                name):
-    """Show specified routing group"""
+    """Show specified routing group.
+    """
     options.executor.executeAction('group:view', **{
         'storage': options.getService('storage'),
         'name': name
     })
 
 
-@dispatcher.group.command(name='create')
+@dispatcher.group.command(name='create', usage='NAME [CONTENT]')
 def group_create(options,
                  name,
                  content=None):
-    """Create routing group"""
+    """Create routing group.
+
+    You can optionally specify content for created routing group. It can be both direct json expression in single
+    quotes, or path to the json file with settings. The settings itself must be key-value list, where `key` represents
+    application name, and `value` represents its weight. For example:
+
+    cocaine-tool group create new_group '{
+        "app": 1,
+        "another_app": 2
+    }'.
+
+    Warning: all application weights must be positive integers.
+    """
     options.executor.executeAction('group:create', **{
         'storage': options.getService('storage'),
         'name': name,
@@ -503,20 +517,22 @@ def group_create(options,
     })
 
 
-@dispatcher.group.command(name='remove')
+@dispatcher.group.command(name='remove', usage='NAME')
 def group_remove(options,
                  name):
-    """Remove routing group"""
+    """Remove routing group.
+    """
     options.executor.executeAction('group:remove', **{
         'storage': options.getService('storage'),
         'name': name
     })
 
 
-@dispatcher.group.command(name='refresh')
+@dispatcher.group.command(name='refresh', usage='NAME')
 def group_refresh(options,
                   name=('n', '', 'group name (if empty - refreshes all groups)')):
-    """Refresh routing group"""
+    """Refresh routing group.
+    """
     options.executor.executeAction('group:refresh', **{
         'locator': options.locator,
         'storage': options.getService('storage'),
@@ -524,12 +540,15 @@ def group_refresh(options,
     })
 
 
-@dispatcher.group.command(name='push')
+@dispatcher.group.command(name='push', usage='NAME APP WEIGHT')
 def group_push(options,
                name,
                app,
                weight):
-    """Add application with its weight into routing group"""
+    """Add application with its weight into the routing group.
+
+    Warning: application weight must be positive integer.
+    """
     options.executor.executeAction('group:app:add', **{
         'storage': options.getService('storage'),
         'name': name,
@@ -538,11 +557,12 @@ def group_push(options,
     })
 
 
-@dispatcher.group.command(name='pop')
+@dispatcher.group.command(name='pop', usage='NAME APP')
 def group_pop(options,
               name,
               app):
-    """Remove application from routing group"""
+    """Remove application from routing group.
+    """
     options.executor.executeAction('group:app:remove', **{
         'storage': options.getService('storage'),
         'name': name,
