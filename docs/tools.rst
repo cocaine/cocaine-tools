@@ -492,3 +492,101 @@ Remove all crashlogs for application from the storage.
 
     >>> cocaine-tool crashlog removeall --name Echo
     Crashlogs for app "Echo" have been removed
+
+
+Routing group specific tools
+------------------------------------
+This part describes routing group specific tools.
+
+cocaine-tool group list
+''''''''''''''''''''''''''''''''''''
+Show currently uploaded routing groups.
+
+    Routing groups are located in the storage.
+
+    >>> cocaine-tool group list
+    [
+        "new_group"
+    ]
+
+cocaine-tool group view
+''''''''''''''''''''''''''''''''''''
+Show content of specified routing group.
+
+    :name: routing group name.
+
+    >>> cocaine-tool group view new_group
+    {
+        "app": 2
+    }
+
+cocaine-tool group create
+''''''''''''''''''''''''''''''''''''
+Create new routing group and (optionally) specify its content.
+
+    Specified content can be both direct json expression in single quotes, or path to the json file with settings.
+    The settings itself must be key-value list, where `key` represents application name, and `value` represents its
+    weight. For example:
+
+    >>> cocaine-tool group create new_group '{
+        "app": 1,
+        "another_app": 2
+    }'
+
+    Let's create it from file:
+
+    >>> cocaine-tool group create new_group ../group.json
+
+    :name: routing group name.
+    :content: routing group content. It can be both path to the json file, or typed direct expression in single quotes.
+
+    .. warning:: All application weights must be positive integers.
+
+cocaine-tool group remove
+''''''''''''''''''''''''''''''''''''
+Remove existing routing group.
+
+    :name: routing group name.
+
+    >>> cocaine-tool group remove new_group
+
+cocaine-tool group refresh
+''''''''''''''''''''''''''''''''''''
+Refresh routing group or groups, forcing locator to reread them from storage.
+
+    :name: routing group name.
+
+    .. note:: If group name is empty this command will refresh all groups.
+
+    Let's refresh all groups:
+
+    >>> cocaine-tool group refresh
+
+    Or maybe only one:
+
+    >>> cocaine-tool group refresh new_group
+
+cocaine-tool group push
+''''''''''''''''''''''''''''''''''''
+Add application with its weight into the routing group.
+
+    :name: routing group name.
+    :app: application name.
+    :weight: positive integer meaning application weight.
+
+    .. warning:: application weight must be positive integer.
+
+    Let's push application `echo` to the routing group `new_group` with weight `42`:
+
+    >>> cocaine-tool group push new_group echo 42
+
+cocaine-tool group pop
+''''''''''''''''''''''''''''''''''''
+Remove application from routing group.
+
+    :name: routing group name.
+    :app: application name.
+
+    Here we are removing `echo` application from routing group `new_group`:
+
+    >>> cocaine-tool group pop new_group echo
