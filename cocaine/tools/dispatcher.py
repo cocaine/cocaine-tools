@@ -528,10 +528,12 @@ def group_remove(options,
     })
 
 
-@dispatcher.group.command(name='refresh', usage='NAME')
+@dispatcher.group.command(name='refresh', usage='[NAME]')
 def group_refresh(options,
-                  name=('n', '', 'group name (if empty - refreshes all groups)')):
+                  name=None):
     """Refresh routing group.
+
+    If group name is empty this command will refresh all groups.
     """
     options.executor.executeAction('group:refresh', **{
         'locator': options.locator,
