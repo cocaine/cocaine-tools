@@ -155,12 +155,12 @@ class Executor(object):
         return IOLoop.current()
 
     def executeAction(self, actionName, **options):
-        """
-        Tries to create service 'serviceName' gets selected action and (if success) invokes it. If any error is
-        occurred, it will be immediately printed to stderr and application exits with return code 1
+        """Execute action with specified options.
 
-        :param actionName: action name that must be available for selected service
-        :param options: various action configuration
+        Tries to create action from its name and invokes it.
+
+        :param actionName: action name.
+        :param options: various action configuration.
         """
         assert actionName in NG_ACTIONS, 'wrong action - {0}'.format(actionName)
 
