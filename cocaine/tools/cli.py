@@ -1,11 +1,11 @@
-import json
-import time
 import errno
-
+import json
 import msgpack
+import time
+
 from tornado.ioloop import IOLoop
 
-from cocaine.exceptions import ChokeEvent
+from cocaine.exceptions import ChokeEvent, CocaineError
 from cocaine.futures import chain
 from cocaine.tools.actions import common, app, profile, runlist, crashlog, group
 from cocaine.tools.error import Error as ToolsError
@@ -27,9 +27,15 @@ class ToolHandler(object):
             self._processResult(result)
         except (ChokeEvent, StopIteration):
             pass
+        except (CocaineError, ToolsError) as err:
+            log.error(err)
+            exit(128)
+        except ValueError as err:
+            log.error(err)
+            exit(errno.EINVAL)
         except Exception as err:
             log.error(err)
-            raise ToolsError(err)
+            exit(128)
         finally:
             IOLoop.instance().stop()
 
@@ -156,17 +162,13 @@ class Executor(object):
         :param actionName: action name that must be available for selected service
         :param options: various action configuration
         """
-        try:
-            assert actionName in NG_ACTIONS, 'wrong action - {0}'.format(actionName)
+        assert actionName in NG_ACTIONS, 'wrong action - {0}'.format(actionName)
 
-            action = NG_ACTIONS[actionName]
-            action.execute(**options)
-            if self.timeout is not None:
-                self.loop.add_timeout(time.time() + self.timeout, self.timeoutErrorback)
-
-            self.loop.start()
-        finally:
-            self.loop.stop()
+        action = NG_ACTIONS[actionName]
+        action.execute(**options)
+        if self.timeout is not None:
+            self.loop.add_timeout(time.time() + self.timeout, self.timeoutErrorback)
+        self.loop.start()
 
     def timeoutErrorback(self):
         log.error('Timeout')
