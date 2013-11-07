@@ -2,8 +2,10 @@ import logging
 import os
 import re
 import shutil
+import sys
 import tarfile
 import tempfile
+
 import msgpack
 
 from cocaine.asio import engine
@@ -183,30 +185,34 @@ class DockerUpload(actions.Storage):
         self.name = name or os.path.basename(os.path.abspath(path))
         if registry:
             self.name = '{0}/{1}'.format(registry, self.name)
-        print(self.name)
 
         self.manifest = manifest
 
         self.client = docker.Client(address)
 
+        log.debug('checking Dockerfile')
         if not os.path.exists(os.path.join(path, 'Dockerfile')):
             raise ValueError('Dockerfile not found')
         if not address:
             raise ValueError('Docker address is not specified')
 
+        self._last_message = ''
+
     @engine.asynchronous
     def execute(self):
-        response = yield self.client.build(self.path, tag=self.name, streaming=self._on_read)
+        log.debug('application name will be: %s', self.name)
+        response = yield self.client.build(self.path, tag=self.name, streaming=sys.stderr.write)
         if response.code != 200:
             raise ToolsError('upload failed with error code {0}'.format(response.code))
 
-        print(self.name)
         response = yield self.client.push(self.name, {}, streaming=self._on_read)
         if response.code != 200:
             raise ToolsError('upload failed with error code {0}'.format(response.code))
 
     def _on_read(self, value):
-        print(value)
+        if self._last_message != value:
+            self._last_message = value
+            print(value)
 
 
 class LocalUpload(actions.Storage):
