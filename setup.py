@@ -57,7 +57,7 @@ setup(
         "cocaine.tools.actions",
         "cocaine.tools.helpers",
     ],
-    install_requires=["cocaine", "opster >= 4.0"],
+    install_requires=["cocaine >= 0.11.1.0", "opster >= 4.0"],
     scripts=["scripts/cocaine-tool", "scripts/cocaine-tornado-proxy"],
     tests_require=["mockito"],
     test_suite="unittest.TestCase",
