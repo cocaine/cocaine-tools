@@ -119,46 +119,38 @@ cocaine-tool app upload
 ''''''''''''''''''''''''''''''''''''
 Upload application with its environment (directory) into the storage.
 
-    Application directory or its subdirectories must contain valid manifest file named `manifest.json` or `manifest`
-    otherwise you must specify it explicitly by setting `--manifest` option.
+    Application directory or its subdirectories must contain valid manifest file named `manifest.json` or `manifest`,
+    which represents application settings. More you can read
+    `here <https://github.com/cocaine/cocaine-core/wiki/manifest>`_. Manifest is located automatically, otherwise you
+    must specify it explicitly by setting `--manifest` option.
 
-    You can specify application name. By default, leaf directory name is treated as application name.
+    By default, leaf directory name is treated as application name. But you can specify application name by setting
+    `--name` option.
 
     If you have already prepared application archive (\*.tar.gz), you can explicitly specify path to it by setting
-    `--package` option. Note, that PATH and --package options are mutual exclusive as well as --package and --venv
-    options.
+    `--package` option. Note, that PATH and --package options are mutual exclusive.
 
-    If you specify option `--venv`, then virtual environment will be created for application.
+    There is possible to control process of creating and uploading application by specifying `--debug=tools` option,
+    which is helpful when some errors occurred. If you want full debugging output, specify `--debug=all` option.
 
-    Possible values:
-        * N - do not create virtual environment (default)
-        * P - python virtual environment using virtualenv package
-        * R - ruby virtual environment using Bundler (not yet implemented)
-        * J - jar archive will be created (not yet implemented)
+    We are now supporting `Docker <http://docker.io>`_ containerization technology!
 
-    Algorithm of creating and configuring **python virtual environment** contains following steps:
-        * locating `virtualenv` module. It must be installed.
-        * creating clear virtual environment via `virtualenv` module.
-        * locating `manifest.json` or `manifest` file somewhere in the target directory or its subdirectories.
-        * creating `bootstrap.sh` scrips for correct starting application via virtual environment.
-        * cloning and installing cocaine-framework-python through git.
-        * locating `requirements.txt` or `requirements` file somewhere in the target directory or its subdirectories.
-        * installing all requirements specified in the file above (if it has been found)
+    There is possible to create Docker container from your application and push it to the Docker Registry. To do this,
+    application root directory must contain valid `Dockerfile` from which the container will be built. Then, specify
+    `--docker-address` option and watch container build progress.
+    Just created container needs its place to store itself. By specifying `--registry` option, you notifying build
+    system a place where Docker Registry is located, and the container will be uploaded there.
 
-    You can control process of creating and uploading application by specifying `--debug=tools` option. This is helpful
-    when some errors occurred.
-
-    .. warning:: Creating virtual environment may take a long time and can cause timeout. You can increase timeout by
-                 specifying `--timeout` option.
-
-    .. warning:: This is experimental feature.
+    Note, that Docker-specific options and `--package` option are mutual exclusive.
 
     :path: path to the application root.
     :name: application name. If it is not specified, application will be named as its directory name.
     :manifest: path to application manifest json file.
     :package: path to application archive.
-    :venv: virtual environment type. This is optional parameter and does nothing if not specified. Otherwise virtual
-           environment will be created and configured.
+    :docker-address: address of docker build farm with explicit protocol specifying. For example:
+                     `http://your-farm.com:4321` or `unix:///var/run/docker.sock`. Note, that application directory
+                     must contain valid `Dockerfile` to create container.
+    :registry: registry address, where just created container will be pushed. For example: `your-registry.com:5000`.
 
     *The simplest usage*
 
@@ -181,20 +173,39 @@ Upload application with its environment (directory) into the storage.
     >>> cocaine-tool app upload --name echo --manifest ~/echo/manifest.json --package ~/echo/echo.tar.gz
     Application echo has been successfully uploaded
 
-    *Let's create python virtual environment and see detail log*
+    *Let's upload application, that contains `Dockerfile` to the Docker*
 
-    >>> cocaine-tool app upload ~/echo --venv P --timeout 60 --debug tools
-    You specified building virtual environment
-    It may take a long time and can cause timeout. Increase it by specifying `--timeout` option if needed
-    cocaine.tools.installer: DEBUG   : Filenames found: [('../examples/echo/manifest.json', 111)]
-    cocaine.tools: DEBUG   : Repository temporary path - "/var/folders/dx/sww3lm4j7x73x7x3njzv770jqq7lhf/T/tmpSO_cva/repo"
-    cocaine.tools: DEBUG   : Creating virtual environment "P" ...
-    cocaine.tools.installer: DEBUG   : Start installing python module
-    ...
-    cocaine.tools.installer: DEBUG   : All requirements has been successfully installed
-    cocaine.tools.installer: DEBUG   : Python module has been successfully installed
-    cocaine.tools: DEBUG   : Creating package
-    Application echo has been successfully uploaded
+    >>> cocaine-tool app upload ~/echo --docker-address=http://docker-farm.net:4321 --registry=docker-registry.net:5000
+    Local path detected. Creating archive "~/echo"... OK
+    Building "http://docker-farm.net:4321/v1.4/build?q=False&t=docker-registry.net%3A5000%2Fecho"... Step 1 : FROM ubuntu
+     ---> 8dbd9e392a96
+    Step 2 : MAINTAINER Evgeny Safronov "division494@gmail.com"
+     ---> Using cache
+     ---> 41fe6b0d44a8
+    Step 3 : RUN echo "deb http://archive.ubuntu.com/ubuntu precise main universe" > /etc/apt/sources.list
+     ---> Using cache
+     ---> 1a45facf1e13
+    Step 4 : RUN apt-get update
+     ---> Using cache
+     ---> 1d8ffd3385ef
+    Step 5 : RUN apt-get install -y git
+     ---> Using cache
+     ---> 1b5ad01e42f3
+    Step 6 : RUN apt-get install -y nano
+     ---> Using cache
+     ---> 58d5b0c42376
+    Successfully built 58d5b0c42376
+    OK
+    Pushing "echo" into "docker-registry.net:5000/v1/"... The push refers to a repository [docker-registry.net:5000/echo] (len: 1)
+    Sending image list
+    Pushing repository docker-registry.net:5000/echo (1 tags)
+    Image 8dbd9e392a964056420e5d58ca5cc376ef18e2de93b5cc90e868a1bbc8318c1c already pushed, skipping
+    Image 41fe6b0d44a84cebdd88a75c1e6dfca114edc4ce7b65e7748a54e614443c1625 already pushed, skipping
+    Image 1a45facf1e139f32c03af3c006e78bb6a6e6134e823e64b714022dce25a0fac1 already pushed, skipping
+    Image 1d8ffd3385ef3b9b3614ffc0ddf319dc35c6cbe36375a45a182e5981b50311dc already pushed, skipping
+    Image 1b5ad01e42f37a54c569297330ca7cb188d0459e8575df1132779e0d695f916d already pushed, skipping
+    Image 58d5b0c4237612c136c3802de6230d03c1b4b1c55d04710bd1bc8ed9befcbb8a already pushed, skipping
+    OK
 
 cocaine-tool app remove
 ''''''''''''''''''''''''''''''''''''
