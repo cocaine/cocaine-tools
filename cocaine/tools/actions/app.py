@@ -184,7 +184,7 @@ class DockerUpload(actions.Storage):
         self.path = path
         self.name = name or os.path.basename(os.path.abspath(path))
         if registry:
-            self.name = '{0}/{1}'.format(registry, self.name)
+            self.fullname = '{0}/{1}'.format(registry, self.name)
 
         self.manifest = manifest
 
@@ -200,12 +200,24 @@ class DockerUpload(actions.Storage):
 
     @engine.asynchronous
     def execute(self):
-        log.debug('application name will be: %s', self.name)
-        response = yield self.client.build(self.path, tag=self.name, streaming=sys.stderr.write)
+        log.debug('application name will be: %s', self.fullname)
+
+        if self.manifest:
+            manifestPath = self.manifest
+        else:
+            manifestPath = _locateFile(self.path, 'manifest.json')
+
+        with printer('Loading manifest'):
+            manifest = CocaineConfigReader.load(manifestPath)
+
+        with printer('Uploading manifest'):
+            yield self.storage.write('manifests', self.name, manifest, APPS_TAGS)
+
+        response = yield self.client.build(self.path, tag=self.fullname, streaming=sys.stderr.write)
         if response.code != 200:
             raise ToolsError('upload failed with error code {0}'.format(response.code))
 
-        response = yield self.client.push(self.name, {}, streaming=self._on_read)
+        response = yield self.client.push(self.fullname, {}, streaming=self._on_read)
         if response.code != 200:
             raise ToolsError('upload failed with error code {0}'.format(response.code))
 
