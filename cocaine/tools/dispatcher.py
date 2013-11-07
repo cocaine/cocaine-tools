@@ -190,8 +190,10 @@ def app_upload(options,
     You can control process of creating and uploading application by specifying `--debug=tools` option. This is helpful
     when some errors occurred.
     """
-    # @warning: hack!
-    options.executor.timeout = 120.0
+    TIMEOUT_THRESHOLD = 120.0
+    if options.executor.timeout < TIMEOUT_THRESHOLD:
+        logging.getLogger('cocaine.tools').info('Setting timeout to the %fs', TIMEOUT_THRESHOLD)
+        options.executor.timeout = TIMEOUT_THRESHOLD
     MutexRecord = collections.namedtuple('MutexRecord', 'value, name')
     mutex = [
         (MutexRecord(path, 'PATH'), MutexRecord(package, '--package')),
