@@ -1,3 +1,9 @@
+cocaine-tools (0.11.1.1) unstable; urgency=low
+
+  * Synchnization with Docker remote API v1.5 changes.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 30 Nov 2013 13:30:11 +0400
+
 cocaine-tools (0.11.1.0) unstable; urgency=low
 
   * Routing group support.
