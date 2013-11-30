@@ -16,7 +16,7 @@ __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
 DEFAULT_TIMEOUT = 120.0
 DEFAULT_URL = 'unix://var/run/docker.sock'
-DEFAULT_VERSION = '1.4'
+DEFAULT_VERSION = '1.7'
 DEFAULT_INDEX_URL = 'https://index.docker.io/v1/'
 
 
@@ -121,7 +121,7 @@ class Containers(Action):
 
 class Build(Action):
     def __init__(self, path, tag=None, quiet=False, streaming=None,
-                 url='unix://var/run/docker.sock', version='1.4', timeout=DEFAULT_TIMEOUT, io_loop=None):
+                 url=DEFAULT_URL, version=DEFAULT_VERSION, timeout=DEFAULT_TIMEOUT, io_loop=None):
         super(Build, self).__init__(url, version, timeout, io_loop)
         self._path = path
         self._tag = tag
@@ -170,7 +170,7 @@ class Build(Action):
 
 class Push(Action):
     def __init__(self, name, auth, streaming=None,
-                 url='unix://var/run/docker.sock', version='1.4', timeout=DEFAULT_TIMEOUT, io_loop=None):
+                 url=DEFAULT_URL, version=DEFAULT_VERSION, timeout=DEFAULT_TIMEOUT, io_loop=None):
         self.name = name
         self.auth = auth
         self._streaming = streaming
