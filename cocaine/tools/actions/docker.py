@@ -1,9 +1,11 @@
+import base64
 import json
 import tarfile
 import StringIO
 import urllib
 
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
+from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
 
 from cocaine.tools import log
@@ -179,9 +181,13 @@ class Push(Action):
         url = self._make_url('/images/{0}/push'.format(self.name))
         registry, name = resolve_repository_name(self.name)
 
-        body = json.dumps(self.auth)
+        headers = HTTPHeaders()
+        headers.add('X-Registry-Auth', self._prepare_auth_header_value())
+        body = ''
         log.info('Pushing "%s" into "%s"... ', name, registry)
-        request = HTTPRequest(url, method='POST', body=body,
+        request = HTTPRequest(url, method='POST',
+                              headers=headers,
+                              body=body,
                               request_timeout=self.timeout,
                               streaming_callback=self._on_body)
         try:
@@ -190,6 +196,11 @@ class Push(Action):
         except Exception as err:
             log.error('FAIL - %s', err)
             raise err
+
+    def _prepare_auth_header_value(self):
+        username = self.auth.get('username', 'username')
+        password = self.auth.get('password, password')
+        return base64.b64encode('{0}:{1}'.format(username, password))
 
     def _on_body(self, data):
         try:
