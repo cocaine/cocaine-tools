@@ -203,12 +203,21 @@ class Push(Action):
         return base64.b64encode('{0}:{1}'.format(username, password))
 
     def _on_body(self, data):
-        parsed = ''
+        parsed = '<undefined>'
         try:
-            parsed = json.loads(data)['status']
+            response = json.loads(data)
         except ValueError:
-            parsed = json.loads(data)['error']
+            parsed = data
         except Exception as err:
             parsed = 'Unknown error: {0}'.format(err)
+        else:
+            parsed = self._match_first(response, ['status', 'error'], data)
         finally:
             self._streaming(parsed)
+
+    def _match_first(self, dict_, keys, default):
+        for key in keys:
+            value = dict_.get(key)
+            if value is not None:
+                return value
+        return default
