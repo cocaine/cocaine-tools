@@ -1,9 +1,11 @@
+import base64
 import json
 import tarfile
 import StringIO
 import urllib
 
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
+from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
 
 from cocaine.tools import log
@@ -14,7 +16,7 @@ __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
 DEFAULT_TIMEOUT = 120.0
 DEFAULT_URL = 'unix://var/run/docker.sock'
-DEFAULT_VERSION = '1.4'
+DEFAULT_VERSION = '1.7'
 DEFAULT_INDEX_URL = 'https://index.docker.io/v1/'
 
 
@@ -119,7 +121,7 @@ class Containers(Action):
 
 class Build(Action):
     def __init__(self, path, tag=None, quiet=False, streaming=None,
-                 url='unix://var/run/docker.sock', version='1.4', timeout=DEFAULT_TIMEOUT, io_loop=None):
+                 url=DEFAULT_URL, version=DEFAULT_VERSION, timeout=DEFAULT_TIMEOUT, io_loop=None):
         super(Build, self).__init__(url, version, timeout, io_loop)
         self._path = path
         self._tag = tag
@@ -168,7 +170,7 @@ class Build(Action):
 
 class Push(Action):
     def __init__(self, name, auth, streaming=None,
-                 url='unix://var/run/docker.sock', version='1.4', timeout=DEFAULT_TIMEOUT, io_loop=None):
+                 url=DEFAULT_URL, version=DEFAULT_VERSION, timeout=DEFAULT_TIMEOUT, io_loop=None):
         self.name = name
         self.auth = auth
         self._streaming = streaming
@@ -179,9 +181,13 @@ class Push(Action):
         url = self._make_url('/images/{0}/push'.format(self.name))
         registry, name = resolve_repository_name(self.name)
 
-        body = json.dumps(self.auth)
+        headers = HTTPHeaders()
+        headers.add('X-Registry-Auth', self._prepare_auth_header_value())
+        body = ''
         log.info('Pushing "%s" into "%s"... ', name, registry)
-        request = HTTPRequest(url, method='POST', body=body,
+        request = HTTPRequest(url, method='POST',
+                              headers=headers,
+                              body=body,
                               request_timeout=self.timeout,
                               streaming_callback=self._on_body)
         try:
@@ -191,8 +197,27 @@ class Push(Action):
             log.error('FAIL - %s', err)
             raise err
 
+    def _prepare_auth_header_value(self):
+        username = self.auth.get('username', 'username')
+        password = self.auth.get('password, password')
+        return base64.b64encode('{0}:{1}'.format(username, password))
+
     def _on_body(self, data):
+        parsed = '<undefined>'
         try:
-            self._streaming(json.loads(data)['status'])
+            response = json.loads(data)
+        except ValueError:
+            parsed = data
         except Exception as err:
-            self._streaming(str(err))
+            parsed = 'Unknown error: {0}'.format(err)
+        else:
+            parsed = self._match_first(response, ['status', 'error'], data)
+        finally:
+            self._streaming(parsed)
+
+    def _match_first(self, dict_, keys, default):
+        for key in keys:
+            value = dict_.get(key)
+            if value is not None:
+                return value
+        return default
