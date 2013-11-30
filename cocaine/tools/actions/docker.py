@@ -203,7 +203,12 @@ class Push(Action):
         return base64.b64encode('{0}:{1}'.format(username, password))
 
     def _on_body(self, data):
+        parsed = ''
         try:
-            self._streaming(json.loads(data)['status'])
+            parsed = json.loads(data)['status']
+        except ValueError:
+            parsed = json.loads(data)['error']
         except Exception as err:
-            self._streaming(str(err))
+            parsed = 'Unknown error: {0}'.format(err)
+        finally:
+            self._streaming(parsed)
