@@ -132,7 +132,7 @@ class Build(Action):
     @chain.source
     def execute(self):
         headers = None
-        body = None
+        body = ''
         remote = None
 
         if any(map(self._path.startswith, ['http://', 'https://', 'git://', 'github.com/'])):
