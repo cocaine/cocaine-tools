@@ -74,4 +74,3 @@ class Status(actions.Storage):
                 last = max(_parseCrashlogs(crashlogs), key=lambda (timestamp, time, uuid): timestamp)
                 crashed.append((application, last, len(crashlogs)))
         yield crashed
-

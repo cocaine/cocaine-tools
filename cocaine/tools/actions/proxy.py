@@ -1,6 +1,5 @@
 import json
 import logging
-from logging import config
 import os
 from signal import SIGTERM
 import time
