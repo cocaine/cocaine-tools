@@ -83,3 +83,34 @@ class AddApplication(Specific):
         runlistUploadAction = Upload(self.storage, name=self.name, runlist=runlist)
         yield runlistUploadAction.execute()
         yield result
+
+
+class RemoveApplication(Specific):
+    def __init__(self, storage, name, app):
+        super(RemoveApplication, self).__init__(storage, name)
+        self.app = app
+        if not self.app:
+            raise ValueError('Please specify application name')
+
+    @chain.source
+    def execute(self):
+        result = {
+            'runlist': self.name,
+            'app': self.app,
+            'status': 'successfully removed',
+        }
+
+        runlists = yield List(self.storage).execute()
+        if self.name not in runlists:
+            log.debug('Runlist does not exist.')
+            raise ValueError('Runlist {0} is missing.'.format(self.name))
+
+
+        runlist = yield View(self.storage, name=self.name).execute()
+        log.debug('Found runlist: {0}'.format(runlist))
+        if runlist.pop(self.app, None) is None:
+            result['the application is not in runlist']
+        else:
+            runlistUploadAction = Upload(self.storage, name=self.name, runlist=runlist)
+            yield runlistUploadAction.execute()
+            yield result

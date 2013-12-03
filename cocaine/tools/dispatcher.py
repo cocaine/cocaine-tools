@@ -420,6 +420,19 @@ def runlist_add_app(options,
     })
 
 
+@runlistDispatcher.command(name='remove-app')
+def runlist_add_app(options,
+                    name=('n', '', 'runlist name'),
+                    app=('', '', 'application name')):
+    """Remove specified application from the runlist.
+    """
+    options.executor.executeAction('runlist:remove-app', **{
+        'storage': options.getService('storage'),
+        'name': name,
+        'app': app
+    })
+
+
 @crashlogDispatcher.command(name='status')
 def crashlog_status(options):
     """Show crashlog status.
