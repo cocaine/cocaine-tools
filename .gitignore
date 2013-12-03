@@ -7,6 +7,9 @@
 .idea/
 *.iml
 
+# [tox]
+.tox/
+
 # [Build]
 build/
 dist/
