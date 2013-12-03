@@ -51,6 +51,5 @@ if __name__ == '__main__':
         locateApps().get(timeout=ADEQUATE_TIMEOUT)
     except Exception as err:
         # Hidden log feature :)
-        # with open(os.devnull, 'w') as fh:
-        with open('/tmp/2.txt', 'w') as fh:
+        with open(os.devnull, 'w') as fh:
             fh.write(str(err))

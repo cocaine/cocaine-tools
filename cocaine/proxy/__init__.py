@@ -33,7 +33,7 @@ class Daemon(object):
         os.umask(0)
 
         # Second fork
-        
+
         try:
             pid = os.fork()
             if pid > 0:
@@ -41,7 +41,7 @@ class Daemon(object):
         except OSError as err:
             sys.stderr.write("Second fork failed: {0} ({1})\n".format(err.errno, err.strerror))
             sys.exit(1)
-            
+
         sys.stdout.flush()
         sys.stderr.flush()
         si = open(self.stdin, 'r')
@@ -59,7 +59,7 @@ class Daemon(object):
     def delpid(self):
         try:
             os.remove(self.pidfile)
-        except Exception as err:
+        except Exception:
             pass
 
     def start(self, *args):

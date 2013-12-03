@@ -18,7 +18,6 @@ class GitRepositoryDownloader(RepositoryDownloader):
         self.stream = stream or open(os.devnull, 'w')
 
     def download(self, url, destination):
-        devnull = open(os.devnull, 'w')
         process = subprocess.Popen(['git', 'clone', url, destination],
                                    stdout=self.stream,
                                    stderr=self.stream)

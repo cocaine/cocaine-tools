@@ -105,7 +105,6 @@ class RemoveApplication(Specific):
             log.debug('Runlist does not exist.')
             raise ValueError('Runlist {0} is missing.'.format(self.name))
 
-
         runlist = yield View(self.storage, name=self.name).execute()
         log.debug('Found runlist: {0}'.format(runlist))
         if runlist.pop(self.app, None) is None:
