@@ -1,4 +1,10 @@
-cocaine-tools (0.11.1.2) lucid; urgency=low
+cocaine-tools (0.11.1.3) unstable; urgency=low
+
+  * Add runlist remove-app action.
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Fri, 13 Dec 2013 18:05:17 +0400
+
+cocaine-tools (0.11.1.2) unstable; urgency=low
 
   * Add runlist remove-app action.
 
