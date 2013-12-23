@@ -17,6 +17,7 @@ BuildRequires:	python-setuptools
 Requires:	cocaine-framework-python >= 0.11.0.0
 Requires:	python-msgpack
 Requires:	python-opster >= 4.0
+Requires: python-tornado >= 3.1
 
 %description
 Various tools to query and manipulate running Cocaine instances.
