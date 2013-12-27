@@ -37,7 +37,7 @@ else:
 
 setup(
     name="cocaine-tools",
-    version="0.11.1.1",
+    version="0.11.1.3",
     author="Anton Tyurin",
     author_email="noxiouz@yandex.ru",
     maintainer='Evgeny Safronov',

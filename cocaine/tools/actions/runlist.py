@@ -1,3 +1,5 @@
+import types
+
 from cocaine.futures import chain
 from cocaine.tools import actions, log
 from cocaine.tools.actions import CocaineConfigReader
@@ -25,7 +27,11 @@ class Upload(Specific):
     def __init__(self, storage, name, runlist):
         super(Upload, self).__init__(storage, name)
         self.runlist = runlist
-        if not self.runlist:
+        if isinstance(self.runlist, types.DictType):
+            return
+        elif isinstance(self.runlist, types.StringTypes) and len(self.runlist.strip()) > 0:
+            return
+        else:
             raise ValueError('Please specify runlist file path')
 
     @chain.source
@@ -108,8 +114,8 @@ class RemoveApplication(Specific):
         runlist = yield View(self.storage, name=self.name).execute()
         log.debug('Found runlist: {0}'.format(runlist))
         if runlist.pop(self.app, None) is None:
-            result['the application is not in runlist']
+            result['the application named {0} is not in runlist'.format(self.app)]
         else:
             runlistUploadAction = Upload(self.storage, name=self.name, runlist=runlist)
             yield runlistUploadAction.execute()
-            yield result
+        yield result
