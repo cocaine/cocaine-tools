@@ -1,6 +1,6 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print (get_python_lib())")}
 Name:		cocaine-tools	
-Version:	0.11.2.0
+Version:	0.11.1.4
 Release:	1%{?dist}
 Summary:	Cocaine - Toolset
 
