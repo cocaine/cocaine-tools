@@ -1,3 +1,9 @@
+cocaine-tools (0.11.1.5) unstable; urgency=low
+
+  * Actually include patch that makes groups active
+
+ -- Dmitry Unkovsky <diunko@yandex-team.ru>  Fri, 27 Dec 2013 20:46:16 +0400
+
 cocaine-tools (0.11.1.4) unstable; urgency=low
 
   * Proper work with active groups.
