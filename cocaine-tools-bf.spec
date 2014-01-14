@@ -1,6 +1,6 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print (get_python_lib())")}
 Name:		cocaine-tools	
-Version:	0.11.1.4
+Version:	0.11.2.0
 Release:	1%{?dist}
 Summary:	Cocaine - Toolset
 
@@ -47,4 +47,4 @@ rm -rf %{buildroot}
 
 %changelog
 * Thu Dec 03 2013 Anton Tyurin <noxiouz@yandex-team.ru> - 0.11.0.1
-- initial build
+- Initial build.
