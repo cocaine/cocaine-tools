@@ -181,8 +181,8 @@ class Check(common.Node):
 class DockerUpload(actions.Storage):
     def __init__(self, storage, path, name, manifest, address, registry=''):
         super(DockerUpload, self).__init__(storage)
-        self.path = path
-        self.name = name or os.path.basename(os.path.abspath(path))
+        self.path = path or os.path.curdir
+        self.name = name or os.path.basename(os.path.abspath(self.path))
         if registry:
             self.fullname = '{0}/{1}'.format(registry, self.name)
 
@@ -191,7 +191,7 @@ class DockerUpload(actions.Storage):
         self.client = docker.Client(address)
 
         log.debug('checking Dockerfile')
-        if not os.path.exists(os.path.join(path, 'Dockerfile')):
+        if not os.path.exists(os.path.join(self.path, 'Dockerfile')):
             raise ValueError('Dockerfile not found')
         if not address:
             raise ValueError('Docker address is not specified')
