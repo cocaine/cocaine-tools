@@ -1,3 +1,4 @@
+#!/bin/sh
 # cocaine-tool(1) completion
 
 _cocaine_tool()
@@ -22,8 +23,7 @@ _cocaine_tool()
     subcmd_1="${COMP_WORDS[1]}"
     case "${subcmd_1}" in
     app)
-
-        if [[ ${COMP_CWORD} == 2 ]] ; then 
+        if [[ ${COMP_CWORD} == 2 ]] ; then
             COMPREPLY=( $(compgen -W "${subcommands_app}" -- ${cur}) )
             return 0
         fi
@@ -31,7 +31,7 @@ _cocaine_tool()
         subcmd_2="${COMP_WORDS[2]}"
         case "${subcmd_2}" in 
         list)
-	    COMPREPLY=()
+	        COMPREPLY=()
             return 0
             ;;
         view|check|remove|pause|stop)
@@ -46,17 +46,17 @@ _cocaine_tool()
                 ;;
             esac
             ;;
-	upload)
+	    upload)
             case "${COMP_WORDS[COMP_CWORD-1]}" in
             --name)
-		COMPREPLY=()
+		        COMPREPLY=()
                 return 0
                 ;;
-	    --manifest) 
+	        --manifest)
                 _filedir
                 return 0
                 ;;
-	    --package) 
+	        --package)
                 _filedir
                 return 0
                 ;;
@@ -66,13 +66,13 @@ _cocaine_tool()
                 ;;
             esac
             ;;
-	start|restart)
-	    case "${COMP_WORDS[COMP_CWORD-1]}" in
+	    start|restart)
+	        case "${COMP_WORDS[COMP_CWORD-1]}" in
             --name)
                 COMPREPLY=($(compgen -W "`python -m ${LOCATOR} ${COMP_WORDS[*]} --locator_type app`" -- ${cur}))
                 return 0
                 ;;
-	    --profile)
+	        --profile)
 	            COMPREPLY=($(compgen -W "`python -m ${LOCATOR} ${COMP_WORDS[*]} --locator_type profile`" -- ${cur}))
                 return 0
                 ;;
@@ -87,8 +87,7 @@ _cocaine_tool()
         esac
         ;;
     profile)
-
-        if [[ ${COMP_CWORD} == 2 ]] ; then 
+        if [[ ${COMP_CWORD} == 2 ]] ; then
             COMPREPLY=( $(compgen -W "${subcommands_profile}" -- ${cur}) )
             return 0
         fi
@@ -96,7 +95,7 @@ _cocaine_tool()
         subcmd_2="${COMP_WORDS[2]}"
         case "${subcmd_2}" in 
         list)
-	    COMPREPLY=()
+	        COMPREPLY=()
             return 0
             ;;
         view|remove)
@@ -111,12 +110,12 @@ _cocaine_tool()
                 ;;
             esac
             ;;
-	upload)
+	    upload)
             case "${COMP_WORDS[COMP_CWORD-1]}" in
             --name)
                 return 0
                 ;;
-	    --profile) 
+	        --profile)
                 _filedir
                 return 0
                 ;;
@@ -139,7 +138,7 @@ _cocaine_tool()
         subcmd_2="${COMP_WORDS[2]}"
         case "${subcmd_2}" in 
         list)
-	    COMPREPLY=()
+	        COMPREPLY=()
             return 0
             ;;
         view|remove)
@@ -213,13 +212,13 @@ _cocaine_tool()
                 ;;
             esac
             ;;
-	view|remove)
+	    view|remove)
             case "${COMP_WORDS[COMP_CWORD-1]}" in
             --name)
                 COMPREPLY=($(compgen -W "`python -m ${LOCATOR} ${COMP_WORDS[*]} --locator_type app`" -- ${cur}))
                 return 0
                 ;;
-	    --timestamp)
+	        --timestamp)
                 return 0
                 ;;
             *)
