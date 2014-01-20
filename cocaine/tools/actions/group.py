@@ -55,7 +55,11 @@ class Refresh(actions.Storage):
 
     @engine.asynchronous
     def execute(self):
-        names = yield List(self.storage).execute() if not self.name else [self.name]
+        if not self.name:
+            names = yield List(self.storage).execute()
+        else:
+            names = [self.name]
+        
         for name in names:
             yield self.locator.refresh(name)
 
