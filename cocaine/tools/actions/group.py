@@ -59,7 +59,7 @@ class Refresh(actions.Storage):
             names = yield List(self.storage).execute()
         else:
             names = [self.name]
-        
+
         for name in names:
             yield self.locator.refresh(name)
 
