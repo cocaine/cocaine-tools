@@ -1,3 +1,9 @@
+cocaine-tools (0.11.2.1) unstable; urgency=low
+
+  * Bugfix: Docker default upload timeout has been extended to 3600 secs.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 21 Jan 2014 19:50:00 +0400
+
 cocaine-tools (0.11.2.0) unstable; urgency=low
 
   * Bugfix: when uploading app via docker its path variable now has default value (current directory).
