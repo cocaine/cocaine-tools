@@ -14,7 +14,7 @@ from cocaine.tools.helpers._unix import AsyncUnixHTTPClient
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
-DEFAULT_TIMEOUT = 120.0
+DEFAULT_TIMEOUT = 3600.0
 DEFAULT_URL = 'unix://var/run/docker.sock'
 DEFAULT_VERSION = '1.7'
 DEFAULT_INDEX_URL = 'https://index.docker.io/v1/'
