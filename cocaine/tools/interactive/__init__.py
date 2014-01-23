@@ -21,3 +21,6 @@
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
 from . import runlist
+
+
+__all__ = ['runlist']
