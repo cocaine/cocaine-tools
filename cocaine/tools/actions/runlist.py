@@ -114,7 +114,7 @@ class RemoveApplication(Specific):
         runlist = yield View(self.storage, name=self.name).execute()
         log.debug('Found runlist: {0}'.format(runlist))
         if runlist.pop(self.app, None) is None:
-            result['the application named {0} is not in runlist'.format(self.app)]
+            result['status'] = 'the application named {0} is not in runlist'.format(self.app)
         else:
             runlistUploadAction = Upload(self.storage, name=self.name, runlist=runlist)
             yield runlistUploadAction.execute()
