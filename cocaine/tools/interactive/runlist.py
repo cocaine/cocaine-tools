@@ -57,4 +57,3 @@ class Edit(runlist.Specific):
 
         with open(name) as fh:
             yield runlist.Upload(self.storage, self.name, fh.read()).execute()
-
