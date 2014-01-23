@@ -369,6 +369,17 @@ def runlist_view(options,
     })
 
 
+@runlistDispatcher.command(name='edit', usage='NAME')
+def runlist_edit(options,
+                 name):
+    """Edit runlist interactively."""
+    options.executor.timeout = None
+    options.executor.executeAction('runlist:edit', **{
+        'storage': options.getService('storage'),
+        'name': name
+    })
+
+
 @runlistDispatcher.command(name='upload')
 def runlist_upload(options,
                    name=('n', '', 'name'),

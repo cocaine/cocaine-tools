@@ -7,9 +7,9 @@ from tornado.ioloop import IOLoop
 
 from cocaine.exceptions import ChokeEvent, CocaineError
 from cocaine.futures import chain
+from cocaine.tools import log, interactive
 from cocaine.tools.actions import common, app, profile, runlist, crashlog, group
 from cocaine.tools.error import Error as ToolsError
-from cocaine.tools import log
 
 
 __author__ = 'EvgenySafronov <division494@gmail.com>'
@@ -117,6 +117,7 @@ NG_ACTIONS = {
 
     'runlist:list': JsonToolHandler(runlist.List),
     'runlist:view': JsonToolHandler(runlist.View),
+    'runlist:edit': ToolHandler(interactive.runlist.Edit),
     'runlist:add-app': JsonToolHandler(runlist.AddApplication),
     'runlist:remove-app': JsonToolHandler(runlist.RemoveApplication),
     'runlist:create': ToolHandler(runlist.Create),

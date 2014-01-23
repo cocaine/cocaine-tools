@@ -3,6 +3,7 @@ import types
 from cocaine.futures import chain
 from cocaine.tools import actions, log
 from cocaine.tools.actions import CocaineConfigReader
+from cocaine.tools.printer import printer
 from cocaine.tools.tags import RUNLISTS_TAGS
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
@@ -37,9 +38,8 @@ class Upload(Specific):
     @chain.source
     def execute(self):
         runlist = CocaineConfigReader.load(self.runlist)
-        log.info('Uploading "%s"... ', self.name)
-        yield self.storage.write('runlists', self.name, runlist, RUNLISTS_TAGS)
-        log.info('OK')
+        with printer('Uploading "%s"', self.name):
+            yield self.storage.write('runlists', self.name, runlist, RUNLISTS_TAGS)
 
 
 class Create(Specific):
