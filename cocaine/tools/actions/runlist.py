@@ -3,6 +3,7 @@ import types
 from cocaine.futures import chain
 from cocaine.tools import actions, log
 from cocaine.tools.actions import CocaineConfigReader
+from cocaine.tools.printer import printer
 from cocaine.tools.tags import RUNLISTS_TAGS
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
@@ -37,9 +38,8 @@ class Upload(Specific):
     @chain.source
     def execute(self):
         runlist = CocaineConfigReader.load(self.runlist)
-        log.info('Uploading "%s"... ', self.name)
-        yield self.storage.write('runlists', self.name, runlist, RUNLISTS_TAGS)
-        log.info('OK')
+        with printer('Uploading "%s"', self.name):
+            yield self.storage.write('runlists', self.name, runlist, RUNLISTS_TAGS)
 
 
 class Create(Specific):
@@ -114,7 +114,7 @@ class RemoveApplication(Specific):
         runlist = yield View(self.storage, name=self.name).execute()
         log.debug('Found runlist: {0}'.format(runlist))
         if runlist.pop(self.app, None) is None:
-            result['the application named {0} is not in runlist'.format(self.app)]
+            result['status'] = 'the application named {0} is not in runlist'.format(self.app)
         else:
             runlistUploadAction = Upload(self.storage, name=self.name, runlist=runlist)
             yield runlistUploadAction.execute()

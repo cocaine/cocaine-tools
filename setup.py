@@ -37,7 +37,7 @@ else:
 
 setup(
     name="cocaine-tools",
-    version="0.11.2.1",
+    version="0.11.3.0",
     author="Anton Tyurin",
     author_email="noxiouz@yandex.ru",
     maintainer='Evgeny Safronov',
@@ -56,6 +56,7 @@ setup(
         "cocaine.tools",
         "cocaine.tools.actions",
         "cocaine.tools.helpers",
+        "cocaine.tools.interactive",
     ],
     install_requires=["cocaine >= 0.11.1.0", "opster >= 4.0"],
     scripts=["scripts/cocaine-tool", "scripts/cocaine-tornado-proxy"],

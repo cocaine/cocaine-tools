@@ -1,3 +1,10 @@
+cocaine-tools (0.11.3.0) unstable; urgency=low
+
+  * Feature: Interactive edit for runlist.
+  * Bugfix: Fixed false-positive result for runlist app remove action.
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 23 Jan 2014 14:13:00 +0400
+
 cocaine-tools (0.11.2.1) unstable; urgency=low
 
   * Bugfix: Docker default upload timeout has been extended to 3600 secs.
