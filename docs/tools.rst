@@ -369,7 +369,7 @@ Remove profile from the storage.
     The profile "EchoProfile" has been successfully removed
 
 
-Profile specific tools
+Runlist specific tools
 ------------------------------------
 This part describes runlist specific tools.
 
@@ -394,6 +394,18 @@ Show configuration context for runlist.
     {
         "Echo": "EchoProfile"
     }
+
+cocaine-tool runlist edit
+''''''''''''''''''''''''''''''''''''
+Edit specified runlist interactively.
+
+    Using this command it is possible to edit runlist interactively via one of predefined console text editors:
+
+     * vim
+     * emacs
+     * nano
+
+    :name: runlist name.
 
 cocaine-tool runlist upload
 ''''''''''''''''''''''''''''''''''''
@@ -432,6 +444,7 @@ Add specified application with profile to the runlist.
     :name: runlist name.
     :app: application name.
     :profile: suggested profile name.
+    :force: create runlist if not exists.
 
     >>> cocaine-tool runlist add-app --name default --app Echo --profile EchoProfile
     {
@@ -440,6 +453,35 @@ Add specified application with profile to the runlist.
             "profile": "EchoProfile",
             "app": "Echo"
         },
+        "runlist": "default"
+    }
+
+cocaine-tool runlist remove-app
+''''''''''''''''''''''''''''''''''''
+Remove specified application from runlist.
+
+    :name: runlist name.
+    :app: application name.
+
+    >>> cocaine-tool runlist remove-app --name default --app Echo
+    [  OK  ] Uploading "default"
+    {
+        "status": "successfully removed",
+        "app": "Echo",
+        "runlist": "default"
+    }
+
+    *In case of wrong runlist name*
+
+    >>> cocaine-tool runlist remove-app --name non-existent-runlist --app Echo
+    Runlist non-existent-runlist is missing.
+
+    *If the application is absent in specified runlist*
+
+    >>> cocaine-tool runlist remove-app --name default --app not-existent-app
+    {
+        "status": "the application named not-existent-app is not in runlist",
+        "app": "a",
         "runlist": "default"
     }
 
