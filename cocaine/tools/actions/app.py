@@ -191,8 +191,8 @@ class DockerUpload(actions.Storage):
         self.client = docker.Client(address)
 
         log.debug('checking Dockerfile')
-        if not os.path.exists(os.path.join(self.path, 'Dockerfile')):
-            raise ValueError('Dockerfile not found')
+        # if not os.path.exists(os.path.join(self.path, 'Dockerfile')):
+        #     raise ValueError('Dockerfile not found')
         if not address:
             raise ValueError('Docker address is not specified')
 
