@@ -26,7 +26,7 @@ import tempfile
 from cocaine.futures import chain
 from cocaine.tools.printer import printer
 from cocaine.tools.actions import runlist
-from cocaine.helpers.editor import locate_editor
+from cocaine.tools.helpers.editor import locate_editor
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
