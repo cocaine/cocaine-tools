@@ -24,7 +24,7 @@ if __name__ == '__main__':
         d.dispatch()
     except KeyboardInterrupt:
         log.error('Terminated by user')
-        exit(errno.ECANCELED)
+        exit(errno.EINTR)
     except Exception as err:
         log.error('Unknown error occurred - %s', err)
         exit(128)
