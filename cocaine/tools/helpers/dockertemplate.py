@@ -20,7 +20,7 @@
 
 from tornado import template
 
-dockert = template.Template("""
+dockerchef = template.Template("""
 FROM {{ basecontainer }}
 RUN mkdir -p /tmp/chef
 ADD ./{{ cookbooks }} /tmp/chef/
@@ -31,4 +31,26 @@ RUN ls -l /tmp/chef/
 RUN apt-get install curl -y
 RUN curl -L https://www.opscode.com/chef/install.sh | bash
 RUN chef-solo -c /tmp/chef/solo.rb -j /tmp/chef/solo.json
+""")
+
+dockerpuppet = template.Template("""
+FROM {{ basecontainer }}
+RUN mkdir -p /tmp/puppet
+
+ADD ./puppet /tmp/puppet
+
+RUN ls -l /tmp/puppet
+
+# install puppet
+RUN apt-get install puppet -y
+
+# Copy modules
+RUN if [ -d /tmp/puppet/modules ]; then \
+        echo "Copy Puppet modules into /etc/puppet/modules/";\
+        cp -Rv /tmp/puppet/modules/* /etc/puppet/modules/ ;\
+    fi
+
+# Apply manifest
+RUN echo "Apply cocaine.pp manifest"
+RUN puppet apply /tmp/puppet/cocaine.pp --modulepath=/etc/puppet/modules
 """)
