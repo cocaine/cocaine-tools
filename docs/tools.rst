@@ -135,9 +135,22 @@ Upload application with its environment (directory) into the storage.
 
     We are now supporting `Docker <http://docker.io>`_ containerization technology!
 
-    There is possible to create Docker container from your application and push it to the Docker Registry. To do this,
-    application root directory must contain valid `Dockerfile` from which the container will be built. Then, specify
-    `--docker-address` option and watch container build progress.
+    There is possible to create Docker container from your application and push it to the Docker Registry.
+    You could use one of the following ways to describe container:
+      + `Dockerfile`. Just put it into application root.
+      + Chef recipe.
+      + Puppet manifest.
+
+    *Directory sctructure for using Chef*
+    ./solo.rb
+    ./solo.json
+    cookbboks/...
+
+    *Directory structure for using Puppet*
+    puppet/cocaine.pp
+    puppet/modules/...
+
+    Then, specify `--docker-address` option and watch container build progress.
     Just created container needs its place to store itself. By specifying `--registry` option, you notifying build
     system a place where Docker Registry is located, and the container will be uploaded there.
 
