@@ -46,17 +46,17 @@ _cocaine_tool()
                 ;;
             esac
             ;;
-	upload)
+        upload)
             case "${COMP_WORDS[COMP_CWORD-1]}" in
             --name)
-		COMPREPLY=()
+                COMPREPLY=()
                 return 0
                 ;;
-	    --manifest) 
+            --manifest)
                 _filedir
                 return 0
                 ;;
-	    --package) 
+            --package)
                 _filedir
                 return 0
                 ;;
@@ -66,14 +66,14 @@ _cocaine_tool()
                 ;;
             esac
             ;;
-	start|restart)
-	    case "${COMP_WORDS[COMP_CWORD-1]}" in
+        start|restart)
+            case "${COMP_WORDS[COMP_CWORD-1]}" in
             --name)
                 COMPREPLY=($(compgen -W "`python -m ${LOCATOR} ${COMP_WORDS[*]} --locator_type app`" -- ${cur}))
                 return 0
                 ;;
-	    --profile)
-	            COMPREPLY=($(compgen -W "`python -m ${LOCATOR} ${COMP_WORDS[*]} --locator_type profile`" -- ${cur}))
+            --profile)
+                COMPREPLY=($(compgen -W "`python -m ${LOCATOR} ${COMP_WORDS[*]} --locator_type profile`" -- ${cur}))
                 return 0
                 ;;
             *)
@@ -111,12 +111,12 @@ _cocaine_tool()
                 ;;
             esac
             ;;
-	upload)
+	    upload)
             case "${COMP_WORDS[COMP_CWORD-1]}" in
             --name)
                 return 0
                 ;;
-	    --profile) 
+	        --profile)
                 _filedir
                 return 0
                 ;;
@@ -219,7 +219,7 @@ _cocaine_tool()
                 COMPREPLY=($(compgen -W "`python -m ${LOCATOR} ${COMP_WORDS[*]} --locator_type app`" -- ${cur}))
                 return 0
                 ;;
-	    --timestamp)
+	        --timestamp)
                 return 0
                 ;;
             *)
