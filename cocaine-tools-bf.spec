@@ -46,5 +46,8 @@ rm -rf %{buildroot}
 %{_bindir}/*
 
 %changelog
+* Thu Jan 31 2014 Evgeny Safronov <division494@gmail.com> - 0.11.3.1
+- Feature: Bash completion support for group tools.
+
 * Thu Dec 03 2013 Anton Tyurin <noxiouz@yandex-team.ru> - 0.11.0.1
 - Initial build.

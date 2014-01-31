@@ -31,6 +31,7 @@ if __name__ == '__main__':
             'app': ['manifests', ('app', )],
             'profile': ['profiles', ('profile',)],
             'runlist': ['runlists', ('runlist',)],
+            'group': ['groups', ('group',)],
         }
 
         config = {
