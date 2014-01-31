@@ -19,12 +19,14 @@
 #
 
 import json
+import os
 import subprocess
 import tempfile
 
 from cocaine.futures import chain
 from cocaine.tools.printer import printer
 from cocaine.tools.actions import runlist
+from cocaine.tools.helpers.editor import locate_editor
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
@@ -43,6 +45,13 @@ class Edit(runlist.Specific):
                 fh.write(json.dumps(content))
 
             ec = None
+
+            # locate default editor
+            default_editor = locate_editor()
+            if default_editor is not None:
+                default_editor in self.EDITORS and self.EDITORS.remove(default_editor)
+                self.EDITORS.insert(0, default_editor)
+
             for editor in self.EDITORS:
                 try:
                     ec = subprocess.call([editor, name])
@@ -57,3 +66,5 @@ class Edit(runlist.Specific):
 
         with open(name) as fh:
             yield runlist.Upload(self.storage, self.name, fh.read()).execute()
+        # Remove temp file
+        os.unlink(name)

@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 import tarfile
 import StringIO
 import urllib
@@ -11,6 +12,7 @@ from tornado.ioloop import IOLoop
 from cocaine.tools import log
 from cocaine.futures import chain
 from cocaine.tools.helpers._unix import AsyncUnixHTTPClient
+from cocaine.tools.helpers.dockertemplate import dockerchef, dockerpuppet
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
@@ -141,7 +143,7 @@ class Build(Action):
         else:
             log.info('Local path detected. Creating archive "%s"... ', self._path)
             headers = {'Content-Type': 'application/tar'}
-            body = self._tar(self._path)
+            body = self.make_env(self._path)
             log.info('OK')
 
         query = {'t': self._tag, 'remote': remote, 'q': self._quiet}
@@ -166,6 +168,32 @@ class Build(Action):
             return stream.getvalue()
         finally:
             stream.close()
+
+    def make_env(self, path):
+        if os.path.exists(os.path.join(path, "Dockerfile")):
+            log.info("Dockerfile exists")
+            return self._tar(path)
+        elif os.path.isdir(os.path.join(path, "cookbooks")):
+            log.info("Chef has been detected")
+            dockfilecontent = dockerchef.generate(basecontainer="ubuntu:precise",
+                                                  cookbooks="cookbooks")
+        elif os.path.isdir(os.path.join(path, "puppet")):
+            log.info("Puppet has been detected")
+            if not os.path.exists(os.path.join(path, "puppet/cocaine.pp")):
+                raise ValueError("You have to name your own Puppet manifest 'cocaine.pp'")
+
+            dockfilecontent = dockerpuppet.generate(basecontainer="ubuntu:precise")
+        else:
+            raise ValueError("Please, create Dockerfile or Puppet manifest or Chef recipe")
+
+        log.info("Generate Dockerfile")
+        print(dockfilecontent)
+        with open("Dockerfile", "w") as dockerfile:
+            dockerfile.write(dockfilecontent)
+        try:
+            return self._tar(path)
+        finally:
+            os.unlink("Dockerfile")
 
 
 class Push(Action):
