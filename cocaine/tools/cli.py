@@ -137,6 +137,7 @@ NG_ACTIONS = {
     'crashlog:view': CrashlogViewToolHandler(crashlog.View),
     'crashlog:remove': ToolHandler(crashlog.Remove),
     'crashlog:removeall': ToolHandler(crashlog.RemoveAll),
+    'crashlog:clean': ToolHandler(crashlog.Clean),
 }
 
 

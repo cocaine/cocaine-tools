@@ -1,6 +1,6 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print (get_python_lib())")}
 Name:		cocaine-tools	
-Version:	0.11.3.0
+Version:	0.11.3.2
 Release:	1%{?dist}
 Summary:	Cocaine - Toolset
 
@@ -46,6 +46,9 @@ rm -rf %{buildroot}
 %{_bindir}/*
 
 %changelog
+* Mon Feb 03 2014 Evgeny Safronov <division494@gmail.com> - 0.11.3.2
+- Feature: Crashlog clean tool.
+
 * Thu Jan 31 2014 Evgeny Safronov <division494@gmail.com> - 0.11.3.1
 - Feature: Bash completion support for group tools.
 

@@ -500,6 +500,20 @@ def crashlog_removeall(options,
     })
 
 
+@crashlogDispatcher.command(name='clean')
+def crashlog_clean(options,
+                   name=('n', '', 'name'),
+                   timestamp=('t', '', 'timestamp'),
+                   size=('s', 1000, 'size')):
+    """For application [NAME] leave [SIZE] crashlogs or remove all crashlogs with timestamp > [TIMESTAMP]."""
+    options.executor.executeAction('crashlog:clean', **{
+        'storage': options.getService('storage'),
+        'name': name,
+        'size': size,
+        'timestamp': timestamp
+    })
+
+
 @dispatcher.group.command(name='list', usage='')
 def group_list(options):
     """Show routing groups.

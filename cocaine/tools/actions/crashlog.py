@@ -2,6 +2,8 @@ import time
 from cocaine.asio import engine
 
 from cocaine.futures import chain
+import datetime
+import itertools
 from cocaine.tools import actions
 from cocaine.tools.actions import app
 
@@ -74,3 +76,48 @@ class Status(actions.Storage):
                 last = max(_parseCrashlogs(crashlogs), key=lambda (timestamp, time, uuid): timestamp)
                 crashed.append((application, last, len(crashlogs)))
         yield crashed
+
+
+def splitted(collection, sep=None, maxsplit=None):
+    for item in collection:
+        yield item.split(sep, maxsplit)
+
+
+def filtered(crashlogs):
+    for (ts, uuid) in splitted(crashlogs, ':', 1):
+        yield int(ts), uuid
+
+
+class Clean(Specific):
+    def __init__(self, storage, name, size, timestamp=None):
+        super(Clean, self).__init__(storage, name, timestamp)
+        self.size = int(size)
+
+    @engine.asynchronous
+    def execute(self):
+        if not self.name:
+            apps = yield app.List(self.storage).execute()
+        else:
+            apps = [self.name]
+
+        result = []
+        if self.timestamp:
+            try:
+                dt = datetime.datetime.strptime(self.timestamp, '%Y-%m-%dT%H:%M:%S')
+                timestamp = int(time.mktime(dt.timetuple())) * 1000000 + dt.microsecond
+            except ValueError:
+                timestamp = int(self.timestamp)
+
+            for app_name in apps:
+                crashlogs = yield self.storage.find('crashlogs', [app_name])
+                result = filter(lambda (ts, uuid): ts < timestamp, filtered(crashlogs))
+        elif self.size > 0:
+            for app_name in apps:
+                crashlogs = yield self.storage.find('crashlogs', [app_name])
+                result = itertools.islice(
+                    sorted(filtered(crashlogs), key=lambda (ts, uuid): ts, reverse=True), self.size, None)
+
+        for crashlog in result:
+            print('removing', '%d:%s' % crashlog)
+            yield self.storage.remove('crashlogs', '%d:%s' % crashlog)
+        yield 'Done'
