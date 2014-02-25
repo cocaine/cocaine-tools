@@ -2,7 +2,6 @@ import logging
 import os
 import re
 import shutil
-import sys
 import tarfile
 import tempfile
 
@@ -213,7 +212,7 @@ class DockerUpload(actions.Storage):
         with printer('Uploading manifest'):
             yield self.storage.write('manifests', self.name, manifest, APPS_TAGS)
 
-        response = yield self.client.build(self.path, tag=self.fullname, streaming=sys.stderr.write)
+        response = yield self.client.build(self.path, tag=self.fullname, streaming=self._on_read)
         if response.code != 200:
             raise ToolsError('upload failed with error code {0}'.format(response.code))
 
