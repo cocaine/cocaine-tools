@@ -20,7 +20,88 @@
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
-from . import runlist
+
+import json
+import os
+import subprocess
+import tempfile
+import abc
+
+from cocaine.futures import chain
+from cocaine.tools.printer import printer
+from cocaine.tools.actions import runlist
+from cocaine.tools.actions import profile
+from cocaine.tools.helpers.editor import locate_editor
+
+__author__ = 'Evgeny Safronov <division494@gmail.com>'
 
 
-__all__ = ['runlist']
+class BaseEditor(object):
+    __metaclass__ = abc.ABCMeta
+
+    EDITORS = ['vim', 'emacs', 'nano']
+
+    @abc.abstractmethod
+    def view(self):
+        pass
+
+    @abc.abstractmethod
+    def upload(self, data):
+        pass
+
+    @chain.source
+    def execute(self):
+        with printer('Loading "%s"', self.name):
+            content = yield self.view()
+
+        with printer('Editing "%s"', self.name):
+            with tempfile.NamedTemporaryFile(delete=False) as fh:
+                name = fh.name
+                fh.write(json.dumps(content))
+
+            ec = None
+
+            # locate default editor
+            default_editor = locate_editor()
+            if default_editor is not None:
+                default_editor in self.EDITORS and self.EDITORS.remove(default_editor)
+                self.EDITORS.insert(0, default_editor)
+
+            for editor in self.EDITORS:
+                try:
+                    ec = subprocess.call([editor, name])
+                    break
+                except OSError:
+                    continue
+
+            if ec is None:
+                raise ValueError('cannot open runlist for editing - any of {0} editors not found'.format(self.EDITORS))
+            if ec != 0:
+                raise ValueError('editing failed with exit code {0}'.format(ec))
+
+        with open(name) as fh:
+            yield self.upload(fh.read())
+        # Remove temp file
+        os.unlink(name)
+
+
+class RunlistEditor(BaseEditor, runlist.Specific):
+    def __init__(self, *args, **kwargs):
+        super(RunlistEditor, self).__init__(*args, **kwargs)
+
+    def view(self):
+        return runlist.View(self.storage, self.name).execute()
+
+    def upload(self, data):
+        return runlist.Upload(self.storage, self.name, data).execute()
+
+
+class ProfileEditor(BaseEditor, profile.Specific):
+    def __init__(self, *args, **kwargs):
+        super(ProfileEditor, self).__init__(*args, **kwargs)
+
+    def view(self):
+        return profile.View(self.storage, self.name).execute()
+
+    def upload(self, data):
+        return profile.Upload(self.storage, self.name, data).execute()

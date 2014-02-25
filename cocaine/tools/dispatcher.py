@@ -341,6 +341,17 @@ def profile_upload(options,
     })
 
 
+@profileDispatcher.command(name='edit')
+def profile_edit(options,
+                 name):
+    """Edit profile in interactive editor."""
+    options.executor.timeout = None
+    options.executor.executeAction('profile:edit', **{
+        'storage': options.getService('storage'),
+        'name': name,
+    })
+
+
 @profileDispatcher.command(name='remove')
 def profile_remove(options,
                    name=('n', '', 'profile name')):

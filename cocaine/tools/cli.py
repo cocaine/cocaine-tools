@@ -114,10 +114,11 @@ NG_ACTIONS = {
     'profile:view': JsonToolHandler(profile.View),
     'profile:upload': ToolHandler(profile.Upload),
     'profile:remove': ToolHandler(profile.Remove),
+    'profile:edit': ToolHandler(interactive.ProfileEditor),
 
     'runlist:list': JsonToolHandler(runlist.List),
     'runlist:view': JsonToolHandler(runlist.View),
-    'runlist:edit': ToolHandler(interactive.runlist.Edit),
+    'runlist:edit': ToolHandler(interactive.RunlistEditor),
     'runlist:add-app': JsonToolHandler(runlist.AddApplication),
     'runlist:remove-app': JsonToolHandler(runlist.RemoveApplication),
     'runlist:create': ToolHandler(runlist.Create),
