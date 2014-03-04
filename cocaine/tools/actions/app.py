@@ -178,22 +178,27 @@ class Check(common.Node):
 
 
 class DockerUpload(actions.Storage):
-    def __init__(self, storage, path, name, manifest, address, registry=''):
+    def __init__(self, storage, path, name, manifest, address, registry='', on_read=None):
         super(DockerUpload, self).__init__(storage)
         self.path = path or os.path.curdir
         self.name = name or os.path.basename(os.path.abspath(self.path))
         if registry:
             self.fullname = '{0}/{1}'.format(registry, self.name)
+        else:
+            self.fullname = self.name
 
         self.manifest = manifest
 
         self.client = docker.Client(address)
 
         log.debug('checking Dockerfile')
-        # if not os.path.exists(os.path.join(self.path, 'Dockerfile')):
-        #     raise ValueError('Dockerfile not found')
         if not address:
             raise ValueError('Docker address is not specified')
+
+        if on_read is not None:
+            if not callable(on_read):
+                raise ValueError("on_read must ne callable")
+            self._on_read = on_read
 
         self._last_message = ''
 
@@ -212,13 +217,18 @@ class DockerUpload(actions.Storage):
         with printer('Uploading manifest'):
             yield self.storage.write('manifests', self.name, manifest, APPS_TAGS)
 
-        response = yield self.client.build(self.path, tag=self.fullname, streaming=self._on_read)
-        if response.code != 200:
-            raise ToolsError('upload failed with error code {0}'.format(response.code))
+        try:
+            response = yield self.client.build(self.path, tag=self.fullname, streaming=self._on_read)
+            if response.code != 200:
+                raise ToolsError('upload failed with error code {0}'.format(response.code))
 
-        response = yield self.client.push(self.fullname, {}, streaming=self._on_read)
-        if response.code != 200:
-            raise ToolsError('upload failed with error code {0}'.format(response.code))
+            response = yield self.client.push(self.fullname, {}, streaming=self._on_read)
+            if response.code != 200:
+                raise ToolsError('upload failed with error code {0}'.format(response.code))
+        except Exception as err:
+            log.error("Error occurred. Erase manifest")
+            yield self.storage.remove('manifests', self.name)
+            raise err
 
     def _on_read(self, value):
         if self._last_message != value:
