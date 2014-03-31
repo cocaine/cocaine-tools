@@ -35,7 +35,7 @@ def resolve_repository_name(fullname):
         raise ValueError('repository name can not contain a scheme ({0})'.format(fullname))
 
     parts = fullname.split('/', 1)
-    if not '.' in parts[0] and not ':' in parts[0] and parts[0] != 'localhost':
+    if '.' not in parts[0] and ':' not in parts[0] and parts[0] != 'localhost':
         return DEFAULT_INDEX_URL, fullname
 
     if len(parts) < 2:

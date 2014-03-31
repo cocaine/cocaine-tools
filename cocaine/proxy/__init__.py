@@ -51,7 +51,7 @@ class Daemon(object):
         os.dup2(so.fileno(), sys.stdout.fileno())
         os.dup2(se.fileno(), sys.stderr.fileno())
 
-        #write PID file
+        # write PID file
         atexit.register(self.delpid)
         pid = str(os.getpid())
         open(self.pidfile, 'w').write("%s\n" % pid)
@@ -91,7 +91,7 @@ class Daemon(object):
             sys.stderr.write(msg % self.pidfile)
             sys.exit(1)
 
-        #Kill
+        # Kill
         try:
             while True:
                 os.kill(pid, SIGTERM)
