@@ -3,21 +3,36 @@
 LOGDIR="/var/log/cocaine-tornado"
 PIDDIR="/var/run/cocaine-tornado"
 
-/usr/sbin/useradd cocaine -m || true
+#!/bin/bash
 
-# Create directory for logs
-if [ ! -d "$LOGDIR" ]; then
-    mkdir -p $LOGDIR
-fi
-chown -R cocaine $LOGDIR
+set -e
 
-# Create directory for PID
-if [ ! -d "$PIDDIR" ]; then
-    mkdir -p $PIDDIR
-fi
-chown -R cocaine $PIDDIR
+case $1 in
+    configure)
+        # Create a new system user to run under cocaine user
+        adduser --quiet --system --ingroup adm cocaine
 
-# Autostart
-/usr/sbin/update-rc.d cocaine-tornado-proxy defaults
+        # Create directory for logs
+        if [ ! -d "$LOGDIR" ]; then
+            mkdir -p $LOGDIR
+        fi
+        chown -R cocaine $LOGDIR
+
+        # Create directory for PID
+        if [ ! -d "$PIDDIR" ]; then
+            mkdir -p $PIDDIR
+        fi
+        chown -R cocaine $PIDDIR
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with an unknown argument \`$1'" >&2
+        ;;
+esac
 
 #DEBHELPER#
+
+exit 0

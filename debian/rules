@@ -1,16 +1,16 @@
 #!/usr/bin/make -f
 
-DEB_PYTHON_SYSTEM=pycentral
+version=$(shell lsb_release -r | cut -f2 | cut -d'.' -f1)
 
-include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/class/python-distutils.mk
+ifeq ($(version),10)
+include debian/lucid.mk
+else
+%:
+	dh $@ --with python2
 
-install/cocaine-tools::
-	install -d $(DEB_DESTDIR)usr/bin
-	dh_bash-completion
+override_dh_install:
+	install -d $(DEBDESTDIR)etc/cocaine
+	install -m644 scripts/init/cocaine-tornado-proxy.conf $(DEBDESTDIR)etc/cocaine/cocaine-tornado-proxy.conf
+	dh_install
+endif
 
-install/cocaine-tornado-proxy::
-	install -d $(DEB_DESTDIR)etc/init.d
-	install -m755 scripts/init/cocaine-tornado-proxy $(DEB_DESTDIR)etc/init.d/cocaine-tornado-proxy
-	install -d $(DEB_DESTDIR)etc/cocaine
-	install -m755 scripts/init/cocaine-tornado-proxy.conf $(DEB_DESTDIR)etc/cocaine/cocaine-tornado-proxy.conf
