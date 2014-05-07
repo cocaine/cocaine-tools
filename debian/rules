@@ -6,7 +6,7 @@ ifeq ($(version),10)
 include debian/lucid.mk
 else
 %:
-	dh $@ --with python2
+	dh $@ --with python2,bash-completion
 
 override_dh_install:
 	install -d $(DEBDESTDIR)etc/cocaine
