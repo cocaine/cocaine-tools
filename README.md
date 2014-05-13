@@ -1,4 +1,4 @@
-Cocaine-tools [![Build Status](https://travis-ci.org/cocaine/cocaine-tools.png?branch=master)](https://travis-ci.org/cocaine/cocaine-tools)
+Cocaine-tools [![Build Status](https://travis-ci.org/cocaine/cocaine-tools.png?branch=master)](https://travis-ci.org/cocaine/cocaine-tools)[![Code Health](https://landscape.io/github/cocaine/cocaine-tools/master/landscape.png)](https://landscape.io/github/cocaine/cocaine-tools/master)
 =============
 Have you heard about Cocaine? No? Omg, you need to check its [repository](https://github.com/cocaine/cocaine-core) first.
 You have? Okay, let's describe what me mean behind *cocaine-tools*.
