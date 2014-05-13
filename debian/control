@@ -21,7 +21,7 @@ Description: Cocaine - Toolset
 
 Package: cocaine-tornado-proxy
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends},
+Depends: ${shlibs:Depends}, ${misc:Depends},
  cocaine-framework-python (>=0.10.6)
 XB-Python-Version: >= 2.6
 Description: Tornado-based cocaine HTTP proxy
