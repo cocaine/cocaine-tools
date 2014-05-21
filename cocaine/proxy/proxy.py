@@ -1,6 +1,7 @@
+#
 # Copyright (c) 2012 Tyurin Anton noxiouz@yandex.ru
 #
-# This file is part of cocaine-tornado-proxy.
+# This file is part of Cocaine-tools.
 #
 # cocaine-tornado-proxy is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by

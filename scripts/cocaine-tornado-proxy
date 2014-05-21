@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2012 Tyurin Anton noxiouz@yandex.ru
 #
-# This file is part of cocaine-tornado-proxy.
+# This file is part of Cocaine-tools
 #
 # cocaine-tornado-proxy is free software; you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -194,6 +194,7 @@ def get_service(name):
 
 TEMPLATE = "%(VERSION)s %(CODE)d %(STATUS)s\r\n%(HEADERS)s\r\n%(BODY)s"
 
+
 @chain.source
 def process(obj, service, event, data):
     message_parts = []
@@ -316,7 +317,7 @@ def handle_request(request):
             request.version, len(message), message))
         request.finish()
         return
-        
+
     process(request, s, event, pack_httprequest(request))
 
 
