@@ -99,7 +99,11 @@ class Remove(actions.Storage):
             if self.name not in apps:
                 raise ToolsError('application "{0}" does not exist'.format(self.name))
             yield self.storage.remove('manifests', self.name)
-            yield self.storage.remove('apps', self.name)
+            try:
+                yield self.storage.remove('apps', self.name)
+            except ServiceError:
+                log.info('Unable to delete an application source from storage.',
+                         'It\'s okay, if the application is a Docker image')
 
 
 class Start(common.Node):
