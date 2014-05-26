@@ -136,15 +136,19 @@ crashlogDispatcher = Dispatcher(globaloptions=Global.options, middleware=middlew
 proxyDispatcher = Dispatcher()
 
 
-@d.command()
-def info(options):
+@d.command(name='info', usage='[--name=NAME]')
+def info(options,
+         name=('n', '', 'application name')):
     """Show information about cocaine runtime
 
     Return json-like string with information about cocaine-runtime.
+
+    If the name option is not specified, shows information about all applications.
     """
     options.executor.executeAction('info', **{
         'node': options.getService('node'),
-        'locator': options.locator
+        'locator': options.locator,
+        'name': name
     })
 
 

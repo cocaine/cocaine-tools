@@ -39,26 +39,34 @@ class Node(object):
 
 
 class NodeInfo(Node):
-    def __init__(self, node, locator):
+    def __init__(self, node, locator, name=None):
         super(NodeInfo, self).__init__(node)
         self.locator = locator
+        self._name = name
 
     @chain.source
     def execute(self):
-        appNames = yield self.node.list()
-        appInfoList = {}
-        for appName in appNames:
+        if self._name:
+            apps = [self._name]
+        else:
+            apps = yield self.node.list()
+        yield self.info(apps)
+
+    @chain.source
+    def info(self, apps):
+        infos = {}
+        for app_ in apps:
             info = ''
             try:
-                app = Service(appName, blockingConnect=False)
+                app = Service(app_, blockingConnect=False)
                 yield app.connectThroughLocator(self.locator)
                 info = yield app.info()
             except Exception as err:
                 info = str(err)
             finally:
-                appInfoList[appName] = info
+                infos[app_] = info
         result = {
-            'apps': appInfoList
+            'apps': infos
         }
         yield result
 

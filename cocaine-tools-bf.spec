@@ -1,6 +1,6 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print (get_python_lib())")}
 Name:		cocaine-tools	
-Version:	0.11.3.2
+Version:	0.11.5.0
 Release:	1%{?dist}
 Summary:	Cocaine - Toolset
 
@@ -17,7 +17,7 @@ BuildRequires:	python-setuptools
 Requires:	cocaine-framework-python >= 0.11.0.0
 Requires:	python-msgpack
 Requires:	python-opster >= 4.0
-Requires: python-tornado >= 3.1
+Requires:   python-tornado >= 3.1
 
 %description
 Various tools to query and manipulate running Cocaine instances.
@@ -46,6 +46,9 @@ rm -rf %{buildroot}
 %{_bindir}/*
 
 %changelog
+* Mon May 26 2014 Evgeny Safronov <division494@gmail.com> - 0.11.5.0
+- Feature: Added `name` optional parameter for `cocaine-tool info`.
+
 * Mon Feb 03 2014 Evgeny Safronov <division494@gmail.com> - 0.11.3.2
 - Feature: Crashlog clean tool.
 
