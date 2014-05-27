@@ -1,6 +1,7 @@
 cocaine-tools (0.11.5.0) unstable; urgency=low
 
   * Added `name` optional parameter for `cocaine-tool info`.
+  * Info request can now expand every application's profile.
 
  -- Evgeny Safronov <division494@gmail.com>  Mon, 26 May 2014 17:05:00 +0400
 

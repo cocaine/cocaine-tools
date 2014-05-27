@@ -14,7 +14,7 @@ BuildArch:	noarch
 BuildRequires:	python-devel
 BuildRequires:	python-setuptools
 
-Requires:	cocaine-framework-python >= 0.11.0.0
+Requires:	cocaine-framework-python >= 0.11.1.0
 Requires:	python-msgpack
 Requires:	python-opster >= 4.0
 Requires:   python-tornado >= 3.1
@@ -48,6 +48,7 @@ rm -rf %{buildroot}
 %changelog
 * Mon May 26 2014 Evgeny Safronov <division494@gmail.com> - 0.11.5.0
 - Feature: Added `name` optional parameter for `cocaine-tool info`.
+- Feature: Info request can now expand every application's profile.
 
 * Mon Feb 03 2014 Evgeny Safronov <division494@gmail.com> - 0.11.3.2
 - Feature: Crashlog clean tool.
