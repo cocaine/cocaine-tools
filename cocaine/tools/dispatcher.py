@@ -138,7 +138,8 @@ proxyDispatcher = Dispatcher()
 
 @d.command(name='info', usage='[--name=NAME]')
 def info(options,
-         name=('n', '', 'application name')):
+         name=('n', '', 'application name'),
+         expand=('', False, 'expand all nesting info (like profile)')):
     """Show information about cocaine runtime
 
     Return json-like string with information about cocaine-runtime.
@@ -148,7 +149,9 @@ def info(options,
     options.executor.executeAction('info', **{
         'node': options.getService('node'),
         'locator': options.locator,
-        'name': name
+        'storage': options.getService('storage') if expand else None,
+        'name': name,
+        'expand': expand
     })
 
 

@@ -25,6 +25,7 @@ import re
 from cocaine.exceptions import ServiceError
 from cocaine.futures import chain
 from cocaine.services import Service
+from cocaine.tools.actions import profile
 from cocaine.tools.error import ServiceCallError
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
@@ -39,10 +40,12 @@ class Node(object):
 
 
 class NodeInfo(Node):
-    def __init__(self, node, locator, name=None):
+    def __init__(self, node, locator, storage, name=None, expand=False):
         super(NodeInfo, self).__init__(node)
         self.locator = locator
+        self._storage = storage
         self._name = name
+        self._expand = expand
 
     @chain.source
     def execute(self):
@@ -61,6 +64,8 @@ class NodeInfo(Node):
                 app = Service(app_, blockingConnect=False)
                 yield app.connectThroughLocator(self.locator)
                 info = yield app.info()
+                if all([self._expand, self._storage is not None, 'profile' in info]):
+                    info['profile'] = yield profile.View(self._storage, info['profile']).execute()
             except Exception as err:
                 info = str(err)
             finally:
