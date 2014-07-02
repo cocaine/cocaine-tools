@@ -155,9 +155,10 @@ class Stop(common.Node):
 
 
 class Restart(common.Node):
-    def __init__(self, node, locator, name, profile):
+    def __init__(self, node, locator, name, profile, storage):
         super(Restart, self).__init__(node)
         self.locator = locator
+        self.storage = storage
         self.name = name
         self.profile = profile
         if not self.name:
@@ -166,7 +167,7 @@ class Restart(common.Node):
     @chain.source
     def execute(self):
         try:
-            info = yield NodeInfo(self.node, self.locator).execute()
+            info = yield NodeInfo(self.node, self.locator, self.storage).execute()
             profile = self.profile or info['apps'][self.name]['profile']
             appStopStatus = yield Stop(self.node, name=self.name).execute()
             appStartStatus = yield Start(self.node, name=self.name, profile=profile).execute()

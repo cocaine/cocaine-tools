@@ -1,3 +1,9 @@
+cocaine-tools (0.11.5.1) unstable; urgency=low
+
+  * Fix `app restart`. Pass missing `storage` argument to NodeInfo 
+
+ -- Anton Tyurin <noxiouz@yandex.ru>  Wed, 02 Jul 2014 14:41:00 +0400
+
 cocaine-tools (0.11.5.0) unstable; urgency=low
 
   * Added `name` optional parameter for `cocaine-tool info`.
