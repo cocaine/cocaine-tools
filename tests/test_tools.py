@@ -197,7 +197,9 @@ class AppTestCase(AsyncTestCase):
     def test_AppRestartActionValueErrors(self):
         node = mock()
         locator = mock()
-        self.assertRaises(ValueError, app.Restart, node, locator, **{'name': '', 'profile': ''})
+        storage = mock()
+        self.assertRaises(ValueError, app.Restart, node, locator,
+                          name='', profile='', storage=storage)
 
     @unittest.skip('Broken, fixme!')
     @verifyInit('app.Stop', {'name': 'AppName'})
