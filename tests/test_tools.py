@@ -1,12 +1,15 @@
 # coding=utf-8
 from __future__ import absolute_import
 import logging
-import unittest
+import os
 import sys
+import unittest
+
 import msgpack
 
 from mockito import mock, when, verify, any, unstub
-from tornado.testing import AsyncTestCase
+from tornado.testing import AsyncTestCase, AsyncHTTPTestCase
+from tornado import netutil
 
 from cocaine.exceptions import ServiceError
 from cocaine.futures.chain import Chain
@@ -14,6 +17,7 @@ from cocaine.testing.mocks import CallableMock
 from cocaine.tools.error import Error as ToolsError, ServiceCallError
 from cocaine.tools.tags import APPS_TAGS, PROFILES_TAGS, RUNLISTS_TAGS
 from cocaine.tools.actions import common, app, profile, runlist, crashlog
+from cocaine.tools.helpers._unix import AsyncUnixHTTPClient
 
 
 __author__ = 'EvgenySafronov <division494@gmail.com>'
@@ -682,6 +686,36 @@ class NodeTestCase(unittest.TestCase):
 
         verify(method).__call__()
 
+
+class HTTPUnixClientTestCase(AsyncHTTPTestCase):
+    def setUp(self):
+        super(HTTPUnixClientTestCase, self).setUp()
+        self.socket_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                                        "test_socket")
+        self.http_server = self.get_http_server()
+        sock = netutil.bind_unix_socket(self.socket_path)
+        self.http_server.add_sockets([sock])
+
+    def get_app(self):
+        def handle_request(request):
+            message = "You requested %s\n" % request.uri
+            request.write("HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n%s" %
+                          (len(message), message))
+            request.finish()
+        return handle_request
+
+    def tearDown(self):
+        super(HTTPUnixClientTestCase, self).tearDown()
+        try:
+            os.remove(self.socket_path)
+        except:
+            pass
+
+    def test_Client(self):
+        http_client = AsyncUnixHTTPClient(self.io_loop, self.socket_path)
+        http_client.fetch(self.socket_path, self.stop)
+        response = self.wait()
+        self.assertEqual(200, response.code)
 
 if __name__ == '__main__':
     unittest.main()
