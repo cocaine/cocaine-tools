@@ -19,6 +19,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import os
 import time
 
 from cocaine.services import Service, Locator
@@ -31,8 +32,12 @@ from cocaine.tools.actions import crashlog
 from cocaine.tools.actions import group
 from cocaine.tools.actions import profile
 from cocaine.tools.actions import runlist
+from cocaine.tools.helpers._unix import AsyncUnixHTTPClient
 
 from nose import tools
+
+from tornado.testing import AsyncHTTPTestCase
+from tornado import netutil
 
 
 @tools.raises(ConnectionRefusedError, ConnectionError)
@@ -223,3 +228,34 @@ class TestCrashlogsAction(object):
     def test_crashlog(self):
         listing = crashlog.List(self.storage, "TEST").execute().wait()
         assert isinstance(listing, (list, tuple)), listing
+
+
+class HTTPUnixClientTestCase(AsyncHTTPTestCase):
+    def setUp(self):
+        super(HTTPUnixClientTestCase, self).setUp()
+        self.socket_path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                                        "test_socket")
+        self.http_server = self.get_http_server()
+        sock = netutil.bind_unix_socket(self.socket_path)
+        self.http_server.add_sockets([sock])
+
+    def get_app(self):
+        def handle_request(request):
+            message = "You requested %s\n" % request.uri
+            request.write("HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n%s" %
+                          (len(message), message))
+            request.finish()
+        return handle_request
+
+    def tearDown(self):
+        super(HTTPUnixClientTestCase, self).tearDown()
+        try:
+            os.remove(self.socket_path)
+        except:
+            pass
+
+    def test_Client(self):
+        http_client = AsyncUnixHTTPClient(self.io_loop, self.socket_path)
+        http_client.fetch("http://localhost", self.stop)
+        response = self.wait()
+        self.assertEqual(200, response.code)

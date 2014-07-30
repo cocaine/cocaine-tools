@@ -104,7 +104,10 @@ class Action(object):
         self.timeout = timeout
         self._io_loop = io_loop
         if self._unix:
-            self._base_url = url
+            # url should mimicry to http://
+            # to pass an urlscheme check in _HTTPConnetcion.
+            # Overriden Unix resolver'll return proper url and AF.
+            self._base_url = "http://unixsocket"
             self._http_client = AsyncUnixHTTPClient(self._io_loop, url)
         else:
             self._base_url = '{0}/v{1}'.format(url, version)
