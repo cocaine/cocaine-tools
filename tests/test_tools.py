@@ -713,7 +713,7 @@ class HTTPUnixClientTestCase(AsyncHTTPTestCase):
 
     def test_Client(self):
         http_client = AsyncUnixHTTPClient(self.io_loop, self.socket_path)
-        http_client.fetch(self.socket_path, self.stop)
+        http_client.fetch("http://localhost", self.stop)
         response = self.wait()
         self.assertEqual(200, response.code)
 
