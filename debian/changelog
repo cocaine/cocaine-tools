@@ -1,6 +1,13 @@
+cocaine-tools (0.11.5.2) unstable; urgency=low
+
+  * app.DockerUpload: Raise ToolsError if manifest doesn't exist
+  * app.DockerUpload: Append response.body to push/upload exceptions
+
+ -- Anton Tyurin <noxiouz@yandex.ru>  Thu, 31 Jul 2014 21:31:00 +0400
+
 cocaine-tools (0.11.5.1) unstable; urgency=low
 
-  * Fix `app restart`. Pass missing `storage` argument to NodeInfo 
+  * Fix `app restart`. Pass missing `storage` argument to NodeInfo
 
  -- Anton Tyurin <noxiouz@yandex.ru>  Wed, 02 Jul 2014 14:41:00 +0400
 
