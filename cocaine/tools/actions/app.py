@@ -235,7 +235,11 @@ class DockerUpload(actions.Storage):
         if self.manifest:
             manifestPath = self.manifest
         else:
-            manifestPath = _locateFile(self.path, 'manifest.json')
+            try:
+                manifestPath = _locateFile(self.path, 'manifest.json')
+            except IOError:
+                log.error("unable to locate manifest.json")
+                raise ToolsError("unable to locate manifest.json")
 
         with printer('Loading manifest'):
             manifest = CocaineConfigReader.load(manifestPath)
@@ -246,11 +250,13 @@ class DockerUpload(actions.Storage):
         try:
             response = yield self.client.build(self.path, tag=self.fullname, streaming=self._on_read)
             if response.code != 200:
-                raise ToolsError('upload failed with error code {0}'.format(response.code))
+                raise ToolsError('building failed with error code {0} {1}'.format(response.code,
+                                                                                  response.body))
 
             response = yield self.client.push(self.fullname, {}, streaming=self._on_read)
             if response.code != 200:
-                raise ToolsError('upload failed with error code {0}'.format(response.code))
+                raise ToolsError('pushing failed with error code {0} {1}'.format(response.code,
+                                                                                 response.body))
         except Exception as err:
             log.error("Error occurred. Erase manifest")
             yield self.storage.remove('manifests', self.name)
