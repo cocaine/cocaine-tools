@@ -204,7 +204,8 @@ def app_upload(options,
                package=('', '', 'path to the application archive'),
                docker_address=('', '', 'docker address'),
                registry=('', '', 'registry address'),
-               recipe=('', '', 'path to the recipe file')):
+               recipe=('', '', 'path to the recipe file'),
+               manifest_only=('', False, 'upload manifest only')):
     """Upload application with its environment (directory) into the storage.
 
     Application directory or its subdirectories must contain valid manifest file named `manifest.json` or `manifest`
@@ -233,7 +234,15 @@ def app_upload(options,
             print('Wrong usage: option {0} and {1} are mutual exclusive, you can only force one'.format(f.name, s.name))
             exit(os.EX_USAGE)
 
-    if package:
+    if manifest_only:
+        options.executor.executeAction('app:upload-manual', **{
+            'storage': options.getService('storage'),
+            'name': name,
+            'manifest': manifest,
+            'package': None,
+            'manifest_only': manifest_only,
+        })
+    elif package:
         options.executor.executeAction('app:upload-manual', **{
             'storage': options.getService('storage'),
             'name': name,

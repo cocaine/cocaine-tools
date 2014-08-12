@@ -74,32 +74,38 @@ class Upload(actions.Storage):
     Storage action class that tries to upload application into storage asynchronously
     """
 
-    def __init__(self, storage, name, manifest, package):
+    def __init__(self, storage, name, manifest, package=None, manifest_only=False):
         super(Upload, self).__init__(storage)
         self.name = name
         self.manifest = manifest
-        self.package = package
+        if manifest_only:
+            self.package = None
+        else:
+            self.package = package
+            if not self.package:
+                raise ValueError('Please specify package of the app')
 
         if not self.name:
             raise ValueError('Please specify name of the app')
         if not self.manifest:
             raise ValueError('Please specify manifest of the app')
-        if not self.package:
-            raise ValueError('Please specify package of the app')
 
     @chain.source
     def execute(self):
         with printer('Loading manifest'):
             manifest = CocaineConfigReader.load(self.manifest)
 
-        with printer('Reading package "%s"', self.package):
-            package = msgpack.dumps(readArchive(self.package))
+        #  Not only a manifest is being uploaded,
+        #  self.package could be None if manifest_only=True
+        if self.package is not None:
+            with printer('Reading package "%s"', self.package):
+                package = msgpack.dumps(readArchive(self.package))
+
+            with printer('Uploading application "%s"', self.name):
+                yield self.storage.write('apps', self.name, package, APPS_TAGS)
 
         with printer('Uploading manifest'):
             yield self.storage.write('manifests', self.name, manifest, APPS_TAGS)
-
-        with printer('Uploading application "%s"', self.name):
-            yield self.storage.write('apps', self.name, package, APPS_TAGS)
 
 
 class Remove(actions.Storage):
