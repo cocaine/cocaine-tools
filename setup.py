@@ -26,7 +26,6 @@ import os
 
 from setuptools import setup
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 if 'DEB_BUILD_GNU_TYPE' in os.environ:
     tools_data = [
@@ -35,9 +34,10 @@ if 'DEB_BUILD_GNU_TYPE' in os.environ:
 else:
     tools_data = []
 
+
 setup(
     name="cocaine-tools",
-    version="0.11.6.1",
+    version="0.12.0.0-rc0",
     author="Anton Tyurin",
     author_email="noxiouz@yandex.ru",
     maintainer='Evgeny Safronov',
@@ -58,16 +58,27 @@ setup(
         "cocaine.tools.helpers",
         "cocaine.tools.interactive",
     ],
-    install_requires=["cocaine >= 0.11.1.0", "opster >= 4.0"],
-    scripts=["scripts/cocaine-tool", "scripts/cocaine-tornado-proxy"],
-    tests_require=["mockito"],
-    test_suite="unittest.TestCase",
+    entry_points={
+        'console_scripts': [
+            'cocaine-tool = cocaine.tools.cocaine_tool:main',
+        ]},
+    scripts=["scripts/cocaine-tornado-proxy"],
+    install_requires=open('./requirements.txt').read(),
+    tests_require=open('./tests/requirements.txt').read(),
+    test_suite='nose.collector',
     classifiers=[
+        'Programming Language :: Python',
+        # 'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        # 'Programming Language :: Python :: 3.2',
+        # 'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        "Programming Language :: Python :: Implementation :: CPython",
         # 'Development Status :: 1 - Planning',
         # 'Development Status :: 2 - Pre-Alpha',
         # 'Development Status :: 3 - Alpha',
-        # 'Development Status :: 4 - Beta',
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 4 - Beta',
+        # 'Development Status :: 5 - Production/Stable',
         # 'Development Status :: 6 - Mature',
         # 'Development Status :: 7 - Inactive',
     ],
