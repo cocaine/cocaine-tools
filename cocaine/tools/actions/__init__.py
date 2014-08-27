@@ -25,8 +25,11 @@ import errno
 import tarfile
 import msgpack
 
-from cocaine.asio.exceptions import ConnectionError, ConnectionRefusedError
-from cocaine.futures import chain
+from cocaine.decorators import coroutine
+from tornado import gen
+
+from cocaine.exceptions import ConnectionError, ConnectionRefusedError
+# from cocaine.futures import chain
 from cocaine.services import Service
 from cocaine.tools import log
 
@@ -75,13 +78,14 @@ class Storage(object):
     def connect(self, host='localhost', port=10053):
         try:
             self.storage = Service('storage', host, port)
+            self.storage.connect().wait()
         except socket.error as err:
             if err.errno == errno.ECONNREFUSED:
                 raise ConnectionRefusedError((host, port))
             else:
                 raise ConnectionError((host, port), 'Unknown connection error: {0}'.format(err))
 
-    def execute(self):
+    def execute(self):  # pragma: no cover
         raise NotImplementedError()
 
 
@@ -95,8 +99,11 @@ class List(Storage):
         self.key = key
         self.tags = tags
 
+    @coroutine
     def execute(self):
-        return self.storage.find(self.key, self.tags)
+        channel = yield self.storage.find(self.key, self.tags)
+        listing = yield channel.rx.get()
+        raise gen.Return(listing[0])
 
 
 class Specific(Storage):
@@ -112,7 +119,8 @@ class View(Specific):
         super(View, self).__init__(storage, entity, name)
         self.collection = collection
 
-    @chain.source
+    @coroutine
     def execute(self):
-        value = yield self.storage.read(self.collection, self.name)
-        yield msgpack.loads(value)
+        channel = yield self.storage.read(self.collection, self.name)
+        value = yield channel.rx.get()
+        raise gen.Return(msgpack.loads(value[0]))

@@ -27,12 +27,12 @@ import tarfile
 import tempfile
 
 import msgpack
+from tornado import gen
 
-from cocaine.asio import engine
-from cocaine.asio.exceptions import LocatorResolveError
-from cocaine.asio.service import Service
+from cocaine.decorators import coroutine
+from cocaine.exceptions import LocatorResolveError
+from cocaine.services import Service
 from cocaine.exceptions import ServiceError
-from cocaine.futures import chain
 from cocaine.tools import actions, log
 from cocaine.tools.actions import common, readArchive, CocaineConfigReader, docker
 from cocaine.tools.actions.common import NodeInfo
@@ -90,7 +90,7 @@ class Upload(actions.Storage):
         if not self.manifest:
             raise ValueError('Please specify manifest of the app')
 
-    @chain.source
+    @coroutine
     def execute(self):
         with printer('Loading manifest'):
             manifest = CocaineConfigReader.load(self.manifest)
@@ -119,15 +119,17 @@ class Remove(actions.Storage):
         if not self.name:
             raise ValueError('Empty application name')
 
-    @chain.source
+    @coroutine
     def execute(self):
         with printer('Removing "%s"', self.name):
             apps = yield List(self.storage).execute()
             if self.name not in apps:
                 raise ToolsError('application "{0}" does not exist'.format(self.name))
-            yield self.storage.remove('manifests', self.name)
+            channel = yield self.storage.remove('manifests', self.name)
+            yield channel.rx.get()
             try:
-                yield self.storage.remove('apps', self.name)
+                channel = yield self.storage.remove('apps', self.name)
+                yield channel.rx.get()
             except ServiceError:
                 log.info('Unable to delete an application source from storage.',
                          'It\'s okay, if the application is a Docker image')
@@ -143,21 +145,30 @@ class Start(common.Node):
         if not self.profile:
             raise ValueError('Please specify profile name')
 
+    @coroutine
     def execute(self):
-        return self.node.start_app({
+        channel = yield self.node.start_app({
             self.name: self.profile
         })
+        result = yield channel.rx.get()
+        raise gen.Return(result[0])
 
 
 class Stop(common.Node):
     def __init__(self, node, name):
         super(Stop, self).__init__(node)
+        if not isinstance(name, (list, tuple)):
+            name = [name]
+
         self.name = name
         if not self.name:
             raise ValueError('Please specify application name')
 
+    @coroutine
     def execute(self):
-        return self.node.pause_app([self.name])
+        channel = yield self.node.pause_app(self.name)
+        result = yield channel.rx.get()
+        raise gen.Return(result[0])
 
 
 class Restart(common.Node):
@@ -170,18 +181,19 @@ class Restart(common.Node):
         if not self.name:
             raise ValueError('Please specify application name')
 
-    @chain.source
+    @coroutine
     def execute(self):
         try:
             info = yield NodeInfo(self.node, self.locator, self.storage).execute()
             profile = self.profile or info['apps'][self.name]['profile']
             appStopStatus = yield Stop(self.node, name=self.name).execute()
             appStartStatus = yield Start(self.node, name=self.name, profile=profile).execute()
-            yield [appStopStatus, appStartStatus]
         except KeyError:
             raise ToolsError('Application "{0}" is not running and profile not specified'.format(self.name))
         except Exception as err:
             raise ToolsError('Unknown error - {0}'.format(err))
+        else:
+            raise gen.Return([appStopStatus, appStartStatus])
 
 
 class Check(common.Node):
@@ -193,7 +205,7 @@ class Check(common.Node):
         if not self.name:
             raise ValueError('Please specify application name')
 
-    @chain.source
+    @coroutine
     def execute(self):
         log.info('Checking "%s"... ', self.name)
         apps = yield List(self.storage).execute()
@@ -234,7 +246,7 @@ class DockerUpload(actions.Storage):
 
         self._last_message = ''
 
-    @engine.asynchronous
+    @coroutine
     def execute(self):
         log.debug('application name will be: %s', self.fullname)
 
@@ -286,7 +298,7 @@ class LocalUpload(actions.Storage):
         if not self.name:
             raise ValueError(WRONG_APPLICATION_NAME.format(self.name))
 
-    @chain.source
+    @coroutine
     def execute(self):
         try:
             repositoryPath = self._createRepository()
@@ -321,7 +333,7 @@ class LocalUpload(actions.Storage):
             shutil.copytree(self.path, repositoryPath)
             return repositoryPath
 
-    @chain.concurrent
+    @coroutine
     def _createVirtualEnvironment(self, repositoryPath, manifestPath, Installer):
         log.debug('Creating virtual environment "{0}"...'.format(self.virtualEnvironmentType))
         stream = None
@@ -353,7 +365,7 @@ class UploadRemote(actions.Storage):
             match = rx.match(self.url)
             self.name = match.group('name')
 
-    @chain.source
+    @coroutine
     def execute(self):
         repositoryPath = tempfile.mkdtemp()
         manifestPath = os.path.join(repositoryPath, 'manifest-start.json')
@@ -373,15 +385,15 @@ class UploadRemote(actions.Storage):
         except (RepositoryDownloadError, ModuleInstallError) as err:
             print(err)
 
-    @chain.concurrent
+    @coroutine
     def cloneRepository(self, repositoryPath):
         self.repositoryDownloader.download(self.url, repositoryPath)
 
-    @chain.concurrent
+    @coroutine
     def installRepository(self):
         self.moduleInstaller.install()
 
-    @chain.concurrent
+    @coroutine
     def createPackage(self, repositoryPath, packagePath):
         tar = tarfile.open(packagePath, mode='w:gz')
         tar.add(repositoryPath, arcname='')

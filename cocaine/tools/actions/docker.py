@@ -31,7 +31,7 @@ from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
 
 from cocaine.tools import log
-from cocaine.futures import chain
+from cocaine.decorators import coroutine
 from cocaine.tools.helpers._unix import AsyncUnixHTTPClient
 from cocaine.tools.helpers.dockertemplate import dockerchef, dockerpuppet
 
@@ -122,21 +122,21 @@ class Action(object):
 
 
 class Info(Action):
-    @chain.source
+    @coroutine
     def execute(self):
         response = yield self._http_client.fetch(self._make_url('/info'))
         yield response.body
 
 
 class Images(Action):
-    @chain.source
+    @coroutine
     def execute(self):
         response = yield self._http_client.fetch(self._make_url('/images/json'))
         yield response.body
 
 
 class Containers(Action):
-    @chain.source
+    @coroutine
     def execute(self):
         response = yield self._http_client.fetch(self._make_url('/containers/json'))
         yield json.loads(response.body)
@@ -152,7 +152,7 @@ class Build(Action):
         self._streaming = streaming
         self._io_loop = io_loop or IOLoop.current()
 
-    @chain.source
+    @coroutine
     def execute(self):
         headers = None
         body = ''
@@ -225,7 +225,7 @@ class Push(Action):
         self._streaming = streaming
         super(Push, self).__init__(url, version, timeout, io_loop)
 
-    @chain.source
+    @coroutine
     def execute(self):
         url = self._make_url('/images/{0}/push'.format(self.name))
         registry, name = resolve_repository_name(self.name)

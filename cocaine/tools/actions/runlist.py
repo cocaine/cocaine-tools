@@ -21,7 +21,7 @@
 
 import types
 
-from cocaine.futures import chain
+from cocaine.decorators import coroutine
 from cocaine.tools import actions, log
 from cocaine.tools.actions import CocaineConfigReader
 from cocaine.tools.printer import printer
@@ -56,7 +56,7 @@ class Upload(Specific):
         else:
             raise ValueError('Please specify runlist file path')
 
-    @chain.source
+    @coroutine
     def execute(self):
         runlist = CocaineConfigReader.load(self.runlist)
         with printer('Uploading "%s"', self.name):
@@ -69,7 +69,7 @@ class Create(Specific):
 
 
 class Remove(Specific):
-    @chain.source
+    @coroutine
     def execute(self):
         log.info('Removing "%s"... ', self.name)
         yield self.storage.remove('runlists', self.name)
@@ -87,7 +87,7 @@ class AddApplication(Specific):
         if not self.profile:
             raise ValueError('Please specify profile')
 
-    @chain.source
+    @coroutine
     def execute(self):
         result = {
             'runlist': self.name,
@@ -119,7 +119,7 @@ class RemoveApplication(Specific):
         if not self.app:
             raise ValueError('Please specify application name')
 
-    @chain.source
+    @coroutine
     def execute(self):
         result = {
             'runlist': self.name,

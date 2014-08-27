@@ -22,8 +22,11 @@
 import ast
 import re
 
+from tornado import gen
+
+
 from cocaine.exceptions import ServiceError
-from cocaine.futures import chain
+from cocaine.decorators import coroutine
 from cocaine.services import Service
 from cocaine.tools.actions import profile
 from cocaine.tools.error import ServiceCallError
@@ -35,6 +38,7 @@ class Node(object):
     def __init__(self, node=None):
         self.node = node
 
+    @coroutine
     def execute(self):
         raise NotImplementedError()
 
@@ -47,23 +51,25 @@ class NodeInfo(Node):
         self._name = name
         self._expand = expand
 
-    @chain.source
+    @coroutine
     def execute(self):
         if self._name:
             apps = [self._name]
         else:
-            apps = yield self.node.list()
-        yield self.info(apps)
+            channel = yield self.node.list()
+            apps = yield channel.rx.get()
+        result = yield self.info(apps[0])
+        raise gen.Return(result)
 
-    @chain.source
+    @coroutine
     def info(self, apps):
         infos = {}
         for app_ in apps:
             info = ''
             try:
-                app = Service(app_, blockingConnect=False)
-                yield app.connectThroughLocator(self.locator)
-                info = yield app.info()
+                app = Service(app_)
+                channel = yield app.info()
+                info = yield channel.rx.get()
                 if all([self._expand, self._storage is not None, 'profile' in info]):
                     info['profile'] = yield profile.View(self._storage, info['profile']).execute()
             except Exception as err:
@@ -73,7 +79,7 @@ class NodeInfo(Node):
         result = {
             'apps': infos
         }
-        yield result
+        raise gen.Return(result)
 
 
 class Call(object):
@@ -90,7 +96,7 @@ class Call(object):
         else:
             self.methodName = methodWithArguments
 
-    @chain.source
+    @coroutine
     def execute(self):
         service = self.getService()
         response = {

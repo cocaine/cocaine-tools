@@ -19,7 +19,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from cocaine.futures import chain
+from cocaine.decorators import coroutine
 from cocaine.tools import actions
 from cocaine.tools.actions import CocaineConfigReader, log
 from cocaine.tools.printer import printer
@@ -50,7 +50,7 @@ class Upload(Specific):
         if not self.profile:
             raise ValueError('Please specify profile file path')
 
-    @chain.source
+    @coroutine
     def execute(self):
         with printer('Loading profile'):
             profile = CocaineConfigReader.load(self.profile)
@@ -59,7 +59,7 @@ class Upload(Specific):
 
 
 class Remove(Specific):
-    @chain.source
+    @coroutine
     def execute(self):
         log.info('Removing "%s"... ', self.name)
         yield self.storage.remove('profiles', self.name)

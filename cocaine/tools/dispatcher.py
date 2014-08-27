@@ -26,7 +26,7 @@ import sys
 
 from opster import Dispatcher
 
-from cocaine.asio.service import Locator, Service
+from cocaine.services import Locator, Service
 from cocaine.logging.hanlders import ColoredFormatter, interactiveEmit
 from cocaine.tools.actions import proxy
 from cocaine.tools.cli import Executor
