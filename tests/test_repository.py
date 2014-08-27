@@ -1,5 +1,6 @@
 #
 # Copyright (c) 2013+ Evgeny Safronov <division494@gmail.com>
+# Copyright (c) 2013+ Anton Tiurin <noxiouz@yandex.ru>
 # Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
 #
 # This file is part of Cocaine-tools.
@@ -18,29 +19,15 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import subprocess
-import os
+import tempfile
 
-__author__ = 'EvgenySafronov <division494@gmail.com>'
+from cocaine.tools.repository import GitRepositoryDownloader
+from cocaine.tools.repository import RepositoryDownloadError
 
-
-class RepositoryDownloadError(Exception):
-    pass
+from nose import tools
 
 
-class RepositoryDownloader(object):
-    def download(self, url, destination):  # pragma: no cover
-        raise NotImplementedError
-
-
-class GitRepositoryDownloader(RepositoryDownloader):
-    def __init__(self, stream=None):
-        self.stream = stream or open(os.devnull, 'w')
-
-    def download(self, url, destination):
-        process = subprocess.Popen(['git', 'clone', url, destination],
-                                   stdout=self.stream,
-                                   stderr=self.stream)
-        process.wait()
-        if process.returncode != 0:
-            raise RepositoryDownloadError('Cannot download repository from "{0}"'.format(url))
+@tools.raises(RepositoryDownloadError)
+def test_clone():
+    d = GitRepositoryDownloader()
+    d.download("blabla", tempfile.gettempdir())
