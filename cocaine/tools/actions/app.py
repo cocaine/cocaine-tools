@@ -102,10 +102,12 @@ class Upload(actions.Storage):
                 package = msgpack.dumps(readArchive(self.package))
 
             with printer('Uploading application "%s"', self.name):
-                yield self.storage.write('apps', self.name, package, APPS_TAGS)
+                channel = yield self.storage.write('apps', self.name, package, APPS_TAGS)
+                yield channel.rx.get()
 
         with printer('Uploading manifest'):
-            yield self.storage.write('manifests', self.name, manifest, APPS_TAGS)
+            channel = yield self.storage.write('manifests', self.name, manifest, APPS_TAGS)
+            yield channel.rx.get()
 
 
 class Remove(actions.Storage):
