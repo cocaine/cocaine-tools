@@ -19,13 +19,14 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import time
-from cocaine.asio import engine
-
-from cocaine.futures import chain
-import datetime
 import itertools
+import datetime
+import time
+
+from tornado import gen
+
 from cocaine.tools import actions
+from cocaine.decorators import coroutine
 from cocaine.tools.actions import app
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
@@ -38,8 +39,11 @@ class List(actions.Storage):
         if not self.name:
             raise ValueError('Please specify crashlog name')
 
+    @coroutine
     def execute(self):
-        return self.storage.find('crashlogs', [self.name])
+        channel = yield self.storage.find('crashlogs', [self.name])
+        listing = yield channel.rx.get()
+        raise gen.Return(listing[0])
 
 
 def _parseCrashlogs(crashlogs, timestamp=None):
@@ -58,27 +62,31 @@ class Specific(actions.Storage):
 
 
 class View(Specific):
-    @chain.source
+    @coroutine
     def execute(self):
-        crashlogs = yield self.storage.find('crashlogs', [self.name])
-        parsedCrashlogs = _parseCrashlogs(crashlogs, timestamp=self.timestamp)
+        channel = yield self.storage.find('crashlogs', [self.name])
+        crashlogs = yield channel.rx.get()
+        parsedCrashlogs = _parseCrashlogs(crashlogs[0], timestamp=self.timestamp)
         contents = []
         for crashlog in parsedCrashlogs:
             key = '%s:%s' % (crashlog[0], crashlog[2])
-            content = yield self.storage.read('crashlogs', key)
+            channel = yield self.storage.read('crashlogs', key)
+            content = yield channel.rx.get()
             contents.append(content)
-        yield ''.join(contents)
+        raise gen.Return(''.join(contents))
 
 
 class Remove(Specific):
-    @chain.source
+    @coroutine
     def execute(self):
-        crashlogs = yield self.storage.find('crashlogs', [self.name])
+        channel = yield self.storage.find('crashlogs', [self.name])
+        crashlogs = yield channel.rx.get()
         parsedCrashlogs = _parseCrashlogs(crashlogs, timestamp=self.timestamp)
         for crashlog in parsedCrashlogs:
             key = '%s:%s' % (crashlog[0], crashlog[2])
-            yield self.storage.remove('crashlogs', key)
-        yield 'Done'
+            channel = yield self.storage.remove('crashlogs', key)
+            yield channel.rx.get()
+        raise gen.Return('Done')
 
 
 class RemoveAll(Remove):
@@ -87,7 +95,7 @@ class RemoveAll(Remove):
 
 
 class Status(actions.Storage):
-    @engine.asynchronous
+    @coroutine
     def execute(self):
         applications = yield app.List(self.storage).execute()
         crashed = []
@@ -96,7 +104,7 @@ class Status(actions.Storage):
             if crashlogs:
                 last = max(_parseCrashlogs(crashlogs), key=lambda (timestamp, time, uuid): timestamp)
                 crashed.append((application, last, len(crashlogs)))
-        yield crashed
+        raise gen.Return(crashed)
 
 
 def splitted(collection, sep=None, maxsplit=None):
@@ -114,7 +122,7 @@ class Clean(Specific):
         super(Clean, self).__init__(storage, name, timestamp)
         self.size = int(size)
 
-    @engine.asynchronous
+    @coroutine
     def execute(self):
         if not self.name:
             apps = yield app.List(self.storage).execute()
@@ -130,15 +138,18 @@ class Clean(Specific):
                 timestamp = int(self.timestamp)
 
             for app_name in apps:
-                crashlogs = yield self.storage.find('crashlogs', [app_name])
+                channel = yield self.storage.find('crashlogs', [app_name])
+                crashlogs = yield channel.rx.get()
                 result = filter(lambda (ts, uuid): ts < timestamp, filtered(crashlogs))
         elif self.size > 0:
             for app_name in apps:
-                crashlogs = yield self.storage.find('crashlogs', [app_name])
+                channel = yield self.storage.find('crashlogs', [app_name])
+                crashlogs = yield channel.rx.get()
                 result = itertools.islice(
-                    sorted(filtered(crashlogs), key=lambda (ts, uuid): ts, reverse=True), self.size, None)
+                    sorted(filtered(crashlogs[0]), key=lambda (ts, uuid): ts, reverse=True), self.size, None)
 
         for crashlog in result:
             print('removing', '%d:%s' % crashlog)
-            yield self.storage.remove('crashlogs', '%d:%s' % crashlog)
-        yield 'Done'
+            channel = yield self.storage.remove('crashlogs', '%d:%s' % crashlog)
+            yield channel.rx.get()
+        raise gen.Return('Done')
