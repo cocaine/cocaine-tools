@@ -27,6 +27,7 @@ from cocaine.exceptions import ConnectionError, ConnectionRefusedError, ServiceE
 from cocaine.tools import actions
 from cocaine.tools.actions import app
 from cocaine.tools.actions import common
+from cocaine.tools.actions import crashlog
 from cocaine.tools.actions import group
 from cocaine.tools.actions import profile
 from cocaine.tools.actions import runlist
@@ -213,3 +214,12 @@ class TestGroupActions(object):
 
     def test_refresh(self):
         group.Refresh(self.locator, self.storage, "").execute().wait(10)
+
+
+class TestCrashlogsAction(object):
+    def __init__(self):
+        self.storage = Service("storage")
+
+    def test_crashlog(self):
+        listing = crashlog.List(self.storage, "TEST").execute().wait()
+        assert isinstance(listing, (list, tuple)), listing

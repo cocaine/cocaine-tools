@@ -212,10 +212,10 @@ class Check(common.Node):
         if self.name not in apps:
             raise ToolsError('not available')
 
-        app = Service(self.name, blockingConnect=False)
+        app = Service(self.name)
         try:
-            yield app.connectThroughLocator(self.locator)
-            info = yield app.info()
+            channel = yield app.info()
+            info = yield channel.rx.get()
             log.info(info['state'])
         except (LocatorResolveError, ServiceError):
             raise ToolsError('stopped')

@@ -27,8 +27,8 @@ import sys
 from opster import Dispatcher
 
 from cocaine.services import Locator, Service
-from cocaine.logging.hanlders import ColoredFormatter, interactiveEmit
-from cocaine.tools.actions import proxy
+from cocaine.tools import ColoredFormatter, interactiveEmit
+# from cocaine.tools.actions import proxy
 from cocaine.tools.cli import Executor
 from cocaine.tools.error import Error as ToolsError
 
@@ -99,8 +99,8 @@ class Global(object):
 
     def getService(self, name):
         try:
-            service = Service(name, blockingConnect=False)
-            service.connectThroughLocator(self.locator, self.timeout, blocking=True)
+            service = Service(name)
+            # service.connectThroughLocator(self.locator, self.timeout, blocking=True)
             return service
         except Exception as err:
             raise ToolsError(err)
@@ -133,7 +133,7 @@ class dispatcher:
 profileDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 runlistDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 crashlogDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
-proxyDispatcher = Dispatcher()
+# proxyDispatcher = Dispatcher()
 
 
 @d.command(name='info', usage='[--name=NAME]')
@@ -665,51 +665,51 @@ def group_pop(options,
 DEFAULT_COCAINE_PROXY_PID_FILE = '/var/run/cocaine-python-proxy.pid'
 
 
-@proxyDispatcher.command()
-def start(port=('', 8080, 'server port'),
-          count=('', 0, 'server subprocess count (0 means optimal for current CPU count)'),
-          config=('', '/etc/cocaine/cocaine-tornado-proxy.conf', 'path to the configuration file'),
-          daemon=('', False, 'run as daemon'),
-          pidfile=('', DEFAULT_COCAINE_PROXY_PID_FILE, 'pidfile')):
-    """Start embedded cocaine proxy.
-    """
-    Global.configureLog(logNames=['cocaine.tools', 'cocaine.proxy'])
-    try:
-        proxy.Start(**{
-            'port': port,
-            'daemon': daemon,
-            'count': count,
-            'config': config,
-            'pidfile': pidfile,
-        }).execute()
-    except proxy.Error as err:
-        logging.getLogger('cocaine.tools').error('Cocaine tool error - %s', err)
+# @proxyDispatcher.command()
+# def start(port=('', 8080, 'server port'),
+#           count=('', 0, 'server subprocess count (0 means optimal for current CPU count)'),
+#           config=('', '/etc/cocaine/cocaine-tornado-proxy.conf', 'path to the configuration file'),
+#           daemon=('', False, 'run as daemon'),
+#           pidfile=('', DEFAULT_COCAINE_PROXY_PID_FILE, 'pidfile')):
+#     """Start embedded cocaine proxy.
+#     """
+#     Global.configureLog(logNames=['cocaine.tools', 'cocaine.proxy'])
+#     try:
+#         proxy.Start(**{
+#             'port': port,
+#             'daemon': daemon,
+#             'count': count,
+#             'config': config,
+#             'pidfile': pidfile,
+#         }).execute()
+#     except proxy.Error as err:
+#         logging.getLogger('cocaine.tools').error('Cocaine tool error - %s', err)
 
 
-@proxyDispatcher.command()
-def stop(pidfile=('', DEFAULT_COCAINE_PROXY_PID_FILE, 'pidfile')):
-    """Stop embedded cocaine proxy.
-    """
-    Global.configureLog(logNames=['cocaine.tools', 'cocaine.proxy'])
-    try:
-        proxy.Stop(**{
-            'pidfile': pidfile,
-        }).execute()
-    except proxy.Error as err:
-        logging.getLogger('cocaine.tools').error('Cocaine tool error - %s', err)
+# @proxyDispatcher.command()
+# def stop(pidfile=('', DEFAULT_COCAINE_PROXY_PID_FILE, 'pidfile')):
+#     """Stop embedded cocaine proxy.
+#     """
+#     Global.configureLog(logNames=['cocaine.tools', 'cocaine.proxy'])
+#     try:
+#         proxy.Stop(**{
+#             'pidfile': pidfile,
+#         }).execute()
+#     except proxy.Error as err:
+#         logging.getLogger('cocaine.tools').error('Cocaine tool error - %s', err)
 
 
-@proxyDispatcher.command()
-def status(pidfile=('', DEFAULT_COCAINE_PROXY_PID_FILE, 'pidfile')):
-    """Show embedded cocaine proxy status.
-    """
-    Global.configureLog(logNames=['cocaine.tools', 'cocaine.proxy'])
-    try:
-        proxy.Status(**{
-            'pidfile': pidfile,
-        }).execute()
-    except proxy.Error as err:
-        logging.getLogger('cocaine.tools').error('Cocaine tool error - %s', err)
+# @proxyDispatcher.command()
+# def status(pidfile=('', DEFAULT_COCAINE_PROXY_PID_FILE, 'pidfile')):
+#     """Show embedded cocaine proxy status.
+#     """
+#     Global.configureLog(logNames=['cocaine.tools', 'cocaine.proxy'])
+#     try:
+#         proxy.Status(**{
+#             'pidfile': pidfile,
+#         }).execute()
+#     except proxy.Error as err:
+#         logging.getLogger('cocaine.tools').error('Cocaine tool error - %s', err)
 
 
 d.nest('app', appDispatcher, 'application commands')
@@ -717,4 +717,4 @@ d.nest('profile', profileDispatcher, 'profile commands')
 d.nest('runlist', runlistDispatcher, 'runlist commands')
 d.nest('crashlog', crashlogDispatcher, 'crashlog commands')
 d.nest('group', dispatcher.group, 'routing group commands')
-d.nest('proxy', proxyDispatcher, 'cocaine proxy commands')
+# d.nest('proxy', proxyDispatcher, 'cocaine proxy commands')

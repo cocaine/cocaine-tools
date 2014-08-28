@@ -27,7 +27,7 @@ import subprocess
 import tempfile
 import abc
 
-from cocaine.futures import chain
+from cocaine.decorators import coroutine
 from cocaine.tools.printer import printer
 from cocaine.tools.actions import runlist
 from cocaine.tools.actions import profile
@@ -49,7 +49,7 @@ class BaseEditor(object):
     def upload(self, data):
         pass
 
-    @chain.source
+    @coroutine
     def execute(self):
         with printer('Loading "%s"', self.name):
             content = yield self.view()
