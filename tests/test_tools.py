@@ -26,9 +26,10 @@ from cocaine.exceptions import ConnectionError, ConnectionRefusedError, ServiceE
 
 from cocaine.tools import actions
 from cocaine.tools.actions import app
+from cocaine.tools.actions import common
+from cocaine.tools.actions import group
 from cocaine.tools.actions import profile
 from cocaine.tools.actions import runlist
-from cocaine.tools.actions import common
 
 from nose import tools
 
@@ -172,3 +173,43 @@ class TestRunlistActions(object):
 
         res = runlist.RemoveApplication(self.storage, name, app_name).execute().wait(4)
         assert isinstance(res, dict), res
+
+
+class TestGroupActions(object):
+    def __init__(self):
+        self.storage = Service("storage")
+        self.locator = Locator()
+
+    def test_group(self):
+        name = "dummy_group %d" % time.time()
+        app_name = "test_app"
+        weight = 100
+        dummy_group = {app_name: weight}
+        group.Create(self.storage, name, dummy_group).execute().wait(4)
+
+        listing = group.List(self.storage).execute().wait(4)
+        assert isinstance(listing, (list, tuple)), listing
+        assert name in listing
+
+        res = group.View(self.storage, name).execute().wait(4)
+        assert isinstance(res, dict), res
+        assert res == dummy_group, res
+
+        group.Remove(self.storage, name).execute().wait(4)
+        try:
+            group.View(self.storage, name).execute().wait(4)
+        except ServiceError:
+            pass
+
+        group.Create(self.storage, name).execute().wait(4)
+        res = group.View(self.storage, name).execute().wait(4)
+        assert res == {}, res
+
+        res = group.AddApplication(self.storage, name, app_name, weight).execute().wait(4)
+        assert res is None, res
+
+        res = group.RemoveApplication(self.storage, name, app_name).execute().wait(4)
+        assert res is None, res
+
+    def test_refresh(self):
+        group.Refresh(self.locator, self.storage, "").execute().wait(10)

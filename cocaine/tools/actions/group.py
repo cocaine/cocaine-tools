@@ -21,7 +21,7 @@
 
 import msgpack
 
-from cocaine.asio import engine
+from cocaine.decorators import coroutine
 from cocaine.tools import actions
 from cocaine.tools.actions import CocaineConfigReader
 from cocaine.tools.tags import GROUPS_TAGS
@@ -46,13 +46,14 @@ class Create(actions.Specific):
         super(Create, self).__init__(storage, 'group', name)
         self.content = content
 
-    @engine.asynchronous
+    @coroutine
     def execute(self):
         if self.content:
             content = CocaineConfigReader.load(self.content, validate=self._validate)
         else:
             content = msgpack.dumps({})
-        yield self.storage.write(GROUP_COLLECTION, self.name, content, GROUPS_TAGS)
+        channel = yield self.storage.write(GROUP_COLLECTION, self.name, content, GROUPS_TAGS)
+        yield channel.rx.get()
 
     def _validate(self, content):
         for app, weight in content.items():
@@ -64,8 +65,10 @@ class Remove(actions.Specific):
     def __init__(self, storage, name):
         super(Remove, self).__init__(storage, 'group', name)
 
+    @coroutine
     def execute(self):
-        return self.storage.remove(GROUP_COLLECTION, self.name)
+        channel = yield self.storage.remove(GROUP_COLLECTION, self.name)
+        yield channel.rx.get()
 
 
 class Refresh(actions.Storage):
@@ -74,7 +77,7 @@ class Refresh(actions.Storage):
         self.locator = locator
         self.name = name
 
-    @engine.asynchronous
+    @coroutine
     def execute(self):
         if not self.name:
             names = yield List(self.storage).execute()
@@ -82,7 +85,8 @@ class Refresh(actions.Storage):
             names = [self.name]
 
         for name in names:
-            yield self.locator.refresh(name)
+            channel = yield self.locator.refresh(name)
+            yield channel.rx.get()
 
 
 class AddApplication(actions.Specific):
@@ -91,12 +95,14 @@ class AddApplication(actions.Specific):
         self.app = app
         self.weight = int(weight)
 
-    @engine.asynchronous
+    @coroutine
     def execute(self):
-        group = yield self.storage.read(GROUP_COLLECTION, self.name)
-        group = msgpack.loads(group)
+        channel = yield self.storage.read(GROUP_COLLECTION, self.name)
+        group = yield channel.rx.get()
+        group = msgpack.loads(group[0])
         group[self.app] = self.weight
-        yield self.storage.write(GROUP_COLLECTION, self.name, msgpack.dumps(group), GROUPS_TAGS)
+        channel = yield self.storage.write(GROUP_COLLECTION, self.name, msgpack.dumps(group), GROUPS_TAGS)
+        yield channel.rx.get()
 
 
 class RemoveApplication(actions.Specific):
@@ -104,10 +110,12 @@ class RemoveApplication(actions.Specific):
         super(RemoveApplication, self).__init__(storage, 'group', name)
         self.app = app
 
-    @engine.asynchronous
+    @coroutine
     def execute(self):
-        group = yield self.storage.read(GROUP_COLLECTION, self.name)
-        group = msgpack.loads(group)
+        channel = yield self.storage.read(GROUP_COLLECTION, self.name)
+        group = yield channel.rx.get()
+        group = msgpack.loads(group[0])
         if self.app in group:
             del group[self.app]
-        yield self.storage.write(GROUP_COLLECTION, self.name, msgpack.dumps(group), GROUPS_TAGS)
+        channel = yield self.storage.write(GROUP_COLLECTION, self.name, msgpack.dumps(group), GROUPS_TAGS)
+        yield channel.rx.get()
