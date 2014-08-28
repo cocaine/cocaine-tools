@@ -19,8 +19,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import time
+
 from cocaine.services import Service, Locator
-from cocaine.exceptions import ConnectionError, ConnectionRefusedError
+from cocaine.exceptions import ConnectionError, ConnectionRefusedError, ServiceError
 
 from cocaine.tools import actions
 from cocaine.tools.actions import app
@@ -116,14 +118,22 @@ class TestProfileActions(object):
         self.node = Service("node")
 
     def test_profile(self):
-        name = "dummy_profile_name"
+        name = "dummy_profile_name %d" % time.time()
         dummy_profile = {"aaa": [1, 2, 3]}
         profile.Upload(self.storage, name, dummy_profile).execute().wait(4)
+
         listing = profile.List(self.storage).execute().wait(4)
         assert isinstance(listing, (list, tuple)), listing
         assert name in listing
+
         pr = profile.View(self.storage, name).execute().wait(4)
         assert pr == dummy_profile
+
+        profile.Remove(self.storage, name).execute().wait(4)
+        try:
+            profile.View(self.storage, name).execute().wait(4)
+        except ServiceError:
+            pass
 
 
 class TestRunlistActions(object):
@@ -131,8 +141,34 @@ class TestRunlistActions(object):
         self.storage = Service("storage")
 
     def test_runlist(self):
-        name = "dummy_runlist"
+        name = "dummy_runlist %d" % time.time()
+        app_name = "test_app"
+        profile_name = "test_profile"
+        dummy_runlist = {app_name: profile_name}
+        runlist.Upload(self.storage, name, dummy_runlist).execute().wait(4)
+
         listing = runlist.List(self.storage).execute().wait(4)
         assert isinstance(listing, (list, tuple)), listing
-        res = runlist.View(self.storage, listing[0]).execute().wait(4)
+        assert name in listing
+
+        res = runlist.View(self.storage, name).execute().wait(4)
+        assert isinstance(res, dict), res
+        assert res == dummy_runlist, res
+
+        runlist.Remove(self.storage, name).execute().wait(4)
+        try:
+            runlist.View(self.storage, name).execute().wait(4)
+        except ServiceError:
+            pass
+
+        runlist.Create(self.storage, name).execute().wait(4)
+        res = runlist.View(self.storage, name).execute().wait(4)
+        assert res == {}, res
+
+        res = runlist.AddApplication(self.storage, name, app_name, profile_name, force=True).execute().wait(4)
+        assert isinstance(res, dict), res
+        assert "added" in res, res
+        assert app_name == res["added"]["app"] and profile_name == res["added"]["profile"], res
+
+        res = runlist.RemoveApplication(self.storage, name, app_name).execute().wait(4)
         assert isinstance(res, dict), res

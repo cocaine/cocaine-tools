@@ -55,12 +55,14 @@ class Upload(Specific):
         with printer('Loading profile'):
             profile = CocaineConfigReader.load(self.profile)
         with printer('Uploading "%s"', self.name):
-            yield self.storage.write('profiles', self.name, profile, PROFILES_TAGS)
+            channel = yield self.storage.write('profiles', self.name, profile, PROFILES_TAGS)
+            yield channel.rx.get()
 
 
 class Remove(Specific):
     @coroutine
     def execute(self):
         log.info('Removing "%s"... ', self.name)
-        yield self.storage.remove('profiles', self.name)
+        channel = yield self.storage.remove('profiles', self.name)
+        yield channel.rx.get()
         log.info('OK')

@@ -21,6 +21,8 @@
 
 import types
 
+from tornado import gen
+
 from cocaine.decorators import coroutine
 from cocaine.tools import actions, log
 from cocaine.tools.actions import CocaineConfigReader
@@ -109,7 +111,7 @@ class AddApplication(Specific):
         runlist[self.app] = self.profile
         runlistUploadAction = Upload(self.storage, name=self.name, runlist=runlist)
         yield runlistUploadAction.execute()
-        yield result
+        raise gen.Return(result)
 
 
 class RemoveApplication(Specific):
@@ -139,4 +141,4 @@ class RemoveApplication(Specific):
         else:
             runlistUploadAction = Upload(self.storage, name=self.name, runlist=runlist)
             yield runlistUploadAction.execute()
-        yield result
+        raise gen.Return(result)
