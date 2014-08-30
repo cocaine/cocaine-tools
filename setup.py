@@ -62,7 +62,7 @@ setup(
         'console_scripts': [
             'cocaine-tool = cocaine.tools.cocaine_tool:main',
         ]},
-    scripts=["scripts/cocaine-tornado-proxy"],
+    # scripts=["scripts/cocaine-tornado-proxy"],
     install_requires=open('./requirements.txt').read(),
     tests_require=open('./tests/requirements.txt').read(),
     test_suite='nose.collector',
