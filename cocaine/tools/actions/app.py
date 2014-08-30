@@ -265,7 +265,8 @@ class DockerUpload(actions.Storage):
             manifest = CocaineConfigReader.load(manifestPath)
 
         with printer('Uploading manifest'):
-            yield self.storage.write('manifests', self.name, manifest, APPS_TAGS)
+            channel = yield self.storage.write('manifests', self.name, manifest, APPS_TAGS)
+            yield channel.rx.get()
 
         try:
             response = yield self.client.build(self.path, tag=self.fullname, streaming=self._on_read)
@@ -278,8 +279,9 @@ class DockerUpload(actions.Storage):
                 raise ToolsError('pushing failed with error code {0} {1}'.format(response.code,
                                                                                  response.body))
         except Exception as err:
-            log.error("Error occurred. Erase manifest")
-            yield self.storage.remove('manifests', self.name)
+            log.error("Error occurred. %s Erase manifest" % err)
+            channel = yield self.storage.remove('manifests', self.name)
+            yield channel.rx.get()
             raise err
 
     def _on_read(self, value):

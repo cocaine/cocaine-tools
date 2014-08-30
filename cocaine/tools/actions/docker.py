@@ -29,6 +29,7 @@ import urllib
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest
 from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
+from tornado import gen
 
 from cocaine.tools import log
 from cocaine.decorators import coroutine
@@ -178,11 +179,13 @@ class Build(Action):
                               request_timeout=self.timeout,
                               streaming_callback=self._streaming)
         try:
-            yield self._http_client.fetch(request)
+            result = yield self._http_client.fetch(request)
             log.info('OK')
         except Exception as err:
             log.error('FAIL - %s', err)
             raise err
+        else:
+            raise gen.Return(result)
 
     def _tar(self, path):
         stream = StringIO.StringIO()
@@ -243,11 +246,13 @@ class Push(Action):
                               request_timeout=self.timeout,
                               streaming_callback=self._on_body)
         try:
-            yield self._http_client.fetch(request)
+            result = yield self._http_client.fetch(request)
             log.info('OK')
         except Exception as err:
             log.error('FAIL - %s', err)
             raise err
+        else:
+            raise gen.Return(result)
 
     def _prepare_auth_header_value(self):
         username = self.auth.get('username', 'username')
