@@ -1,6 +1,6 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print (get_python_lib())")}
 Name:		cocaine-tools	
-Version:	0.11.5.0
+Version:	0.11.7.1
 Release:	1%{?dist}
 Summary:	Cocaine - Toolset
 
@@ -46,6 +46,10 @@ rm -rf %{buildroot}
 %{_bindir}/*
 
 %changelog
+* Tue Sep 16 2014 Evgeny Safronov <division494@gmail.com> - 0.11.7.1
+- Feature: Crashlog removeall tool has now force flag to be able
+  to continue removing crashlogs if some of them cannot be removed.
+
 * Mon May 26 2014 Evgeny Safronov <division494@gmail.com> - 0.11.5.0
 - Feature: Added `name` optional parameter for `cocaine-tool info`.
 - Feature: Info request can now expand every application's profile.
