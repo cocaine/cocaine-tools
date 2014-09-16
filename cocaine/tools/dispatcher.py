@@ -541,11 +541,13 @@ def crashlog_remove(options,
 
 @crashlogDispatcher.command(name='removeall')
 def crashlog_removeall(options,
-                       name=('n', '', 'name')):
+                       name=('n', '', 'name'),
+                       force=('f', False, 'flag')):
     """Remove all crashlogs for application from the storage."""
     options.executor.executeAction('crashlog:removeall', **{
         'storage': options.getService('storage'),
         'name': name,
+        'force': force
     })
 
 

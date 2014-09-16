@@ -95,8 +95,8 @@ class CrashlogListToolHandler(ToolHandler):
             return
 
         log.info(self.HEADER)
-        for timestamp, caltime, uuid in sorted(crashlog._parseCrashlogs(result), key=lambda (ts, caltime, uuid): ts):
-            print(self.FORMAT_HEADER.format(timestamp, caltime, uuid))
+        for timestamp, calltime, uuid in sorted(crashlog._parseCrashlogs(result), key=lambda (ts, calltime, uuid): ts):
+            print(self.FORMAT_HEADER.format(timestamp, calltime, uuid))
 
 
 class CrashlogViewToolHandler(ToolHandler):

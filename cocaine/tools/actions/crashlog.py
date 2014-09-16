@@ -74,16 +74,32 @@ class Remove(Specific):
     @chain.source
     def execute(self):
         crashlogs = yield self.storage.find('crashlogs', [self.name])
-        parsedCrashlogs = _parseCrashlogs(crashlogs, timestamp=self.timestamp)
-        for crashlog in parsedCrashlogs:
-            key = '%s:%s' % (crashlog[0], crashlog[2])
-            yield self.storage.remove('crashlogs', key)
+        for key in crashlogs:
+            timestamp, uuid = key.split(':', 1)
+            if timestamp == self.timestamp:
+                yield self.storage.remove('crashlogs', key)
         yield 'Done'
 
 
-class RemoveAll(Remove):
-    def __init__(self, storage, name):
-        super(RemoveAll, self).__init__(storage, name, timestamp=None)
+class RemoveAll(Specific):
+    def __init__(self, storage, name, timestamp=None, force=False):
+        super(RemoveAll, self).__init__(storage, name, timestamp)
+        self.force = force
+
+    @chain.source
+    def execute(self):
+        crashlogs = yield self.storage.find('crashlogs', [self.name])
+        for key in crashlogs:
+            timestamp, uuid = key.split(':', 1)
+            if self.timestamp is None or timestamp == self.timestamp:
+                try:
+                    yield self.storage.remove('crashlogs', key)
+                except Exception as err:
+                    if self.force:
+                        print(err)
+                    else:
+                        raise err
+        yield 'Done'
 
 
 class Status(actions.Storage):
