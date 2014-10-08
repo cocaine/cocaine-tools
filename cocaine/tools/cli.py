@@ -134,7 +134,7 @@ NG_ACTIONS = {
     'app:start': PrintToolHandler(app.Start),
     'app:pause': PrintToolHandler(app.Stop),
     'app:stop': PrintToolHandler(app.Stop),
-    'app:restart': JsonToolHandler(app.Restart),
+    'app:restart': PrintToolHandler(app.Restart),
 
     'profile:list': JsonToolHandler(profile.List),
     'profile:view': JsonToolHandler(profile.View),

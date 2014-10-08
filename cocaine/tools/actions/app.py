@@ -184,14 +184,18 @@ class Restart(common.Node):
         try:
             info = yield NodeInfo(self.node, self.locator, self.storage).execute()
             profile = self.profile or info['apps'][self.name]['profile']
-            appStopStatus = yield Stop(self.node, name=self.name).execute()
-            appStartStatus = yield Start(self.node, name=self.name, profile=profile).execute()
+            try:
+                yield Stop(self.node, name=self.name).execute()
+            except ServiceError as err:  # application is not running
+                pass
+            yield Start(self.node, name=self.name, profile=profile).execute()
         except KeyError:
             raise ToolsError('Application "{0}" is not running and profile not specified'.format(self.name))
         except Exception as err:
             raise ToolsError('Unknown error - {0}'.format(err))
         else:
-            raise gen.Return([appStopStatus, appStartStatus])
+            raise gen.Return("application `%s` has been restarted with profile `%s`" % (self.name,
+                                                                                        self.profile))
 
 
 class Check(common.Node):
