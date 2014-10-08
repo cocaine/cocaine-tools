@@ -84,9 +84,8 @@ class Refresh(actions.Storage):
         else:
             names = [self.name]
 
-        for name in names:
-            channel = yield self.locator.refresh(name)
-            yield channel.rx.get()
+        channel = yield self.locator.refresh(names)
+        yield channel.rx.get()
 
 
 class AddApplication(actions.Specific):
