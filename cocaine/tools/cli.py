@@ -69,6 +69,11 @@ class JsonToolHandler(ToolHandler):
         print(json.dumps(result, indent=4))
 
 
+class PrintToolHandler(ToolHandler):
+    def _processResult(self, result):
+        print(result)
+
+
 class CrashlogStatusToolHandler(ToolHandler):
     FORMAT_HEADER = '{0:^20} {1:^10} {2:^26} {3:^36}'
     HEADER = FORMAT_HEADER.format('Application', 'Total', 'Last', 'UUID')
@@ -126,9 +131,9 @@ NG_ACTIONS = {
     'app:upload': ToolHandler(app.LocalUpload),
     'app:upload-docker': ToolHandler(app.DockerUpload),
     'app:upload-manual': ToolHandler(app.Upload),
-    'app:start': JsonToolHandler(app.Start),
-    'app:pause': JsonToolHandler(app.Stop),
-    'app:stop': JsonToolHandler(app.Stop),
+    'app:start': PrintToolHandler(app.Start),
+    'app:pause': PrintToolHandler(app.Stop),
+    'app:stop': PrintToolHandler(app.Stop),
     'app:restart': JsonToolHandler(app.Restart),
 
     'profile:list': JsonToolHandler(profile.List),

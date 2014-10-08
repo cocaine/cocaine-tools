@@ -149,19 +149,15 @@ class Start(common.Node):
 
     @coroutine
     def execute(self):
-        channel = yield self.node.start_app({
-            self.name: self.profile
-        })
-        result = yield channel.rx.get()
-        raise gen.Return(result[0])
+        channel = yield self.node.start_app(self.name, self.profile)
+        yield channel.rx.get()
+        raise gen.Return("application `%s` has been started with profile `%s`" % (self.name,
+                                                                                  self.profile))
 
 
 class Stop(common.Node):
     def __init__(self, node, name):
         super(Stop, self).__init__(node)
-        if not isinstance(name, (list, tuple)):
-            name = [name]
-
         self.name = name
         if not self.name:
             raise ValueError('Please specify application name')
@@ -169,8 +165,8 @@ class Stop(common.Node):
     @coroutine
     def execute(self):
         channel = yield self.node.pause_app(self.name)
-        result = yield channel.rx.get()
-        raise gen.Return(result[0])
+        yield channel.rx.get()
+        raise gen.Return("application `%s` has been stoped" % self.name)
 
 
 class Restart(common.Node):
