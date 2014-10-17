@@ -103,7 +103,7 @@ class List(Storage):
     def execute(self):
         channel = yield self.storage.find(self.key, self.tags)
         listing = yield channel.rx.get()
-        raise gen.Return(listing[0])
+        raise gen.Return(listing)
 
 
 class Specific(Storage):
@@ -123,4 +123,4 @@ class View(Specific):
     def execute(self):
         channel = yield self.storage.read(self.collection, self.name)
         value = yield channel.rx.get()
-        raise gen.Return(msgpack.loads(value[0]))
+        raise gen.Return(msgpack.loads(value))

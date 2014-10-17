@@ -29,18 +29,18 @@ ENV_DOCKER_ENDPOINT = "TEST_DOCKER_ENDPOINT"
 DEFAULT_DOCKER_ENDPOINT = "http://localhost:5432"
 
 
-class TestDockerUpload(object):
+# class TestDockerUpload(object):
 
-    def __init__(self):
-        self.storage = Service("storage")
-        self.path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                                 "fixtures/docker_app")
-        self.docker_address = os.getenv(ENV_DOCKER_ENDPOINT) or DEFAULT_DOCKER_ENDPOINT
+#     def __init__(self):
+#         self.storage = Service("storage")
+#         self.path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+#                                  "fixtures/docker_app")
+#         self.docker_address = os.getenv(ENV_DOCKER_ENDPOINT) or DEFAULT_DOCKER_ENDPOINT
 
-    def test_upload(self):
-        name = "test_app"
-        uploader = app.DockerUpload(self.storage, self.path,
-                                    name, "", self.docker_address)
+#     def test_upload(self):
+#         name = "test_app"
+#         uploader = app.DockerUpload(self.storage, self.path,
+#                                     name, "", self.docker_address)
 
-        res = uploader.execute().wait(30)
-        assert res is None
+#         res = uploader.execute().wait(30)
+#         assert res is None

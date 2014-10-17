@@ -98,7 +98,7 @@ class AddApplication(actions.Specific):
     def execute(self):
         channel = yield self.storage.read(GROUP_COLLECTION, self.name)
         group = yield channel.rx.get()
-        group = msgpack.loads(group[0])
+        group = msgpack.loads(group)
         group[self.app] = self.weight
         channel = yield self.storage.write(GROUP_COLLECTION, self.name, msgpack.dumps(group), GROUPS_TAGS)
         yield channel.rx.get()
@@ -113,7 +113,7 @@ class RemoveApplication(actions.Specific):
     def execute(self):
         channel = yield self.storage.read(GROUP_COLLECTION, self.name)
         group = yield channel.rx.get()
-        group = msgpack.loads(group[0])
+        group = msgpack.loads(group)
         if self.app in group:
             del group[self.app]
         channel = yield self.storage.write(GROUP_COLLECTION, self.name, msgpack.dumps(group), GROUPS_TAGS)

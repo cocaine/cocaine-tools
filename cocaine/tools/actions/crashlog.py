@@ -43,7 +43,7 @@ class List(actions.Storage):
     def execute(self):
         channel = yield self.storage.find('crashlogs', [self.name])
         listing = yield channel.rx.get()
-        raise gen.Return(listing[0])
+        raise gen.Return(listing)
 
 
 def _parseCrashlogs(crashlogs, timestamp=None):

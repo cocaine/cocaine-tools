@@ -40,7 +40,7 @@ from tornado.testing import AsyncHTTPTestCase
 from tornado import netutil
 
 
-@tools.raises(ConnectionRefusedError, ConnectionError)
+@tools.raises(ConnectionRefusedError, ConnectionError, Exception)
 def test_storage_bad_address():
     st = actions.Storage()
     st.connect(port=10055)
@@ -84,35 +84,47 @@ class TestAppActions(object):
         self.node = Service("node")
         self.locator = Locator()
 
-    def test_app_list(self):
+    def test_app_a_upload(self):
+        name = "random_name"
+        manifest = "{\"slave\": \"__init__.py\"}"
+        path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                            "fixtures/simple_app/simple_app.tar.gz")
+        result = app.Upload(self.storage, name,
+                            manifest, path).execute().wait(10)
+
+        assert result is None, result
+
+    def test_app_e_list(self):
         listing = app.List(self.storage).execute().wait(4)
         assert isinstance(listing, (list, tuple))
 
-    def test_app_start(self):
+    def test_app_b_start(self):
         name = "random_name"
+        profile.Upload(self.storage, "random_profile",
+                       "{}").execute().wait(4)
         result = app.Start(self.node, name,
                            "random_profile").execute().wait(4)
-        assert isinstance(result, dict) and name in result
+        assert "application `random_name` has been started with profile `random_profile`" == result, result
 
-    def test_app_stop(self):
+    def test_app_d_stop(self):
         name = "random_name"
         result = app.Stop(self.node,
                           name).execute().wait(4)
-        assert isinstance(result, dict) and name in result
+        assert "application `random_name` has been stoped" == result, result
 
-    def test_restart(self):
+    def test_app_c_restart(self):
         name = "random_name"
         profile_name = "random_profile"
         result = app.Restart(self.node, self.locator,
                              name, profile_name,
                              self.storage).execute().wait(4)
 
-        assert len(result) == 2 and name in result[0] and name in result[1], result
+        assert "application `random_name` has been restarted with profile `random_profile`" == result, result
 
     def test_NodeInfo(self):
         n = common.NodeInfo(self.node, self.locator, self.storage)
         result = n.execute().wait(100)
-        assert isinstance(result, dict) and "apps" in result
+        assert isinstance(result, dict) and "apps" in result, result
 
     # def test_remove(self):
     #     name = "blabla"

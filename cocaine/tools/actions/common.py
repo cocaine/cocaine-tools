@@ -58,7 +58,7 @@ class NodeInfo(Node):
         else:
             channel = yield self.node.list()
             apps = yield channel.rx.get()
-        result = yield self.info(apps[0])
+        result = yield self.info(apps)
         raise gen.Return(result)
 
     @coroutine
