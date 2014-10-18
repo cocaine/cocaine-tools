@@ -61,6 +61,7 @@ setup(
     entry_points={
         'console_scripts': [
             'cocaine-tool = cocaine.tools.cocaine_tool:main',
+            'cocaine-tornado-proxy = cocaine.proxy.proxy:main',
         ]},
     # scripts=["scripts/cocaine-tornado-proxy"],
     install_requires=open('./requirements.txt').read(),
