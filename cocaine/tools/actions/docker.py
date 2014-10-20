@@ -237,6 +237,7 @@ class Push(Action):
         request = HTTPRequest(url, method='POST',
                               headers=headers,
                               body=body,
+                              allow_ipv6=True,
                               request_timeout=self.timeout,
                               streaming_callback=self._on_body)
         try:
