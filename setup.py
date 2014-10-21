@@ -37,7 +37,7 @@ else:
 
 setup(
     name="cocaine-tools",
-    version="0.11.7.1",
+    version="0.11.7.2",
     author="Anton Tyurin",
     author_email="noxiouz@yandex.ru",
     maintainer='Evgeny Safronov',
@@ -58,10 +58,10 @@ setup(
         "cocaine.tools.helpers",
         "cocaine.tools.interactive",
     ],
-    install_requires=["cocaine >= 0.11.1.0", "opster >= 4.0"],
+    install_requires=open('requirements.txt').read(),
     scripts=["scripts/cocaine-tool", "scripts/cocaine-tornado-proxy"],
-    tests_require=["mockito"],
-    test_suite="unittest.TestCase",
+    tests_require=open('./tests/requirements.txt').read(),
+    test_suite="nose.collector",
     classifiers=[
         # 'Development Status :: 1 - Planning',
         # 'Development Status :: 2 - Pre-Alpha',
