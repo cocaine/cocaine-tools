@@ -2,9 +2,10 @@ language: python
 python:
   - "2.7"
 install:
-  - "pip install tox"
-  - "pip install flake8"
-script: tox
+- pip install -rtests/requirements.txt
+- pip install .
+script: python setup.py nosetests && tox
+after_success: coveralls
 notifications:
   slack: cocaine:qDewv6ZVDt0TciQeNdE47GqG
 branches:
