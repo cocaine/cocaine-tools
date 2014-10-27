@@ -276,9 +276,6 @@ class DockerUpload(actions.Storage):
 
 class DockerImport(actions.Storage):
     def __init__(self, storage, path, name, manifest, address, container, registry='', on_read=None):
-
-        print "__init", storage, path, name, manifest, address, container
-        
         super(DockerImport, self).__init__(storage)
         self.path = path or os.path.curdir
         self.name = name or os.path.basename(os.path.abspath(self.path))

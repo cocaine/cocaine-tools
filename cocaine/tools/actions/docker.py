@@ -292,7 +292,7 @@ class Pull(Action):
 
     @chain.source
     def execute(self):
-        url = self._make_url('/images/create', query={"fromImage":self.name})
+        url = self._make_url('/images/create', query={"fromImage": self.name})
 
         print "url", url
         registry, name = resolve_repository_name(self.name)
@@ -351,7 +351,7 @@ class Tag(Action):
 
     @chain.source
     def execute(self):
-        url = self._make_url('/images/{0}/tag'.format(self.name), query={"repo":self.tag})
+        url = self._make_url('/images/{0}/tag'.format(self.name), query={"repo": self.tag})
 
         print "url", url
         registry, name = resolve_repository_name(self.name)
@@ -397,5 +397,3 @@ class Tag(Action):
             if value is not None:
                 return value
         return default
-
-
