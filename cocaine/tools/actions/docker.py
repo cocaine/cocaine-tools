@@ -252,7 +252,7 @@ class Push(Action):
 
     def _prepare_auth_header_value(self):
         username = self.auth.get('username', 'username')
-        password = self.auth.get('password, password')
+        password = self.auth.get('password', 'password')
         return base64.b64encode('{0}:{1}'.format(username, password))
 
     def _on_body(self, data):
