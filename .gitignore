@@ -9,6 +9,8 @@
 
 # [tox]
 .tox/
+reports/
+.coverage
 
 # [Build]
 build/
@@ -16,4 +18,5 @@ dist/
 docs/_build
 manpages/
 *.egg-info/
-cocaine_toolc
+*.egg
+cocaine_tools
