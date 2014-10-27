@@ -93,6 +93,12 @@ class Client(object):
     def build(self, path, tag=None, quiet=False, streaming=None):
         return Build(path, tag, quiet, streaming, **self.config).execute()
 
+    def pull(self, name, auth, streaming=None):
+        return Pull(name, auth, streaming, **self.config).execute()
+
+    def tag(self, name, auth, tag, streaming=None):
+        return Tag(name, auth, tag, streaming, **self.config).execute()
+
     def push(self, name, auth, streaming=None):
         return Push(name, auth, streaming, **self.config).execute()
 
@@ -274,3 +280,122 @@ class Push(Action):
             if value is not None:
                 return value
         return default
+
+
+class Pull(Action):
+    def __init__(self, name, auth, streaming=None,
+                 url=DEFAULT_URL, version=DEFAULT_VERSION, timeout=DEFAULT_TIMEOUT, io_loop=None):
+        self.name = name
+        self.auth = auth
+        self._streaming = streaming
+        super(Pull, self).__init__(url, version, timeout, io_loop)
+
+    @chain.source
+    def execute(self):
+        url = self._make_url('/images/create', query={"fromImage":self.name})
+
+        print "url", url
+        registry, name = resolve_repository_name(self.name)
+
+        headers = HTTPHeaders()
+        headers.add('X-Registry-Auth', self._prepare_auth_header_value())
+        body = ''
+        log.info('Pulling "%s" ... ', name)
+        request = HTTPRequest(url, method='POST',
+                              headers=headers,
+                              body=body,
+                              allow_ipv6=True,
+                              request_timeout=self.timeout,
+                              streaming_callback=self._on_body)
+        try:
+            yield self._http_client.fetch(request)
+            log.info('OK')
+        except Exception as err:
+            log.error('FAIL - %s', err)
+            raise err
+
+    def _prepare_auth_header_value(self):
+        username = self.auth.get('username', 'username')
+        password = self.auth.get('password', 'password')
+        return base64.b64encode('{0}:{1}'.format(username, password))
+
+    def _on_body(self, data):
+        parsed = '<undefined>'
+        try:
+            response = json.loads(data)
+        except ValueError:
+            parsed = data
+        except Exception as err:
+            parsed = 'Unknown error: {0}'.format(err)
+        else:
+            parsed = self._match_first(response, ['status', 'error'], data)
+        finally:
+            self._streaming(parsed)
+
+    def _match_first(self, dict_, keys, default):
+        for key in keys:
+            value = dict_.get(key)
+            if value is not None:
+                return value
+        return default
+
+
+class Tag(Action):
+    def __init__(self, name, auth, tag, streaming=None,
+                 url=DEFAULT_URL, version=DEFAULT_VERSION, timeout=DEFAULT_TIMEOUT, io_loop=None):
+        self.name = name
+        self.auth = auth
+        self.tag = tag
+        self._streaming = streaming
+        super(Tag, self).__init__(url, version, timeout, io_loop)
+
+    @chain.source
+    def execute(self):
+        url = self._make_url('/images/{0}/tag'.format(self.name), query={"repo":self.tag})
+
+        print "url", url
+        registry, name = resolve_repository_name(self.name)
+
+        headers = HTTPHeaders()
+        headers.add('X-Registry-Auth', self._prepare_auth_header_value())
+        body = ''
+        log.info('Tagging "%s" with "%s"" ... ', name, self.tag)
+        request = HTTPRequest(url, method='POST',
+                              headers=headers,
+                              body=body,
+                              allow_ipv6=True,
+                              request_timeout=self.timeout,
+                              streaming_callback=self._on_body)
+        try:
+            yield self._http_client.fetch(request)
+            log.info('OK')
+        except Exception as err:
+            log.error('FAIL - %s', err)
+            raise err
+
+    def _prepare_auth_header_value(self):
+        username = self.auth.get('username', 'username')
+        password = self.auth.get('password', 'password')
+        return base64.b64encode('{0}:{1}'.format(username, password))
+
+    def _on_body(self, data):
+        parsed = '<undefined>'
+        try:
+            response = json.loads(data)
+        except ValueError:
+            parsed = data
+        except Exception as err:
+            parsed = 'Unknown error: {0}'.format(err)
+        else:
+            parsed = self._match_first(response, ['status', 'error'], data)
+        finally:
+            self._streaming(parsed)
+
+    def _match_first(self, dict_, keys, default):
+        for key in keys:
+            value = dict_.get(key)
+            if value is not None:
+                return value
+        return default
+
+

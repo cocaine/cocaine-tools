@@ -274,6 +274,80 @@ class DockerUpload(actions.Storage):
             print(value)
 
 
+class DockerImport(actions.Storage):
+    def __init__(self, storage, path, name, manifest, address, container, registry='', on_read=None):
+
+        print "__init", storage, path, name, manifest, address, container
+        
+        super(DockerImport, self).__init__(storage)
+        self.path = path or os.path.curdir
+        self.name = name or os.path.basename(os.path.abspath(self.path))
+        self.container_url = container
+        if registry:
+            self.fullname = '{0}/{1}'.format(registry, self.name)
+        else:
+            self.fullname = self.name
+
+        self.manifest = manifest
+
+        self.client = docker.Client(address)
+
+        log.debug('checking Dockerfile')
+        if not address:
+            raise ValueError('Docker address is not specified')
+
+        if on_read is not None:
+            if not callable(on_read):
+                raise ValueError("on_read must ne callable")
+            self._on_read = on_read
+
+        self._last_message = ''
+
+    @engine.asynchronous
+    def execute(self):
+        log.debug('application name will be: %s', self.fullname)
+
+        if self.manifest:
+            manifestPath = self.manifest
+        else:
+            try:
+                manifestPath = _locateFile(self.path, 'manifest.json')
+            except IOError:
+                log.error("unable to locate manifest.json")
+                raise ToolsError("unable to locate manifest.json")
+
+        with printer('Loading manifest'):
+            manifest = CocaineConfigReader.load(manifestPath)
+
+        with printer('Uploading manifest'):
+            yield self.storage.write('manifests', self.name, manifest, APPS_TAGS)
+
+        try:
+            response = yield self.client.pull(self.container_url, {}, streaming=self._on_read)
+            if response.code != 200:
+                raise ToolsError('building failed with error code {0} {1}'.format(response.code,
+                                                                                  response.body))
+
+            response = yield self.client.tag(self.container_url, {}, self.fullname, streaming=self._on_read)
+            if response.code != 200 and response.code != 201:
+                raise ToolsError('building failed with error code {0} {1}'.format(response.code,
+                                                                                  response.body))
+
+            response = yield self.client.push(self.fullname, {}, streaming=self._on_read)
+            if response.code != 200:
+                raise ToolsError('pushing failed with error code {0} {1}'.format(response.code,
+                                                                                 response.body))
+        except Exception as err:
+            log.error("Error occurred. Erase manifest")
+            yield self.storage.remove('manifests', self.name)
+            raise err
+
+    def _on_read(self, value):
+        if self._last_message != value:
+            self._last_message = value
+            print(value)
+
+
 class LocalUpload(actions.Storage):
     def __init__(self, storage, path, name, manifest):
         super(LocalUpload, self).__init__(storage)
