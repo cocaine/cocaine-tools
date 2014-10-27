@@ -265,6 +265,41 @@ def app_upload(options,
         })
 
 
+@appDispatcher.command(name='import', usage='[PATH] [--name=NAME] [--manifest=MANIFEST] [--package=PACKAGE]')
+def app_import(options,
+               path=None,
+               name=('n', '', 'application name'),
+               manifest=('', '', 'manifest file name'),
+               container_url=('', '', 'docker container url'),
+               docker_address=('', '', 'docker address'),
+               registry=('', '', 'registry address'),
+               recipe=('', '', 'path to the recipe file'),
+               manifest_only=('', False, 'upload manifest only')):
+    """Import application's docker container
+
+    You can control process of creating and uploading application by specifying `--debug=tools` option. This is helpful
+    when some errors occurred.
+    """
+    TIMEOUT_THRESHOLD = 120.0
+    if options.executor.timeout < TIMEOUT_THRESHOLD:
+        logging.getLogger('cocaine.tools').info('Setting timeout to the %fs', TIMEOUT_THRESHOLD)
+        options.executor.timeout = TIMEOUT_THRESHOLD
+
+    if container_url and docker_address:
+        options.executor.executeAction('app:import-docker', **{
+            'storage': options.getService('storage'),
+            'path': path,
+            'name': name,
+            'manifest': manifest,
+            'container': container_url,
+            'address': docker_address,
+            'registry': registry
+        })
+    else:
+        print "wrong usage"
+        exit(os.EX_USAGE)
+
+
 @appDispatcher.command(name='remove')
 def app_remove(options,
                name=('n', '', 'application name')):
