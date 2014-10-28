@@ -125,6 +125,7 @@ NG_ACTIONS = {
     'app:remove': ToolHandler(app.Remove),
     'app:upload': ToolHandler(app.LocalUpload),
     'app:upload-docker': ToolHandler(app.DockerUpload),
+    'app:import-docker': ToolHandler(app.DockerImport),
     'app:upload-manual': ToolHandler(app.Upload),
     'app:start': JsonToolHandler(app.Start),
     'app:pause': JsonToolHandler(app.Stop),
