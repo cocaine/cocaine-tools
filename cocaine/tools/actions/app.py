@@ -322,18 +322,18 @@ class DockerImport(actions.Storage):
         try:
             response = yield self.client.pull(self.container_url, {}, streaming=self._on_read)
             if response.code != 200:
-                raise ToolsError('building failed with error code {0} {1}'.format(response.code,
-                                                                                  response.body))
+                raise ToolsError('docker.pull failed with error code {0} {1}'.format(response.code,
+                                                                                     response.body))
 
             response = yield self.client.tag(self.container_url, {}, self.fullname, streaming=self._on_read)
-            if response.code != 200 and response.code != 201:
-                raise ToolsError('building failed with error code {0} {1}'.format(response.code,
-                                                                                  response.body))
+            if response.code not in [200, 201]:
+                raise ToolsError('docker.tag failed with error code {0} {1}'.format(response.code,
+                                                                                    response.body))
 
             response = yield self.client.push(self.fullname, {}, streaming=self._on_read)
             if response.code != 200:
-                raise ToolsError('pushing failed with error code {0} {1}'.format(response.code,
-                                                                                 response.body))
+                raise ToolsError('docker.push failed with error code {0} {1}'.format(response.code,
+                                                                                     response.body))
         except Exception as err:
             log.error("Error occurred. Erase manifest")
             yield self.storage.remove('manifests', self.name)

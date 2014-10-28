@@ -294,7 +294,7 @@ class Pull(Action):
     def execute(self):
         url = self._make_url('/images/create', query={"fromImage": self.name})
 
-        print "url", url
+        log.debug("url %s", url)
         registry, name = resolve_repository_name(self.name)
 
         headers = HTTPHeaders()
@@ -353,7 +353,7 @@ class Tag(Action):
     def execute(self):
         url = self._make_url('/images/{0}/tag'.format(self.name), query={"repo": self.tag})
 
-        print "url", url
+        log.debug("url %s", url)
         registry, name = resolve_repository_name(self.name)
 
         headers = HTTPHeaders()
