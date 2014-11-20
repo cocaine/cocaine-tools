@@ -1,3 +1,9 @@
+cocaine-tools (0.11.7.3) unstable; urgency=low
+
+  * [Call] Applications with dot in name can be called now.
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 20 Now 2014 13:21:28 +0400
+
 cocaine-tools (0.11.7.2) unstable; urgency=low
 
   * [Docker] Set allow_tcp6 in HTTPRequest 

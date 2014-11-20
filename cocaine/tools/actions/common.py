@@ -82,7 +82,7 @@ class Call(object):
             raise ValueError('Please specify service name for getting API or full command to invoke')
         self.host = host
         self.port = port
-        self.serviceName, separator, methodWithArguments = command.partition('.')
+        self.serviceName, separator, methodWithArguments = command.rpartition('.')
         rx = re.compile(r'(.*?)\((.*)\)')
         match = rx.match(methodWithArguments)
         if match:
