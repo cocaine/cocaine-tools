@@ -579,7 +579,9 @@ class NodeTestCase(unittest.TestCase):
             1: 'method_1'
         }
         when(common.Call).getService().thenReturn(service)
-        action = common.Call('Service', '', 0)
+        # when method isn't specified
+        # string like servicename.() is passed to Call
+        action = common.Call('Service.()', '', 0)
         actual = action.execute().get()
 
         expected = {
