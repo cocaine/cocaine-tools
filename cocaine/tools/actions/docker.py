@@ -73,7 +73,7 @@ class Client(object):
         self.url = url
         self.version = version
         self.timeout = timeout
-        self._io_loop = io_loop
+        self._io_loop = io_loop or IOLoop.current()
         self.config = {
             'url': url,
             'version': version,
