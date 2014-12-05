@@ -90,8 +90,7 @@ class Global(object):
             return self._locator
         else:
             try:
-                locator = Locator()
-                locator.connect(self.host, self.port, self.timeout, blocking=True)
+                locator = Locator(self.host, self.port)
                 self._locator = locator
                 return locator
             except Exception as err:
@@ -99,7 +98,7 @@ class Global(object):
 
     def getService(self, name):
         try:
-            service = Service(name)
+            service = Service(name, host=self.host, port=self.port)
             # service.connectThroughLocator(self.locator, self.timeout, blocking=True)
             return service
         except Exception as err:
