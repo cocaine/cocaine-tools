@@ -54,7 +54,7 @@ MOVE_TO_INACTIVE = "Move to inactive queue %s %s from pool with active %d"
 URL_REGEX = re.compile(r"/([^/]*)/([^/?]*)(.*)")
 
 DEFAULT_SERVICE_CACHE_COUNT = 5
-DEFAULT_REFRESH_PERIOD = 10
+DEFAULT_REFRESH_PERIOD = 120
 DEFAULT_TIMEOUT = 1
 
 # active applications
@@ -91,7 +91,6 @@ class CocaineProxy(HTTPServer):
         self.timeouts = config.get("timeouts", {})
 
         self.logger = logging.getLogger('cocaine.proxy')
-        # self._io_loop = config.get("io_loop") or tornado.ioloop.IOLoop.current()
 
     def get_timeout(self, name):
         return self.timeouts.get(name, DEFAULT_TIMEOUT)
@@ -127,7 +126,6 @@ class CocaineProxy(HTTPServer):
                              id(app), "{0}:{1}".format(*app.address))
         except Exception as err:
             self.logger.exception(RECONNECTION_FAIL, name, err)
-            dying[name].remove(app)
         finally:
             dying[name].remove(app)
             cache[name].append(app)

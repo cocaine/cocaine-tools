@@ -99,7 +99,6 @@ class Global(object):
     def getService(self, name):
         try:
             service = Service(name, host=self.host, port=self.port)
-            # service.connectThroughLocator(self.locator, self.timeout, blocking=True)
             return service
         except Exception as err:
             raise ToolsError(err)
