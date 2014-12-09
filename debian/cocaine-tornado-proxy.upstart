@@ -1,0 +1,18 @@
+description "cocaine-tornado-proxy"
+
+start on filesystem
+stop on runlevel [016]
+
+pre-start script
+    if [ -f /etc/default/$UPSTART_JOB ]; then
+        . /etc/default/$UPSTART_JOB
+    fi
+end script
+
+script
+    if [ -f /etc/default/$UPSTART_JOB ]; then
+        . /etc/default/$UPSTART_JOB
+    fi
+
+   exec sudo -u cocaine /usr/bin/cocaine-pipeline-rest --config=$CONFIG_PATH
+end script

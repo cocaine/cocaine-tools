@@ -1,7 +1,6 @@
 #!/bin/bash
 
-LOGDIR="/var/log/cocaine-tornado"
-PIDDIR="/var/run/cocaine-tornado"
+LOGDIR="/var/log/cocaine-tornado-proxy"
 
 #!/bin/bash
 
@@ -10,7 +9,7 @@ set -e
 case $1 in
     configure)
         # Create a new system user to run under cocaine user
-        adduser --quiet --system --ingroup adm cocaine
+        id cocaine > /dev/null 2>&1 || adduser --quiet --system --ingroup adm cocaine
 
         # Create directory for logs
         if [ ! -d "$LOGDIR" ]; then
@@ -18,11 +17,6 @@ case $1 in
         fi
         chown -R cocaine $LOGDIR
 
-        # Create directory for PID
-        if [ ! -d "$PIDDIR" ]; then
-            mkdir -p $PIDDIR
-        fi
-        chown -R cocaine $PIDDIR
         ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

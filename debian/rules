@@ -1,16 +1,15 @@
 #!/usr/bin/make -f
 
-version=$(shell lsb_release -r | cut -f2 | cut -d'.' -f1)
 
-ifeq ($(version),10)
+ifeq (lucid,$(shell lsb_release -sc))
 include debian/lucid.mk
 else
 %:
 	dh $@ --with python2,bash-completion
 
 override_dh_install:
-	install -d $(DEBDESTDIR)etc/cocaine
-	install -m644 scripts/init/cocaine-tornado-proxy.conf $(DEBDESTDIR)etc/cocaine/cocaine-tornado-proxy.conf
+	install -d debian/tmp/etc/cocaine-tornado-proxy
+	install -m644 debian/cocaine-tornado-proxy.conf debian/tmp/etc/cocaine-tornado-proxy/cocaine-tornado-proxy.conf
 	dh_install
 endif
 
