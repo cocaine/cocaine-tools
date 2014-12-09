@@ -14,5 +14,5 @@ script
         . /etc/default/$UPSTART_JOB
     fi
 
-   exec sudo -u cocaine /usr/bin/cocaine-pipeline-rest --config=$CONFIG_PATH
+   exec sudo -u cocaine /usr/bin/cocaine-tornado-proxy --config=$CONFIG_PATH
 end script
