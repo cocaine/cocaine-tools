@@ -1,3 +1,9 @@
+cocaine-tools (0.12.0.0-rc6) unstable; urgency=low
+
+  * Fix required cocaine version in setup.py 
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 09 Dec 2014 14:06:09 +0400
+
 cocaine-tools (0.12.0.0-rc5) unstable; urgency=low
 
   * [Upstart] Fix an executable name in upstart
