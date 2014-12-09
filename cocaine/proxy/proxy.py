@@ -252,16 +252,20 @@ class CocaineProxy(HTTPServer):
 
 
 def main():
-    from tornado.options import define, options, parse_command_line
+    from tornado.options import define, options, parse_command_line, parse_config_file
 
     define("port", default=8080, type=int, help="listening port number")
     define("cache", default=DEFAULT_SERVICE_CACHE_COUNT,
            type=int, help="count of instances per service")
-    define("count", default=1,
-           type=int, help="count of tornado processes")
-
+    define("count", default=1, type=int, help="count of tornado processes")
+    define("config", help="path to configuration file", type=str,
+           callback=lambda path: parse_config_file(path, final=False))
     parse_command_line()
-    CocaineProxy(port=options.port).run(options.count)
+
+    proxy = CocaineProxy(port=options.port,
+                         cache=options.cache)
+    proxy.run(options.count)
+
 
 if __name__ == '__main__':
     main()
