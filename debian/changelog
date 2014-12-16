@@ -1,3 +1,9 @@
+cocaine-tools (0.12.0.0-rc7) unstable; urgency=low
+
+  * [Proxy] Fix log_prefix default configuration
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 16 Dec 2014 18:05:44 +0400
+
 cocaine-tools (0.12.0.0-rc6) unstable; urgency=low
 
   * Fix required cocaine version in setup.py 
