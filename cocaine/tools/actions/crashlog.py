@@ -66,7 +66,7 @@ class View(Specific):
     def execute(self):
         channel = yield self.storage.find('crashlogs', [self.name])
         crashlogs = yield channel.rx.get()
-        parsedCrashlogs = _parseCrashlogs(crashlogs[0], timestamp=self.timestamp)
+        parsedCrashlogs = _parseCrashlogs(crashlogs, timestamp=self.timestamp)
         contents = []
         for crashlog in parsedCrashlogs:
             key = '%s:%s' % (crashlog[0], crashlog[2])
