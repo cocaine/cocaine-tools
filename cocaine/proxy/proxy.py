@@ -57,11 +57,6 @@ DEFAULT_SERVICE_CACHE_COUNT = 5
 DEFAULT_REFRESH_PERIOD = 120
 DEFAULT_TIMEOUT = 1
 
-# active applications
-cache = collections.defaultdict(list)
-# application in reconnecting state
-dying = collections.defaultdict(list)
-
 
 def pack_httprequest(request):
     headers = [(item.key, item.value) for item in request.cookies.itervalues()]
@@ -90,6 +85,11 @@ class CocaineProxy(HTTPServer):
         self.refreshPeriod = config.get("refresh_timeout") or DEFAULT_REFRESH_PERIOD
         self.timeouts = config.get("timeouts", {})
 
+        # active applications
+        self.cache = collections.defaultdict(list)
+        # application in reconnecting state
+        self.dying = collections.defaultdict(list)
+
         self.logger = logging.getLogger('cocaine.proxy')
 
     def get_timeout(self, name):
@@ -97,7 +97,7 @@ class CocaineProxy(HTTPServer):
 
     def move_to_inactive(self, app, name):
         def wrapper():
-            active_apps = len(cache[name])
+            active_apps = len(self.cache[name])
             if active_apps < self.serviceCacheCount:
                 self.io_loop.add_timeout(time.time() + self.get_timeout(name) + 1,
                                          self.move_to_inactive(app, name))
@@ -105,9 +105,9 @@ class CocaineProxy(HTTPServer):
             self.logger.info(MOVE_TO_INACTIVE, app.name, "{0}:{1}".format(*app.address), active_apps)
             # Move service to sandbox for waiting current sessions
             try:
-                inx = cache[name].index(app)
+                inx = self.cache[name].index(app)
                 # To avoid gc collect
-                dying[name].append(cache[name].pop(inx))
+                self.dying[name].append(self.cache[name].pop(inx))
             except ValueError:
                 self.logger.error("Broken cache")
                 return
@@ -127,8 +127,8 @@ class CocaineProxy(HTTPServer):
         except Exception as err:
             self.logger.exception(RECONNECTION_FAIL, name, err)
         finally:
-            dying[name].remove(app)
-            cache[name].append(app)
+            self.dying[name].remove(app)
+            self.cache[name].append(app)
             next_refresh = (1 + random.random()) * self.refreshPeriod
             self.logger.info(NEXT_REFRESH, id(app), next_refresh)
             self.io_loop.add_timeout(time.time() + next_refresh, self.move_to_inactive(app, name))
@@ -143,7 +143,10 @@ class CocaineProxy(HTTPServer):
             self.logger.debug('Dispatch by uri')
             match = URL_REGEX.match(request.uri)
             if match is None:
-                fill_response_in(request, httplib.NOT_FOUND, "Not found", "Invalid url")
+                if request.path == "/ping":
+                    fill_response_in(request, 200, "OK", "OK")
+                else:
+                    fill_response_in(request, httplib.NOT_FOUND, "Not found", "Invalid url")
                 return
 
             name, event, other = match.groups()
@@ -212,27 +215,24 @@ class CocaineProxy(HTTPServer):
     @gen.coroutine
     def get_service(self, name):
         # cache isn't full for the current application
-        # so create more instances
-        if len(cache[name]) < self.spoolSize - len(dying[name]):
-            self.logger.info("create more instances of %s", name)
+        if len(self.cache[name]) < self.spoolSize - len(self.dying[name]):
+            self.logger.info("create one more instance of %s", name)
             try:
-                created = []
-                for _ in xrange(self.spoolSize - len(cache[name])):
-                    app = Service(name)
-                    yield app.connect()
-                    created.append(app)
-                    self.logger.info("Connect to app: %s endpoint %s ", app.name, "{0}:{1}".format(*app.address))
+                app = Service(name)
+                self.cache[name].append(app)
+                yield app.connect()
+                self.logger.info("Connect to app: %s endpoint %s ", app.name, "{0}:{1}".format(*app.address))
 
-                cache[name].extend(created)
-                for app in created:
-                    timeout = (1 + random.random()) * self.refreshPeriod
-                    self.io_loop.add_timeout(time.time() + timeout, self.move_to_inactive(app, name))
+                timeout = (1 + random.random()) * self.refreshPeriod
+                self.io_loop.add_timeout(time.time() + timeout, self.move_to_inactive(app, name))
             except Exception as err:
                 self.logger.error("unable to connect to `%s`: %s", name, str(err))
+                if app in self.cache[name]:
+                    self.cache[name].remove(app)
                 raise gen.Return()
 
-        # get instance from cache
-        chosen = random.choice(cache[name])
+        # get an instance from cache
+        chosen = random.choice(self.cache[name])
         raise gen.Return(chosen)
 
     def run(self, count=1):
