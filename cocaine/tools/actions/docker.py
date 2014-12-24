@@ -79,7 +79,7 @@ class Client(object):
             'url': url,
             'version': version,
             'timeout': timeout,
-            'io_loop': io_loop
+            'io_loop': io_loop or IOLoop.current()
         }
 
     def info(self):
