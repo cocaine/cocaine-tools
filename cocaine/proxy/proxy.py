@@ -145,6 +145,32 @@ class CocaineProxy(HTTPServer):
             if match is None:
                 if request.path == "/ping":
                     fill_response_in(request, 200, "OK", "OK")
+                elif request.path == '/__info':
+                    import json
+
+                    # It's likely I'm going to Hell for this one, but seems there is no other way to obtain internal
+                    # statistics.
+                    if tornado.version_info[0] == 4:
+                        connections = len(self._connections)
+                    else:
+                        connections = len(self._sockets)
+
+                    body = json.dumps({
+                        'services': {
+                            'cache': len(self.cache),
+                            'dying': len(self.dying)
+                        },
+                        'connections': connections,
+                        'pending': len(self._pending_sockets),
+                    })
+                    request.connection.write_headers(
+                        httputil.ResponseStartLine(request.version, 200, 'OK'),
+                        httputil.HTTPHeaders({
+                            'Content-Length': str(len(body))
+                        }),
+                        body
+                    )
+                    request.connection.finish()
                 else:
                     fill_response_in(request, httplib.NOT_FOUND, "Not found", "Invalid url")
                 return
