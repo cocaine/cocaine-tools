@@ -273,7 +273,6 @@ class DockerUpload(actions.Storage):
             if response.code != 200:
                 raise ToolsError('building failed with error code {0} {1}'.format(response.code,
                                                                                   response.body))
-            print "!!!", self.fullname
             response = yield self.client.push(self.fullname, auth={}, streaming=self._on_read)
             if response.code != 200:
                 raise ToolsError('pushing failed with error code {0} {1}'.format(response.code,

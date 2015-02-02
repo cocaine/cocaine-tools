@@ -113,8 +113,6 @@ class Client(object):
 class Action(object):
     def __init__(self, url, version, timeout=DEFAULT_TIMEOUT, io_loop=None):
         self._unix = url.startswith('unix://')
-        if url.startswith('tcp://'):
-            url = url.replace('tcp:', 'https:', 1)
 
         self._version = version
         self.timeout = timeout
