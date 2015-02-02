@@ -35,13 +35,19 @@ from cocaine.tools import log
 from cocaine.decorators import coroutine
 from cocaine.tools.helpers._unix import AsyncUnixHTTPClient
 from cocaine.tools.helpers.dockertemplate import dockerchef, dockerpuppet
+from cocaine.tools.helpers import JSONUnpacker
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
 DEFAULT_TIMEOUT = 3600.0
 DEFAULT_URL = 'unix://var/run/docker.sock'
-DEFAULT_VERSION = '1.7'
+DEFAULT_VERSION = '1.15'
+REGISTRY_AUTH_HEADER = 'X-Registry-Auth'
 DEFAULT_INDEX_URL = 'https://index.docker.io/v1/'
+
+
+class DockerException(Exception):
+    pass
 
 
 def expand_registry_url(hostname):
@@ -107,6 +113,9 @@ class Client(object):
 class Action(object):
     def __init__(self, url, version, timeout=DEFAULT_TIMEOUT, io_loop=None):
         self._unix = url.startswith('unix://')
+        if url.startswith('tcp://'):
+            url = url.replace('tcp:', 'https:', 1)
+
         self._version = version
         self.timeout = timeout
         self._io_loop = io_loop
@@ -125,7 +134,7 @@ class Action(object):
 
     def _make_url(self, path, query=None):
         if query is not None:
-            query = dict((k, v) for k, v, in query.iteritems() if v is not None)
+            query = dict((k, v) for k, v, in query.items() if v is not None)
             return '{0}{1}?{2}'.format(self._base_url, path, urllib.urlencode(query))
         else:
             return '{0}{1}'.format(self._base_url, path)
@@ -134,33 +143,64 @@ class Action(object):
 class Info(Action):
     @coroutine
     def execute(self):
-        response = yield self._http_client.fetch(self._make_url('/info'))
-        yield response.body
+        response = yield self._http_client.fetch(self._make_url('/info'),
+                                                 allow_ipv6=True)
+        raise gen.Return(json.loads(response.body))
 
 
 class Images(Action):
     @coroutine
     def execute(self):
-        response = yield self._http_client.fetch(self._make_url('/images/json'))
-        yield response.body
+        response = yield self._http_client.fetch(self._make_url('/images/json'),
+                                                 allow_ipv6=True)
+        raise gen.Return(json.loads(response.body))
 
 
 class Containers(Action):
     @coroutine
     def execute(self):
-        response = yield self._http_client.fetch(self._make_url('/containers/json'))
-        yield json.loads(response.body)
+        response = yield self._http_client.fetch(self._make_url('/containers/json'),
+                                                 allow_ipv6=True)
+        raise gen.Return(json.loads(response.body))
 
 
-class Build(Action):
-    def __init__(self, path, tag=None, quiet=False, streaming=None,
-                 url=DEFAULT_URL, version=DEFAULT_VERSION, timeout=DEFAULT_TIMEOUT, io_loop=None):
-        super(Build, self).__init__(url, version, timeout, io_loop)
+class StreamingAction(Action):
+    def __init__(self, auth=None, streaming=None, url=DEFAULT_URL,
+                 version=DEFAULT_VERSION, timeout=DEFAULT_TIMEOUT, io_loop=None):
+        self.auth = auth or {}
+        self._streaming = streaming
+        self._jsonunpacker = JSONUnpacker()
+
+        self._lasterr = None
+        super(StreamingAction, self).__init__(url, version, timeout, io_loop)
+
+    def _prepare_auth_header_value(self):
+        username = self.auth.get('username', 'username')
+        password = self.auth.get('password', 'password')
+        return base64.b64encode('{0}:{1}'.format(username, password))
+
+    def _handle_message(self, message):
+        if "stream" in message:
+            log.info(message["stream"])
+        elif "error" in message:
+            error_msg = message["error"]
+            self._lasterr = DockerException(error_msg)
+            log.error(error_msg)
+
+        if self._streaming is not None:
+            self._streaming(message)
+
+    def _on_body(self, data):
+        self._jsonunpacker.feed(data)
+        map(self._handle_message, self._jsonunpacker)
+
+
+class Build(StreamingAction):
+    def __init__(self, path, tag=None, quiet=False, *args, **kwargs):
+        super(Build, self).__init__(*args, **kwargs)
         self._path = path
         self._tag = tag
         self._quiet = quiet
-        self._streaming = streaming
-        self._io_loop = io_loop or IOLoop.current()
 
     @coroutine
     def execute(self):
@@ -177,15 +217,22 @@ class Build(Action):
             body = self.make_env(self._path)
             log.info('OK')
 
-        query = {'t': self._tag, 'remote': remote, 'q': self._quiet}
+        query = {'t': self._tag,
+                 'remote': remote,
+                 'q': self._quiet}
+
         url = self._make_url('/build', query)
         log.info('Building "%s"... ', url)
         request = HTTPRequest(url,
-                              method='POST', headers=headers, body=body,
+                              method='POST',
+                              headers=headers, body=body,
                               request_timeout=self.timeout,
-                              streaming_callback=self._streaming)
+                              allow_ipv6=True,
+                              streaming_callback=self._on_body)
         try:
             result = yield self._http_client.fetch(request)
+            if self._lasterr is not None:
+                raise self._lasterr
             log.info('OK')
         except Exception as err:
             log.error('FAIL - %s', err)
@@ -220,7 +267,7 @@ class Build(Action):
             raise ValueError("Please, create Dockerfile or Puppet manifest or Chef recipe")
 
         log.info("Generate Dockerfile")
-        print(dockfilecontent)
+        log.info(dockfilecontent)
         with open("Dockerfile", "w") as dockerfile:
             dockerfile.write(dockfilecontent)
         try:
@@ -229,13 +276,10 @@ class Build(Action):
             os.unlink("Dockerfile")
 
 
-class Push(Action):
-    def __init__(self, name, auth, streaming=None,
-                 url=DEFAULT_URL, version=DEFAULT_VERSION, timeout=DEFAULT_TIMEOUT, io_loop=None):
+class Push(StreamingAction):
+    def __init__(self, name, *args, **kwargs):
         self.name = name
-        self.auth = auth
-        self._streaming = streaming
-        super(Push, self).__init__(url, version, timeout, io_loop)
+        super(Push, self).__init__(*args, **kwargs)
 
     @coroutine
     def execute(self):
@@ -243,9 +287,10 @@ class Push(Action):
         registry, name = resolve_repository_name(self.name)
 
         headers = HTTPHeaders()
-        headers.add('X-Registry-Auth', self._prepare_auth_header_value())
+        headers.add(REGISTRY_AUTH_HEADER, self._prepare_auth_header_value())
         body = ''
         log.info('Pushing "%s" into "%s"... ', name, registry)
+        log.debug('Pushing url: %s', url)
         request = HTTPRequest(url, method='POST',
                               headers=headers,
                               body=body,
@@ -254,56 +299,28 @@ class Push(Action):
                               streaming_callback=self._on_body)
         try:
             result = yield self._http_client.fetch(request)
+            if self._lasterr is not None:
+                raise self._lasterr
             log.info('OK')
         except Exception as err:
             log.error('FAIL - %s', err)
             raise err
-        else:
-            raise gen.Return(result)
 
-    def _prepare_auth_header_value(self):
-        username = self.auth.get('username', 'username')
-        password = self.auth.get('password', 'password')
-        return base64.b64encode('{0}:{1}'.format(username, password))
-
-    def _on_body(self, data):
-        parsed = '<undefined>'
-        try:
-            response = json.loads(data)
-        except ValueError:
-            parsed = data
-        except Exception as err:
-            parsed = 'Unknown error: {0}'.format(err)
-        else:
-            parsed = self._match_first(response, ['status', 'error'], data)
-        finally:
-            self._streaming(parsed)
-
-    def _match_first(self, dict_, keys, default):
-        for key in keys:
-            value = dict_.get(key)
-            if value is not None:
-                return value
-        return default
+        raise gen.Return(result)
 
 
-class Pull(Action):
-    def __init__(self, name, auth, streaming=None,
-                 url=DEFAULT_URL, version=DEFAULT_VERSION, timeout=DEFAULT_TIMEOUT, io_loop=None):
+class Pull(StreamingAction):
+    def __init__(self, name, *args, **kwargs):
         self.name = name
-        self.auth = auth
-        self._streaming = streaming
-        super(Pull, self).__init__(url, version, timeout, io_loop)
+        super(Pull, self).__init__(*args, **kwargs)
 
-    @chain.source
+    @coroutine
     def execute(self):
-        url = self._make_url('/images/create', query={"fromImage":self.name})
-
-        print "url", url
+        url = self._make_url('/images/create', query={"fromImage": self.name})
         registry, name = resolve_repository_name(self.name)
 
         headers = HTTPHeaders()
-        headers.add('X-Registry-Auth', self._prepare_auth_header_value())
+        headers.add(REGISTRY_AUTH_HEADER, self._prepare_auth_header_value())
         body = ''
         log.info('Pulling "%s" ... ', name)
         request = HTTPRequest(url, method='POST',
@@ -313,56 +330,30 @@ class Pull(Action):
                               request_timeout=self.timeout,
                               streaming_callback=self._on_body)
         try:
-            yield self._http_client.fetch(request)
+            result = yield self._http_client.fetch(request)
+            if self._lasterr is not None:
+                raise self._lasterr
             log.info('OK')
         except Exception as err:
             log.error('FAIL - %s', err)
             raise err
 
-    def _prepare_auth_header_value(self):
-        username = self.auth.get('username', 'username')
-        password = self.auth.get('password', 'password')
-        return base64.b64encode('{0}:{1}'.format(username, password))
-
-    def _on_body(self, data):
-        parsed = '<undefined>'
-        try:
-            response = json.loads(data)
-        except ValueError:
-            parsed = data
-        except Exception as err:
-            parsed = 'Unknown error: {0}'.format(err)
-        else:
-            parsed = self._match_first(response, ['status', 'error'], data)
-        finally:
-            self._streaming(parsed)
-
-    def _match_first(self, dict_, keys, default):
-        for key in keys:
-            value = dict_.get(key)
-            if value is not None:
-                return value
-        return default
+        raise gen.Return(result)
 
 
-class Tag(Action):
-    def __init__(self, name, auth, tag, streaming=None,
-                 url=DEFAULT_URL, version=DEFAULT_VERSION, timeout=DEFAULT_TIMEOUT, io_loop=None):
+class Tag(StreamingAction):
+    def __init__(self, name, tag, *args, **kwargs):
         self.name = name
-        self.auth = auth
         self.tag = tag
-        self._streaming = streaming
-        super(Tag, self).__init__(url, version, timeout, io_loop)
+        super(Tag, self).__init__(*args, **kwargs)
 
-    @chain.source
+    @coroutine
     def execute(self):
-        url = self._make_url('/images/{0}/tag'.format(self.name), query={"repo":self.tag})
-
-        print "url", url
+        url = self._make_url('/images/{0}/tag'.format(self.name), query={"repo": self.tag})
         registry, name = resolve_repository_name(self.name)
 
         headers = HTTPHeaders()
-        headers.add('X-Registry-Auth', self._prepare_auth_header_value())
+        headers.add(REGISTRY_AUTH_HEADER, self._prepare_auth_header_value())
         body = ''
         log.info('Tagging "%s" with "%s"" ... ', name, self.tag)
         request = HTTPRequest(url, method='POST',
@@ -372,35 +363,12 @@ class Tag(Action):
                               request_timeout=self.timeout,
                               streaming_callback=self._on_body)
         try:
-            yield self._http_client.fetch(request)
+            result = yield self._http_client.fetch(request)
+            if self._lasterr is not None:
+                raise self._lasterr
             log.info('OK')
         except Exception as err:
             log.error('FAIL - %s', err)
             raise err
 
-    def _prepare_auth_header_value(self):
-        username = self.auth.get('username', 'username')
-        password = self.auth.get('password', 'password')
-        return base64.b64encode('{0}:{1}'.format(username, password))
-
-    def _on_body(self, data):
-        parsed = '<undefined>'
-        try:
-            response = json.loads(data)
-        except ValueError:
-            parsed = data
-        except Exception as err:
-            parsed = 'Unknown error: {0}'.format(err)
-        else:
-            parsed = self._match_first(response, ['status', 'error'], data)
-        finally:
-            self._streaming(parsed)
-
-    def _match_first(self, dict_, keys, default):
-        for key in keys:
-            value = dict_.get(key)
-            if value is not None:
-                return value
-        return default
-
-
+        raise gen.Return(result)

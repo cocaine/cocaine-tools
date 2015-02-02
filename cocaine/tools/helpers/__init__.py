@@ -21,13 +21,15 @@
 
 __author__ = 'EvgenySafronov <division494@gmail.com>'
 
+from collections import Iterable
+
 try:
     import simplejson as json
 except ImportError:
     import json
 
 
-class StreamJsonPrinter(Iterable):
+class JSONUnpacker(Iterable):
     def __init__(self):
         self.buff = ""
 
