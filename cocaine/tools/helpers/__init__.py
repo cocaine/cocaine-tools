@@ -20,3 +20,28 @@
 #
 
 __author__ = 'EvgenySafronov <division494@gmail.com>'
+
+try:
+    import simplejson as json
+except ImportError:
+    import json
+
+
+class StreamJsonPrinter(Iterable):
+    def __init__(self):
+        self.buff = ""
+
+    def feed(self, data):
+        self.buff += data
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        js = json.JSONDecoder()
+        try:
+            res, index = js.raw_decode(self.buff)
+            self.buff = self.buff[index:]
+            return res
+        except json.JSONDecodeError:
+            raise StopIteration
