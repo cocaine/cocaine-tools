@@ -18,20 +18,18 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-__author__ = 'Evgeny Safronov <division494@gmail.com>'
-
-
+import abc
 import json
 import os
 import subprocess
 import tempfile
-import abc
 
 from cocaine.decorators import coroutine
 from cocaine.tools.printer import printer
 from cocaine.tools.actions import runlist
 from cocaine.tools.actions import profile
 from cocaine.tools.helpers.editor import locate_editor
+
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 

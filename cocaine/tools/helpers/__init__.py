@@ -19,8 +19,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-__author__ = 'EvgenySafronov <division494@gmail.com>'
-
 from collections import Iterable
 
 try:

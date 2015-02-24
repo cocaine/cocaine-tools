@@ -83,10 +83,9 @@ class CrashlogStatusToolHandler(ToolHandler):
         if not result:
             print('There are no applications with crashlogs')
 
-        key = lambda (app, (timestamp, time_, uuid), total): timestamp
-
         log.info(self.HEADER)
-        for appname, (timestamp, time_, uuid), total in sorted(result, key=key):
+        for appname, (timestamp, time_, uuid), total in sorted(result,
+                                                               key=lambda (app, (timestamp, time_, uuid), total): timestamp):
             print(self.FORMAT_CONTENT.format(appname, total, time, uuid))
 
 

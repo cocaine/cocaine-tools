@@ -47,9 +47,11 @@ class List(actions.Storage):
 
 
 def _parseCrashlogs(crashlogs, timestamp=None):
-    isFilter = lambda x: (x == timestamp if timestamp else True)
+    def is_filter(x):
+        return (x == timestamp if timestamp else True)
+
     _list = (log.split(':', 1) for log in crashlogs)
-    return [(ts, time.ctime(float(ts) / 1000000), name) for ts, name in _list if isFilter(ts)]
+    return [(ts, time.ctime(float(ts) / 1000000), name) for ts, name in _list if is_filter(ts)]
 
 
 class Specific(actions.Storage):
