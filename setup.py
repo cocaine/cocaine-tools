@@ -2,7 +2,7 @@
 # encoding: utf-8
 #
 #    Copyright (c) 2011-2012 Andrey Sibiryov <me@kobology.ru>
-#    Copyright (c) 2011-2013 Anton Tyurin <noxiouz@yandex.ru>
+#    Copyright (c) 2011-2015 Anton Tyurin <noxiouz@yandex.ru>
 #    Copyright (c) 2013+ Evgeny Safronov <division494@gmail.com>
 #    Copyright (c) 2011-2013 Other contributors as noted in the AUTHORS file.
 #
@@ -37,7 +37,7 @@ else:
 
 setup(
     name="cocaine-tools",
-    version="0.12.0.0rc10",
+    version="0.12.0.0rc11",
     author="Anton Tyurin",
     author_email="noxiouz@yandex.ru",
     maintainer='Evgeny Safronov',

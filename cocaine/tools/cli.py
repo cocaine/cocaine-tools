@@ -57,8 +57,6 @@ class ToolHandler(object):
         except Exception as err:
             log.error(err)
             exit(128)
-        finally:
-            IOLoop.instance().stop()
 
     def _processResult(self, result):
         pass
@@ -179,10 +177,10 @@ class Executor(object):
     @property
     def loop(self):
         """Lazy event loop initialization"""
-        if self._loop:
+        if not self._loop:
             self._loop = IOLoop.current()
             return self._loop
-        return IOLoop.current()
+        return self._loop
 
     def executeAction(self, actionName, **options):
         """Execute action with specified options.
@@ -195,10 +193,7 @@ class Executor(object):
         assert actionName in NG_ACTIONS, 'wrong action - {0}'.format(actionName)
 
         action = NG_ACTIONS[actionName]
-        action.execute(**options)
-        if self.timeout is not None:
-            self.loop.add_timeout(time.time() + self.timeout, self.timeoutErrorback)
-        self.loop.start()
+        self.loop.run_sync(lambda: action.execute(**options), timeout=self.timeout)
 
     def timeoutErrorback(self):
         log.error('Timeout')
