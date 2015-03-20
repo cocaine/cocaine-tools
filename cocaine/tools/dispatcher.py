@@ -44,7 +44,7 @@ class Global(object):
     options = [
         ('h', 'host', DEFAULT_HOST, 'hostname'),
         ('p', 'port', DEFAULT_PORT, 'port'),
-        ('', 'timeout', 1.0, 'timeout, s'),
+        ('', 'timeout', 20.0, 'timeout, s'),
         ('', 'color', True, 'enable colored output'),
         ('', 'debug', ('disable', 'tools', 'all'), 'enable debug mode'),
     ]
@@ -414,7 +414,7 @@ def profile_upload(options,
 
 @profileDispatcher.command(name='edit')
 def profile_edit(options,
-                 name):
+                 name=('n', '', 'profile name')):
     """Edit profile in interactive editor."""
     options.executor.timeout = None
     options.executor.executeAction('profile:edit', **{
@@ -453,7 +453,7 @@ def runlist_view(options,
 
 @runlistDispatcher.command(name='edit', usage='NAME')
 def runlist_edit(options,
-                 name):
+                 name=('n', '', 'runlist name')):
     """Edit runlist interactively."""
     options.executor.timeout = None
     options.executor.executeAction('runlist:edit', **{

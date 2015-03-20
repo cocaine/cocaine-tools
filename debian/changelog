@@ -1,6 +1,13 @@
+cocaine-tools (0.12.0.0-rc12) unstable; urgency=low
+
+  * [Dispatcher] Use -n to specify runlist/profile when you edit them
+  * [Proxy] Set unlimit -n 65535
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Fri, 20 Mar 2015 16:05:29 +0300
+
 cocaine-tools (0.12.0.0-rc11) unstable; urgency=low
 
-  * [Executer] Use run_sync instead of add_timeout 
+  * [Executer] Use run_sync instead of add_timeout
 
  -- Anton Tyurin <noxiouz@yandex-team.ru>  Wed, 04 Mar 2015 16:51:18 +0300
 
@@ -24,7 +31,7 @@ cocaine-tools (0.12.0.0-rc7) unstable; urgency=low
 
 cocaine-tools (0.12.0.0-rc6) unstable; urgency=low
 
-  * Fix required cocaine version in setup.py 
+  * Fix required cocaine version in setup.py
 
  -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 09 Dec 2014 14:06:09 +0400
 

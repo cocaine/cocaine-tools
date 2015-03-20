@@ -2,6 +2,7 @@ description "cocaine-tornado-proxy"
 
 start on filesystem
 stop on runlevel [016]
+limit nofile 65535 65535
 
 pre-start script
     if [ -f /etc/default/$UPSTART_JOB ]; then
