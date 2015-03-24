@@ -23,7 +23,7 @@ import os
 import time
 
 from cocaine.services import Service, Locator
-from cocaine.exceptions import ConnectionError, ConnectionRefusedError, ServiceError
+from cocaine.exceptions import ServiceError
 
 from cocaine.tools import actions
 from cocaine.tools.actions import app
@@ -43,15 +43,9 @@ from tornado.ioloop import IOLoop
 io = IOLoop.current()
 
 
-@tools.raises(ConnectionRefusedError, ConnectionError, Exception)
-def test_storage_bad_address():
-    st = actions.Storage()
-    st.connect(port=10055)
-
-
 def test_list():
     st = Service("storage")
-    result = io.run_sync(actions.List("apps", ["app"], st).execute)
+    result = io.run_sync(actions.List("ap", ("a", ), st).execute)
     assert isinstance(result, (list, tuple)), result
 
 
@@ -87,7 +81,7 @@ class TestAppActions(object):
         result = io.run_sync(app.Upload(self.storage, name,
                              manifest, path).execute)
 
-        assert result is None, result
+        assert result == "Uploaded successfully", result
 
     def test_app_e_list(self):
         listing = io.run_sync(app.List(self.storage).execute)

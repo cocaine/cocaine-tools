@@ -109,6 +109,8 @@ class Upload(actions.Storage):
             channel = yield self.storage.write('manifests', self.name, manifest, APPS_TAGS)
             yield channel.rx.get()
 
+        raise gen.Return("Uploaded successfully")
+
 
 class Remove(actions.Storage):
     """
@@ -135,6 +137,8 @@ class Remove(actions.Storage):
             except ServiceError:
                 log.info('Unable to delete an application source from storage.',
                          'It\'s okay, if the application is a Docker image')
+
+        raise gen.Return("Removed successfully")
 
 
 class Start(common.Node):
@@ -193,9 +197,9 @@ class Restart(common.Node):
             raise ToolsError('Application "{0}" is not running and profile not specified'.format(self.name))
         except Exception as err:
             raise ToolsError('Unknown error - {0}'.format(err))
-        else:
-            raise gen.Return("application `%s` has been restarted with profile `%s`" % (self.name,
-                                                                                        self.profile))
+
+        raise gen.Return("application `%s` has been restarted with profile `%s`" % (self.name,
+                                                                                    self.profile))
 
 
 class Check(common.Node):

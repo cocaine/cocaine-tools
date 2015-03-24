@@ -20,17 +20,12 @@
 #
 
 import json
-import socket
-import errno
 import tarfile
-import msgpack
 
-from cocaine.decorators import coroutine
+import msgpack
 from tornado import gen
 
-from cocaine.exceptions import ConnectionError, ConnectionRefusedError
-# from cocaine.futures import chain
-from cocaine.services import Service
+from cocaine.decorators import coroutine
 from cocaine.tools import log
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
@@ -75,16 +70,7 @@ class Storage(object):
     def __init__(self, storage=None):
         self.storage = storage
 
-    def connect(self, host='localhost', port=10053):
-        try:
-            self.storage = Service('storage', host, port)
-            self.storage.connect().wait()
-        except socket.error as err:
-            if err.errno == errno.ECONNREFUSED:
-                raise ConnectionRefusedError((host, port))
-            else:
-                raise ConnectionError((host, port), 'Unknown connection error: {0}'.format(err))
-
+    @coroutine
     def execute(self):  # pragma: no cover
         raise NotImplementedError()
 
