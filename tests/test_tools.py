@@ -19,6 +19,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import logging
 import os
 import time
 
@@ -43,9 +44,13 @@ from tornado.ioloop import IOLoop
 io = IOLoop.current()
 
 
+log = logging.getLogger("cocaine")
+log.setLevel(logging.DEBUG)
+
+
 def test_list():
     st = Service("storage")
-    result = io.run_sync(actions.List("ap", ("a", ), st).execute)
+    result = io.run_sync(actions.List("app", ("apps", ), st).execute, timeout=1)
     assert isinstance(result, (list, tuple)), result
 
 
@@ -57,7 +62,7 @@ def test_specific():
 @tools.raises(ValueError)
 def test_specific_unspecified_name():
     st = Service("storage")
-    actions.Specific(st, "entity", "")
+    io.run_sync(actions.Specific(st, "entity", ""), timeout=2)
 
 
 def test_isJsonValid():
