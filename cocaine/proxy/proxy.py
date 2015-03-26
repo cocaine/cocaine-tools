@@ -106,7 +106,7 @@ class CocaineProxy(HTTPServer):
             except ValueError:
                 self.logger.error("broken cache")
 
-            self.io_loop.add_later(self.get_timeout(name) * 3, functools.partial(self.dispose, app, name))
+            self.io_loop.call_later(self.get_timeout(name) * 3, functools.partial(self.dispose, app, name))
         return wrapper
 
     def dispose(self, app, name):
@@ -191,7 +191,7 @@ class CocaineProxy(HTTPServer):
             code, raw_headers = msgpack.unpackb(code_and_headers)
             headers = tornado.httputil.HTTPHeaders(raw_headers)
             while True:
-                body = yield channel.rx.get()
+                body = yield channel.rx.get(timeout=timeout)
                 if not isinstance(body, EmptyResponse):
                     body_parts.append(msgpack.unpackb(body))
                 else:
