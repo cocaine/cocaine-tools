@@ -1,3 +1,10 @@
+cocaine-tools (0.12.0.0-rc15) unstable; urgency=low
+
+  * [Proxy] Bugfix: set timeout for the chunk of reply
+  * [Proxy] Bugfix: fix a method nname of reconnector
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 26 Mar 2015 19:35:11 +0300
+
 cocaine-tools (0.12.0.0-rc14) unstable; urgency=low
 
   * [Proxy] Send requests to an application with timeout
