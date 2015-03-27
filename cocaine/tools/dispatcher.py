@@ -653,14 +653,37 @@ def group_create(options,
     })
 
 
-@dispatcher.group.command(name='remove', usage='NAME')
+@dispatcher.group.command(name='remove', usage='--name=NAME')
 def group_remove(options,
-                 name):
-    """Remove routing group.
-    """
+                 name=('n', '', 'group name')):
+    """Remove routing group"""
     options.executor.executeAction('group:remove', **{
         'storage': options.getService('storage'),
         'name': name
+    })
+
+
+@dispatcher.group.command(name='copy', usage='--name=NAME --copyname=NEWNAME')
+def group_copy(options,
+               name=('n', '', 'group name'),
+               copyname=('c', '', 'new group name')):
+    """Remove routing group."""
+    options.executor.executeAction('group:copy', **{
+        'storage': options.getService('storage'),
+        'name': name,
+        'copyname': copyname,
+    })
+
+
+@dispatcher.group.command(name='rename', usage='--name=NAME --copyname=NEWNAME')
+def group_rename(options,
+                 name=('n', '', 'group name'),
+                 copyname=('c', '', 'new group name')):
+    """Remove routing group."""
+    options.executor.executeAction('group:rename', **{
+        'storage': options.getService('storage'),
+        'name': name,
+        'copyname': copyname,
     })
 
 

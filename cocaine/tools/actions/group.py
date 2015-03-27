@@ -23,12 +23,17 @@ import msgpack
 
 from cocaine.decorators import coroutine
 from cocaine.tools import actions
-from cocaine.tools.actions import CocaineConfigReader
+from cocaine.tools.actions import CocaineConfigReader, log
 from cocaine.tools.tags import GROUPS_TAGS
 
 __author__ = 'EvgenySafronov <division494@gmail.com>'
 
 GROUP_COLLECTION = 'groups'
+
+
+class Specific(actions.Specific):
+    def __init__(self, storage, name):
+        super(Specific, self).__init__(storage, 'group', name)
 
 
 class List(actions.List):
@@ -48,7 +53,7 @@ class Create(actions.Specific):
 
     @coroutine
     def execute(self):
-        if self.content:
+        if self.content is None:
             content = CocaineConfigReader.load(self.content, validate=self._validate)
         else:
             content = msgpack.dumps({})
@@ -69,6 +74,25 @@ class Remove(actions.Specific):
     def execute(self):
         channel = yield self.storage.remove(GROUP_COLLECTION, self.name)
         yield channel.rx.get()
+
+
+class Copy(Specific):
+    def __init__(self, storage, name, copyname):
+        super(Copy, self).__init__(storage, name)
+        self.copyname = copyname
+
+    @coroutine
+    def execute(self):
+        log.info('Rename "%s" to "%s"', self.name, self.copyname)
+        oldprofile = yield View(self.storage, self.name).execute()
+        yield Create(self.storage, self.copyname, oldprofile).execute()
+
+
+class Rename(Copy):
+    @coroutine
+    def execute(self):
+        yield super(Rename, self).execute()
+        yield Remove(self.storage, self.name).execute()
 
 
 class Refresh(actions.Storage):
