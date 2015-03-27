@@ -82,13 +82,13 @@ class CocaineProxy(HTTPServer):
         self.port = port
         self.serviceCacheCount = cache
         self.spoolSize = int(self.serviceCacheCount * 1.5)
-        self.refreshPeriod = config.get("refresh_timeout") or DEFAULT_REFRESH_PERIOD
+        self.refreshPeriod = config.get("refresh_timeout", DEFAULT_REFRESH_PERIOD)
         self.timeouts = config.get("timeouts", {})
 
         # active applications
         self.cache = collections.defaultdict(list)
 
-        self.logger = logging.getLogger('proxy')
+        self.logger = logging.getLogger()
 
     def get_timeout(self, name):
         return self.timeouts.get(name, DEFAULT_TIMEOUT)
@@ -128,7 +128,8 @@ class CocaineProxy(HTTPServer):
                 elif request.path == '/__info':
                     import json
 
-                    # It's likely I'm going to Hell for this one, but seems there is no other way to obtain internal
+                    # It's likely I'm going to Hell for this one,
+                    # but seems there is no other way to obtain internal
                     # statistics.
                     if tornado.version_info[0] == 4:
                         connections = len(self._connections)
