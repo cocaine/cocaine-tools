@@ -119,7 +119,7 @@ class CallActionCli(ToolHandler):
 
 NG_ACTIONS = {
     'info': JsonToolHandler(common.NodeInfo),
-    'call': CallActionCli(common.Call),
+    'locate': JsonToolHandler(common.Locate),
 
     'app:check': ToolHandler(app.Check),
     'app:list': JsonToolHandler(app.List),

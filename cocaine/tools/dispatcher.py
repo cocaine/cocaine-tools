@@ -134,6 +134,16 @@ crashlogDispatcher = Dispatcher(globaloptions=Global.options, middleware=middlew
 # proxyDispatcher = Dispatcher()
 
 
+@d.command(name='locate', usage='[--name=NAME]')
+def locate(options,
+           name=('n', '', 'service name')):
+    """Show information about requested service"""
+    options.executor.executeAction('locate', **{
+        'name': name,
+        'locator': options.locator,
+    })
+
+
 @d.command(name='info', usage='[--name=NAME]')
 def info(options,
          name=('n', '', 'application name'),

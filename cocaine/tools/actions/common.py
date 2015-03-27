@@ -43,6 +43,23 @@ class Node(object):
         raise NotImplementedError()
 
 
+class Locate(object):
+    def __init__(self, locator, name):
+        self.locator = locator
+        self.name = name
+
+    @coroutine
+    def execute(self):
+        channel = yield self.locator.resolve(self.name)
+        endpoints, version, api = yield channel.rx.get()
+        result = {
+            "endpoints": ["%s:%d" % (addr, port) for addr, port in endpoints],
+            "version": version,
+            "api": dict((num, method[0]) for num, method in api.items())
+        }
+        raise gen.Return(result)
+
+
 class NodeInfo(Node):
     def __init__(self, node, locator, storage, name=None, expand=False):
         super(NodeInfo, self).__init__(node)
@@ -114,21 +131,21 @@ class Call(object):
             response['response'] = result
         yield response
 
-    def getService(self):
+    def get_service(self):
         try:
             service = Service(self.serviceName, host=self.host, port=self.port)
             return service
         except Exception as err:
             raise ServiceCallError(self.serviceName, err)
 
-    def getMethod(self, service):
+    def get_method(self, service):
         try:
             method = service.__getattribute__(self.methodName)
             return method
         except AttributeError:
             raise ServiceError(self.serviceName, 'method "{0}" is not found'.format(self.methodName), 1)
 
-    def parseArguments(self):
+    def parse_arguments(self):
         if not self.args:
             return ()
 
