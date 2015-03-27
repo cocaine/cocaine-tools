@@ -20,12 +20,26 @@
 #
 
 from cocaine.decorators import coroutine
+from cocaine.exceptions import ServiceError
+
+from cocaine.tools.error import Error as ToolsError
 from cocaine.tools import actions
 from cocaine.tools.actions import CocaineConfigReader, log
 from cocaine.tools.printer import printer
 from cocaine.tools.tags import PROFILES_TAGS
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
+
+
+@coroutine
+def upload_profile(storage, name, profile):
+    try:
+        channel = yield storage.write('profiles', name, profile, PROFILES_TAGS)
+        yield channel.rx.get()
+    except ServiceError as err:
+        error_message = 'unable to write profile "%s" to storage: %s' % (name, err)
+        log.error(error_message)
+        raise ToolsError(error_message)
 
 
 class Specific(actions.Specific):
@@ -47,6 +61,10 @@ class Upload(Specific):
     def __init__(self, storage, name, profile):
         super(Upload, self).__init__(storage, name)
         self.profile = profile
+        if isinstance(self.profile, dict):
+            return
+        elif isinstance(self.profile, (str, unicode)) and len(self.profile.strip()) > 0:
+            return
         if not self.profile:
             raise ValueError('Please specify profile file path')
 
@@ -55,8 +73,7 @@ class Upload(Specific):
         with printer('Loading profile'):
             profile = CocaineConfigReader.load(self.profile)
         with printer('Uploading "%s"', self.name):
-            channel = yield self.storage.write('profiles', self.name, profile, PROFILES_TAGS)
-            yield channel.rx.get()
+            yield upload_profile(self.storage, self.name, profile)
 
 
 class Remove(Specific):
@@ -66,3 +83,23 @@ class Remove(Specific):
         channel = yield self.storage.remove('profiles', self.name)
         yield channel.rx.get()
         log.info('OK')
+
+
+class Copy(Specific):
+    def __init__(self, storage, name, copyname):
+        super(Copy, self).__init__(storage, name)
+        self.copyname = copyname
+
+    @coroutine
+    def execute(self):
+        log.info('Rename "%s" to "%s"', self.name, self.copyname)
+        oldprofile = yield View(self.storage, self.name).execute()
+        yield Upload(self.storage, self.copyname, oldprofile).execute()
+        log.info('OK')
+
+
+class Rename(Copy):
+    @coroutine
+    def execute(self):
+        yield super(Rename, self).execute()
+        yield Remove(self.storage, self.name).execute()

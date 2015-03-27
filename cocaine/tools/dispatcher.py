@@ -28,7 +28,6 @@ from opster import Dispatcher
 
 from cocaine.services import Locator, Service
 from cocaine.tools import ColoredFormatter, interactiveEmit
-# from cocaine.tools.actions import proxy
 from cocaine.tools.cli import Executor
 from cocaine.tools.error import Error as ToolsError
 
@@ -420,6 +419,30 @@ def profile_remove(options,
     options.executor.executeAction('profile:remove', **{
         'storage': options.getService('storage'),
         'name': name
+    })
+
+
+@profileDispatcher.command(name='copy')
+def profile_copy(options,
+                 name=('n', '', 'profile name'),
+                 copyname=('c', '', 'new profile name')):
+    """Copy a profile"""
+    options.executor.executeAction('profile:copy', **{
+        'storage': options.getService('storage'),
+        'name': name,
+        'copyname': copyname,
+    })
+
+
+@profileDispatcher.command(name='rename')
+def profile_rename(options,
+                   name=('n', '', 'profile name'),
+                   copyname=('c', '', 'new profile name')):
+    """Raname a profile"""
+    options.executor.executeAction('profile:rename', **{
+        'storage': options.getService('storage'),
+        'name': name,
+        'copyname': copyname,
     })
 
 

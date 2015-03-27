@@ -134,11 +134,13 @@ NG_ACTIONS = {
     'app:stop': PrintToolHandler(app.Stop),
     'app:restart': PrintToolHandler(app.Restart),
 
-    'profile:list': JsonToolHandler(profile.List),
-    'profile:view': JsonToolHandler(profile.View),
-    'profile:upload': ToolHandler(profile.Upload),
-    'profile:remove': ToolHandler(profile.Remove),
+    'profile:copy': ToolHandler(profile.Copy),
     'profile:edit': ToolHandler(interactive.ProfileEditor),
+    'profile:list': JsonToolHandler(profile.List),
+    'profile:remove': ToolHandler(profile.Remove),
+    'profile:rename': ToolHandler(profile.Rename),
+    'profile:upload': ToolHandler(profile.Upload),
+    'profile:view': JsonToolHandler(profile.View),
 
     'runlist:list': JsonToolHandler(runlist.List),
     'runlist:view': JsonToolHandler(runlist.View),
