@@ -497,6 +497,18 @@ def runlist_create(options,
     })
 
 
+@runlistDispatcher.command(name='copy', usage='--name=NAME --copyname=NEWNAME')
+def runlist_copy(options,
+                 name=('n', '', 'name'),
+                 copyname=('c', '', 'copyname')):
+    """Copy runlist."""
+    options.executor.executeAction('runlist:copy', **{
+        'storage': options.getService('storage'),
+        'name': name,
+        'copyname': copyname,
+    })
+
+
 @runlistDispatcher.command(name='remove')
 def runlist_remove(options,
                    name=('n', '', 'name')):
@@ -504,6 +516,18 @@ def runlist_remove(options,
     options.executor.executeAction('runlist:remove', **{
         'storage': options.getService('storage'),
         'name': name
+    })
+
+
+@runlistDispatcher.command(name='rename', usage='--name=NAME --copyname=NEWNAME')
+def runlist_rename(options,
+                   name=('n', '', 'name'),
+                   copyname=('c', '', 'copyname')):
+    """Rename runlist."""
+    options.executor.executeAction('runlist:rename', **{
+        'storage': options.getService('storage'),
+        'name': name,
+        'copyname': copyname,
     })
 
 
@@ -667,7 +691,7 @@ def group_remove(options,
 def group_copy(options,
                name=('n', '', 'group name'),
                copyname=('c', '', 'new group name')):
-    """Remove routing group."""
+    """Copy routing group."""
     options.executor.executeAction('group:copy', **{
         'storage': options.getService('storage'),
         'name': name,
@@ -679,7 +703,7 @@ def group_copy(options,
 def group_rename(options,
                  name=('n', '', 'group name'),
                  copyname=('c', '', 'new group name')):
-    """Remove routing group."""
+    """Rename routing group."""
     options.executor.executeAction('group:rename', **{
         'storage': options.getService('storage'),
         'name': name,
