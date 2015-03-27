@@ -153,26 +153,6 @@ def info(options,
     })
 
 
-@d.command(usage='SERVICE [METHOD ["ARGS"]]')
-def call(options,
-         service, method='', args=''):
-    """Invoke specified method from service.
-
-    Performs method invocation from specified service. Service name should be correct string and must be correctly
-    located through locator. By default, locator endpoint is `localhost, 10053`, but it can be changed by passing
-    global `--host` and `--port` arguments.
-
-    Method arguments should be passed in double quotes as they would be written in Python.
-    If no method provided, service API will be printed.
-    """
-    command = '{0}.{1}({2})'.format(service, method, args)
-    options.executor.executeAction('call', **{
-        'command': command,
-        'host': options.host,
-        'port': options.port
-    })
-
-
 @appDispatcher.command(name='list')
 def app_list(options):
     """Show installed applications list."""
