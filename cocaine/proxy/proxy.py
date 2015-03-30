@@ -27,6 +27,7 @@ except ImportError:
 
 import collections
 import functools
+import hashlib
 import logging
 import random
 import re
@@ -58,6 +59,26 @@ DEFAULT_REFRESH_PERIOD = 120
 DEFAULT_TIMEOUT = 5
 
 
+class ContextAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        return '%s %s' % (self.extra["id"], msg), kwargs
+
+
+def generate_request_id(request):
+    m = hashlib.md5()
+    m.update("%s" % id(request))
+    return m.hexdigest()[:15]
+
+
+def context(func):
+    def wrapper(self, request):
+        adaptor = ContextAdapter(self.tracking_logger, {"id": generate_request_id(request)})
+        request.logger = adaptor
+        request.logger.info("%s %s %s", request.host, request.remote_ip, request.uri)
+        return func(self, request)
+    return wrapper
+
+
 def pack_httprequest(request):
     headers = [(item.key, item.value) for item in request.cookies.itervalues()]
     headers.extend(request.headers.items())
@@ -65,15 +86,20 @@ def pack_httprequest(request):
     return d
 
 
-def fill_response_in(request, code, status, message):
+def fill_response_in(request, code, status, message, headers=None):
+    headers = headers or httputil.HTTPHeaders({"Content-Length": str(len(message))})
+    if "Content-Length" not in headers:
+        headers.add("Content-Length", str(len(message)))
+
     request.connection.write_headers(
         # start_line
         httputil.ResponseStartLine(request.version, code, status),
         # headers
-        httputil.HTTPHeaders({"Content-Length": str(len(message))}),
+        headers,
         # data
         message)
     request.connection.finish()
+    request.logger.info("%s %d %.2fms", status, code, 1000.0 * request.request_time())
 
 
 class CocaineProxy(HTTPServer):
@@ -89,6 +115,7 @@ class CocaineProxy(HTTPServer):
         self.cache = collections.defaultdict(list)
 
         self.logger = logging.getLogger()
+        self.tracking_logger = logging.getLogger("proxy.tracking")
 
     def get_timeout(self, name):
         return self.timeouts.get(name, DEFAULT_TIMEOUT)
@@ -114,13 +141,14 @@ class CocaineProxy(HTTPServer):
         app.disconnect()
 
     @gen.coroutine
+    @context
     def handle_request(self, request):
         if "X-Cocaine-Service" in request.headers and "X-Cocaine-Event" in request.headers:
-            self.logger.debug('dispatch by headers')
+            request.logger.debug('dispatch by headers')
             name = request.headers['X-Cocaine-Service']
             event = request.headers['X-Cocaine-Event']
         else:
-            self.logger.debug('dispatch by uri')
+            request.logger.debug('dispatch by uri')
             match = URL_REGEX.match(request.uri)
             if match is None:
                 if request.path == "/ping":
@@ -143,14 +171,8 @@ class CocaineProxy(HTTPServer):
                         'connections': connections,
                         'pending': len(self._pending_sockets),
                     })
-                    request.connection.write_headers(
-                        httputil.ResponseStartLine(request.version, httplib.OK, 'OK'),
-                        httputil.HTTPHeaders({
-                            'Content-Length': str(len(body))
-                        }),
-                        body
-                    )
-                    request.connection.finish()
+                    headers = httputil.HTTPHeaders({"Content-Type": "application/json"})
+                    fill_response_in(request, httplib.OK, httplib.responses[httplib.OK], body, headers)
                 else:
                     fill_response_in(request, httplib.NOT_FOUND, httplib.responses[httplib.NOT_FOUND], "Invalid url")
                 return
@@ -166,17 +188,17 @@ class CocaineProxy(HTTPServer):
             request.uri = other
             request.path, _, _ = other.partition("?")
 
-        app = yield self.get_service(name)
+        app = yield self.get_service(name, request.logger)
         if app is None:
             message = "Current application %s is unavailable" % name
             fill_response_in(request, httplib.NOT_FOUND, httplib.responses[httplib.NOT_FOUND], message)
             return
 
-        self.logger.debug("Processing request.... %s %s", app, event)
         try:
+            request.logger.debug("processing request %s %s", app, event)
             yield self.process(request, name, app, event, pack_httprequest(request))
         except Exception as err:
-            self.logger.error("Error during processing request %s", err)
+            request.logger.error("error during processing request %s", err)
             fill_response_in(request, 502, "Server error", str(err))
 
     @gen.coroutine
@@ -198,46 +220,43 @@ class CocaineProxy(HTTPServer):
                 else:
                     break
         except Timeout as err:
-            self.logger.error(str(err))
+            request.logger.error(str(err))
             message = "Application `%s` error: %s" % (name, str(err))
             fill_response_in(request, httplib.GATEWAY_TIMEOUT,
                              httplib.responses[httplib.GATEWAY_TIMEOUT], message)
 
         except ServiceError as err:
-            self.logger.error(str(err))
+            request.logger.error(str(err))
             message = "Application `%s` error: %s" % (name, str(err))
             fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                              httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
 
         except Exception as err:
-            self.logger.error("Error %s", err)
+            request.logger.error("Error %s", err)
             message = "Unknown `%s` error: %s" % (name, str(err))
             fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                              httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
         else:
             message = ''.join(body_parts)
-            request.connection.write_headers(
-                httputil.ResponseStartLine(request.version,
-                                           code,
-                                           httplib.responses.get(code, 200)),
-                headers, message)
-            request.connection.finish()
+            fill_response_in(request, code,
+                             httplib.responses.get(code, httplib.OK),
+                             message, headers)
 
     @gen.coroutine
-    def get_service(self, name):
+    def get_service(self, name, logger):
         # cache isn't full for the current application
         if len(self.cache[name]) < self.spoolSize:
-            self.logger.info("create one more instance of %s", name)
+            logger.info("creating an instance of %s", name)
             try:
                 app = Service(name)
                 self.cache[name].append(app)
                 yield app.connect()
-                self.logger.info("Connect to app: %s endpoint %s ", app.name, "{0}:{1}".format(*app.address))
+                logger.info("Connect to an app: %s endpoint %s ", app.name, "{0}:{1}".format(*app.address))
 
                 timeout = (1 + random.random()) * self.refreshPeriod
                 self.io_loop.call_later(timeout, self.move_to_inactive(app, name))
             except Exception as err:
-                self.logger.error("unable to connect to `%s`: %s", name, str(err))
+                logger.error("unable to connect to `%s`: %s", name, str(err))
                 if app in self.cache[name]:
                     self.cache[name].remove(app)
                 raise gen.Return()
@@ -265,20 +284,54 @@ class CocaineProxy(HTTPServer):
             self.logger.info("stopped")
 
 
+def enable_logging(options):
+    if options.logging is None or options.logging.lower() == "none":
+        return
+
+    logger = logging.getLogger()
+    logger.setLevel(getattr(logging, options.logging.upper()))
+    fmt = logging.Formatter("%(levelname)-5.5s %(asctime)s %(module)5.5s:%(lineno)-3d %(message)s",
+                            datefmt="%d-%m-%Y %H:%M:%S %z")
+
+    if options.log_file_prefix:
+        handler = logging.handlers.WatchedFileHandler(
+            filename=options.log_file_prefix,
+        )
+        handler.setFormatter(fmt)
+
+    if options.log_to_stderr or (options.log_to_stderr is None and not logger.handlers):
+        channel = logging.StreamHandler()
+        channel.setFormatter(fmt)
+        logger.addHandler(channel)
+
+
 def main():
-    from tornado.options import define, options, parse_command_line, parse_config_file
+    from tornado import options
 
-    define("port", default=8080, type=int, help="listening port number")
-    define("cache", default=DEFAULT_SERVICE_CACHE_COUNT,
-           type=int, help="count of instances per service")
-    define("count", default=1, type=int, help="count of tornado processes")
-    define("config", help="path to configuration file", type=str,
-           callback=lambda path: parse_config_file(path, final=False))
-    parse_command_line()
+    opts = options.OptionParser()
 
-    proxy = CocaineProxy(port=options.port,
-                         cache=options.cache)
-    proxy.run(options.count)
+    opts.define("port", default=8080, type=int, help="listening port number")
+    opts.define("cache", default=DEFAULT_SERVICE_CACHE_COUNT,
+                type=int, help="count of instances per service")
+    opts.define("count", default=1, type=int, help="count of tornado processes")
+    opts.define("config", help="path to configuration file", type=str,
+                callback=lambda path: opts.parse_config_file(path, final=False))
+    opts.define("logging", default="info",
+                help=("Set the Python log level. If 'none', tornado won't touch the "
+                      "logging configuration."),
+                metavar="debug|info|warning|error|none")
+    opts.define("log_to_stderr", type=bool, default=None,
+                help=("Send log output to stderr. "
+                      "By default use stderr if --log_file_prefix is not set and "
+                      "no other logging is configured."))
+    opts.define("log_file_prefix", type=str, default=None, metavar="PATH",
+                help=("Path prefix for log file"))
+    opts.parse_command_line()
+    enable_logging(opts)
+
+    proxy = CocaineProxy(port=opts.port,
+                         cache=opts.cache)
+    proxy.run(opts.count)
 
 
 if __name__ == '__main__':

@@ -11,6 +11,7 @@ pre-start script
 end script
 
 script
+    CONFIG_PATH="/etc/cocaine-tornado-proxy/cocaine-tornado-proxy.conf"
     if [ -f /etc/default/$UPSTART_JOB ]; then
         . /etc/default/$UPSTART_JOB
     fi
