@@ -291,6 +291,7 @@ def enable_logging(options):
             filename=options.log_file_prefix,
         )
         handler.setFormatter(fmt)
+        logger.addHandler(handler)
 
     if options.log_to_stderr or (options.log_to_stderr is None and not logger.handlers):
         channel = logging.StreamHandler()
