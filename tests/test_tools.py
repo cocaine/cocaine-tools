@@ -84,24 +84,24 @@ class TestAppActions(object):
         path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                             "fixtures/simple_app/simple_app.tar.gz")
         result = io.run_sync(app.Upload(self.storage, name,
-                             manifest, path).execute)
+                             manifest, path).execute, timeout=2)
 
         assert result == "Uploaded successfully", result
 
     def test_app_e_list(self):
-        listing = io.run_sync(app.List(self.storage).execute)
+        listing = io.run_sync(app.List(self.storage).execute, timeout=2)
         assert isinstance(listing, (list, tuple))
 
     def test_app_b_start(self):
         name = "random_name"
-        io.run_sync(profile.Upload(self.storage, "random_profile", "{}").execute)
+        io.run_sync(profile.Upload(self.storage, "random_profile", "{}").execute, timeout=2)
         result = io.run_sync(app.Start(self.node, name,
-                             "random_profile").execute)
+                             "random_profile").execute, timeout=2)
         assert "application `random_name` has been started with profile `random_profile`" == result, result
 
     def test_app_d_stop(self):
         name = "random_name"
-        result = io.run_sync(app.Stop(self.node, name).execute)
+        result = io.run_sync(app.Stop(self.node, name).execute, timeout=2)
         assert "application `random_name` has been stoped" == result, result
 
     def test_app_c_restart(self):
@@ -109,13 +109,13 @@ class TestAppActions(object):
         profile_name = "random_profile"
         result = io.run_sync(app.Restart(self.node, self.locator,
                                          name, profile_name,
-                                         self.storage).execute)
+                                         self.storage).execute, timeout=2)
 
         assert "application `random_name` has been restarted with profile `random_profile`" == result, result
 
-    def test_NodeInfo(self):
+    def test_node_info(self):
         n = common.NodeInfo(self.node, self.locator, self.storage)
-        result = io.run_sync(n.execute)
+        result = io.run_sync(n.execute, timeout=2)
         assert isinstance(result, dict) and "apps" in result, result
 
 
@@ -127,18 +127,18 @@ class TestProfileActions(object):
     def test_profile(self):
         name = "dummy_profile_name %d" % time.time()
         dummy_profile = {"aaa": [1, 2, 3]}
-        io.run_sync(profile.Upload(self.storage, name, dummy_profile).execute)
+        io.run_sync(profile.Upload(self.storage, name, dummy_profile).execute, timeout=2)
 
-        listing = io.run_sync(profile.List(self.storage).execute)
+        listing = io.run_sync(profile.List(self.storage).execute, timeout=2)
         assert isinstance(listing, (list, tuple)), listing
         assert name in listing
 
-        pr = io.run_sync(profile.View(self.storage, name).execute)
+        pr = io.run_sync(profile.View(self.storage, name).execute, timeout=2)
         assert pr == dummy_profile
 
-        io.run_sync(profile.Remove(self.storage, name).execute)
+        io.run_sync(profile.Remove(self.storage, name).execute, timeout=2)
         try:
-            io.run_sync(profile.View(self.storage, name).execute)
+            io.run_sync(profile.View(self.storage, name).execute, timeout=2)
         except ServiceError:
             pass
 
@@ -152,32 +152,32 @@ class TestRunlistActions(object):
         app_name = "test_app"
         profile_name = "test_profile"
         dummy_runlist = {app_name: profile_name}
-        io.run_sync(runlist.Upload(self.storage, name, dummy_runlist).execute)
+        io.run_sync(runlist.Upload(self.storage, name, dummy_runlist).execute, timeout=2)
 
-        listing = io.run_sync(runlist.List(self.storage).execute)
+        listing = io.run_sync(runlist.List(self.storage).execute, timeout=2)
         assert isinstance(listing, (list, tuple)), listing
         assert name in listing
 
-        res = io.run_sync(runlist.View(self.storage, name).execute)
+        res = io.run_sync(runlist.View(self.storage, name).execute, timeout=2)
         assert isinstance(res, dict), res
         assert res == dummy_runlist, res
 
-        io.run_sync(runlist.Remove(self.storage, name).execute)
+        io.run_sync(runlist.Remove(self.storage, name).execute, timeout=2)
         try:
-            io.run_sync(runlist.View(self.storage, name).execute)
+            io.run_sync(runlist.View(self.storage, name).execute, timeout=2)
         except ServiceError:
             pass
 
-        io.run_sync(runlist.Create(self.storage, name).execute)
-        res = io.run_sync(runlist.View(self.storage, name).execute)
+        io.run_sync(runlist.Create(self.storage, name).execute, timeout=2)
+        res = io.run_sync(runlist.View(self.storage, name).execute, timeout=2)
         assert res == {}, res
 
-        res = io.run_sync(runlist.AddApplication(self.storage, name, app_name, profile_name, force=True).execute)
+        res = io.run_sync(runlist.AddApplication(self.storage, name, app_name, profile_name, force=True).execute, timeout=2)
         assert isinstance(res, dict), res
         assert "added" in res, res
         assert app_name == res["added"]["app"] and profile_name == res["added"]["profile"], res
 
-        res = io.run_sync(runlist.RemoveApplication(self.storage, name, app_name).execute)
+        res = io.run_sync(runlist.RemoveApplication(self.storage, name, app_name).execute, timeout=2)
         assert isinstance(res, dict), res
 
 
@@ -191,34 +191,34 @@ class TestGroupActions(object):
         app_name = "test_app"
         weight = 100
         dummy_group = {app_name: weight}
-        io.run_sync(group.Create(self.storage, name, dummy_group).execute)
+        io.run_sync(group.Create(self.storage, name, dummy_group).execute, timeout=2)
 
-        listing = io.run_sync(group.List(self.storage).execute)
+        listing = io.run_sync(group.List(self.storage).execute, timeout=2)
         assert isinstance(listing, (list, tuple)), listing
         assert name in listing
 
-        res = io.run_sync(group.View(self.storage, name).execute)
+        res = io.run_sync(group.View(self.storage, name).execute, timeout=2)
         assert isinstance(res, dict), res
         assert res == dummy_group, res
 
-        io.run_sync(group.Remove(self.storage, name).execute)
+        io.run_sync(group.Remove(self.storage, name).execute, timeout=2)
         try:
-            io.run_sync(group.View(self.storage, name).execute)
+            io.run_sync(group.View(self.storage, name).execute, timeout=2)
         except ServiceError:
             pass
 
-        io.run_sync(group.Create(self.storage, name).execute)
-        res = io.run_sync(group.View(self.storage, name).execute)
+        io.run_sync(group.Create(self.storage, name).execute, timeout=2)
+        res = io.run_sync(group.View(self.storage, name).execute, timeout=2)
         assert res == {}, res
 
-        res = io.run_sync(group.AddApplication(self.storage, name, app_name, weight).execute)
+        res = io.run_sync(group.AddApplication(self.storage, name, app_name, weight).execute, timeout=2)
         assert res is None, res
 
-        res = io.run_sync(group.RemoveApplication(self.storage, name, app_name).execute)
+        res = io.run_sync(group.RemoveApplication(self.storage, name, app_name).execute, timeout=2)
         assert res is None, res
 
     def test_refresh(self):
-        io.run_sync(group.Refresh(self.locator, self.storage, "").execute)
+        io.run_sync(group.Refresh(self.locator, self.storage, "").execute, timeout=2)
 
 
 class TestCrashlogsAction(object):
@@ -226,7 +226,7 @@ class TestCrashlogsAction(object):
         self.storage = Service("storage")
 
     def test_crashlog(self):
-        listing = io.run_sync(crashlog.List(self.storage, "TEST").execute)
+        listing = io.run_sync(crashlog.List(self.storage, "TEST").execute, timeout=2)
         assert isinstance(listing, (list, tuple)), listing
 
 
