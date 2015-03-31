@@ -55,7 +55,7 @@ class Create(actions.Specific):
 
     @coroutine
     def execute(self):
-        if self.content is None:
+        if self.content is not None:
             content = CocaineConfigReader.load(self.content, validate=self._validate)
         else:
             content = msgpack.dumps({})
