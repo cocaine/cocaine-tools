@@ -7,6 +7,8 @@ install_utility () {
 build_cocaine () {
   git clone --recursive https://github.com/cocaine/cocaine-core.git -b master
   cd cocaine-core
+  # Travis has Cgroups unmounted
+  echo "DEB_CMAKE_EXTRA_FLAGS=-DCOCAINE_ALLOW_CGROUPS=OFF" >> debian/rules
   yes | sudo mk-build-deps -i
   yes | debuild -uc -us
   cd .. && sudo dpkg -i *.deb || sudo apt-get install -f && rm -rf cocaine-core 
