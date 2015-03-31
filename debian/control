@@ -4,6 +4,8 @@ Priority: extra
 Maintainer: Anton Tyurin <noxiouz@yandex-team.ru>
 Build-Depends: debhelper (>= 7.0.50), 
  python, 
+# lucid fix
+ base-file (>> 6.0) | cdbs,
  python-central | dh-python,
  python-setuptools,
  bash-completion
