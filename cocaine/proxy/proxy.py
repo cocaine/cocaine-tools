@@ -120,7 +120,7 @@ class CocaineProxy(HTTPServer):
                 self.io_loop.call_later(self.get_timeout(name), self.move_to_inactive(app, name))
                 return
 
-            self.logger.info("Move %d %s %s to an inactive queue (active %d)", id(app), app.name, "{0}:{1}".format(*app.address), active_apps)
+            self.logger.info("%d: move %s %s to an inactive queue (active %d)", id(app), app.name, "{0}:{1}".format(*app.address), active_apps)
             try:
                 self.cache[name].remove(app)
             except ValueError:
@@ -188,7 +188,7 @@ class CocaineProxy(HTTPServer):
             return
 
         try:
-            request.logger.debug("processing request %d %s %s", id(app), app.name, event)
+            request.logger.debug("%d: processing request %s %s", id(app), app.name, event)
             yield self.process(request, name, app, event, pack_httprequest(request))
         except Exception as err:
             request.logger.error("error during processing request %s", err)
@@ -239,17 +239,17 @@ class CocaineProxy(HTTPServer):
     def get_service(self, name, logger):
         # cache isn't full for the current application
         if len(self.cache[name]) < self.spoolSize:
-            logger.info("creating an instance of %s", name)
             try:
                 app = Service(name)
+                logger.info("%d: creating an instance of %s", id(app), name)
                 self.cache[name].append(app)
                 yield app.connect()
-                logger.info("Connect to an app: %s endpoint %s ", app.name, "{0}:{1}".format(*app.address))
+                logger.info("%d: connect to an app %s endpoint %s ", id(app), app.name, "{0}:{1}".format(*app.address))
 
                 timeout = (1 + random.random()) * self.refreshPeriod
                 self.io_loop.call_later(timeout, self.move_to_inactive(app, name))
             except Exception as err:
-                logger.error("unable to connect to `%s`: %s", name, str(err))
+                logger.error("%d: unable to connect to `%s`: %s", id(app), name, err)
                 if app in self.cache[name]:
                     self.cache[name].remove(app)
                 raise gen.Return()
