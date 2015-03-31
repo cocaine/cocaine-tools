@@ -1,3 +1,9 @@
+cocaine-tools (0.12.0.0-rc18) unstable; urgency=low
+
+  * [Proxy] Log a service Id
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 31 Mar 2015 14:59:50 +0300
+
 cocaine-tools (0.12.0.0-rc17) unstable; urgency=low
 
   * [Proxy] Use logging context per request
