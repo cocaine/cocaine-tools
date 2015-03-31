@@ -45,13 +45,6 @@ from cocaine.exceptions import ServiceError
 from cocaine.detail.service import EmptyResponse
 
 
-RECONNECTION_START = "Start asynchronous reconnection %s"
-RECONNECTION_SUCCESS = "reconnection %s %d to %s successfully."
-RECONNECTION_FAIL = "Unable to reconnect %s, because %s"
-NEXT_REFRESH = "Next update %d after %d second"
-MOVE_TO_INACTIVE = "Move to inactive queue %s %s from pool with active %d"
-
-
 URL_REGEX = re.compile(r"/([^/]*)/([^/?]*)(.*)")
 
 DEFAULT_SERVICE_CACHE_COUNT = 5
@@ -127,7 +120,7 @@ class CocaineProxy(HTTPServer):
                 self.io_loop.call_later(self.get_timeout(name), self.move_to_inactive(app, name))
                 return
 
-            self.logger.info(MOVE_TO_INACTIVE, app.name, "{0}:{1}".format(*app.address), active_apps)
+            self.logger.info("Move %d %s %s to an inactive queue (active %d)", id(app), app.name, "{0}:{1}".format(*app.address), active_apps)
             try:
                 self.cache[name].remove(app)
             except ValueError:
@@ -195,19 +188,19 @@ class CocaineProxy(HTTPServer):
             return
 
         try:
-            request.logger.debug("processing request %s %s", app, event)
+            request.logger.debug("processing request %d %s %s", id(app), app.name, event)
             yield self.process(request, name, app, event, pack_httprequest(request))
         except Exception as err:
             request.logger.error("error during processing request %s", err)
             fill_response_in(request, 502, "Server error", str(err))
 
     @gen.coroutine
-    def process(self, request, name, service, event, data):
+    def process(self, request, name, app, event, data):
         headers = {}
         body_parts = []
         timeout = self.get_timeout(name)
         try:
-            channel = yield service.enqueue(event)
+            channel = yield app.enqueue(event)
             yield channel.tx.write(msgpack.packb(data))
             code_and_headers = yield channel.rx.get(timeout=timeout)
             # the first chunk is packed code and headers
@@ -220,19 +213,19 @@ class CocaineProxy(HTTPServer):
                 else:
                     break
         except Timeout as err:
-            request.logger.error(str(err))
+            request.logger.error("%d: %s", id(app), err)
             message = "Application `%s` error: %s" % (name, str(err))
             fill_response_in(request, httplib.GATEWAY_TIMEOUT,
                              httplib.responses[httplib.GATEWAY_TIMEOUT], message)
 
         except ServiceError as err:
-            request.logger.error(str(err))
+            request.logger.error("%d: %s", id(app), err)
             message = "Application `%s` error: %s" % (name, str(err))
             fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                              httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
 
         except Exception as err:
-            request.logger.error("Error %s", err)
+            request.logger.error("%d: %s", id(app), err)
             message = "Unknown `%s` error: %s" % (name, str(err))
             fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                              httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
