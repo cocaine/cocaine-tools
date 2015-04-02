@@ -41,6 +41,7 @@ from tornado import process
 from toro import Timeout
 
 from cocaine.services import Service
+from cocaine.services import Locator
 from cocaine.exceptions import ServiceError
 from cocaine.detail.service import EmptyResponse
 
@@ -95,20 +96,37 @@ def fill_response_in(request, code, status, message, headers=None):
     request.logger.info("%s %d %.2fms", status, code, 1000.0 * request.request_time())
 
 
+def parse_locators_endpoints(endpoint):
+    host, _, port = endpoint.rpartition(":")
+    if host and port:
+        try:
+            return (host, int(port))
+        except ValueError:
+            pass
+
+    raise Exception("invalid endpoint: %s" % endpoint)
+
+
 class CocaineProxy(HTTPServer):
-    def __init__(self, port=8080, cache=DEFAULT_SERVICE_CACHE_COUNT, **config):
+    def __init__(self, port=8080, locators=("localhost:10053",),
+                 cache=DEFAULT_SERVICE_CACHE_COUNT, **config):
         super(CocaineProxy, self).__init__(self.handle_request, **config)
         self.port = port
         self.serviceCacheCount = cache
         self.spoolSize = int(self.serviceCacheCount * 1.5)
         self.refreshPeriod = config.get("refresh_timeout", DEFAULT_REFRESH_PERIOD)
         self.timeouts = config.get("timeouts", {})
+        self.locator_endpoints = map(parse_locators_endpoints, locators)
+        # it's initialized after start
+        # to avoid an io_loop creation before fork
+        self.locator = None
 
         # active applications
         self.cache = collections.defaultdict(list)
 
         self.logger = logging.getLogger()
         self.tracking_logger = logging.getLogger("proxy.tracking")
+        self.logger.info("locators %s", str(self.locator_endpoints))
 
     def get_timeout(self, name):
         return self.timeouts.get(name, DEFAULT_TIMEOUT)
@@ -240,7 +258,7 @@ class CocaineProxy(HTTPServer):
         # cache isn't full for the current application
         if len(self.cache[name]) < self.spoolSize:
             try:
-                app = Service(name)
+                app = Service(name, locator=self.locator)
                 logger.info("%d: creating an instance of %s", id(app), name)
                 self.cache[name].append(app)
                 yield app.connect()
@@ -264,6 +282,7 @@ class CocaineProxy(HTTPServer):
                              self.port, count if count >= 1 else process.cpu_count())
             self.bind(self.port)
             self.start(count)
+            self.locator = Locator(endpoints=self.locator_endpoints)
             self._io_loop = tornado.ioloop.IOLoop.current()
             self._io_loop.start()
         except KeyboardInterrupt:
@@ -304,12 +323,16 @@ def main():
 
     opts = options.OptionParser()
 
-    opts.define("port", default=8080, type=int, help="listening port number")
+    opts.define("locators", default=["localhost:10053"],
+                type=str, multiple=True, help="comma-separated endpoints of locators")
     opts.define("cache", default=DEFAULT_SERVICE_CACHE_COUNT,
                 type=int, help="count of instances per service")
-    opts.define("count", default=1, type=int, help="count of tornado processes")
     opts.define("config", help="path to configuration file", type=str,
                 callback=lambda path: opts.parse_config_file(path, final=False))
+    opts.define("count", default=1, type=int, help="count of tornado processes")
+    opts.define("port", default=8080, type=int, help="listening port number")
+
+    # various logging options
     opts.define("logging", default="info",
                 help=("Set the Python log level. If 'none', tornado won't touch the "
                       "logging configuration."),
@@ -323,8 +346,7 @@ def main():
     opts.parse_command_line()
     enable_logging(opts)
 
-    proxy = CocaineProxy(port=opts.port,
-                         cache=opts.cache)
+    proxy = CocaineProxy(locators=opts.locators, port=opts.port, cache=opts.cache)
     proxy.run(opts.count)
 
 
