@@ -133,7 +133,7 @@ class Call(object):
 
     def get_service(self):
         try:
-            service = Service(self.serviceName, host=self.host, port=self.port)
+            service = Service(self.serviceName, endpoints=[(self.host, self.port)])
             return service
         except Exception as err:
             raise ServiceCallError(self.serviceName, err)

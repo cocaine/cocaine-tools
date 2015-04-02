@@ -67,7 +67,7 @@ if __name__ == '__main__':
             if apps:
                 print(' '.join(apps))
 
-        storage = Service('storage', host=config['host'], port=int(config['port']))
+        storage = Service('storage', endpoints=[(config['host'], int(config['port']))])
         locateApps().get(timeout=ADEQUATE_TIMEOUT)
     except Exception as err:
         # Hidden log feature :)

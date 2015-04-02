@@ -51,6 +51,7 @@ class Global(object):
     def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT, color=False, timeout=False, debug=False):
         self.host = host
         self.port = port
+        self.endpoints = [(self.host, self.port)]
         self.timeout = timeout
         self.executor = Executor(timeout)
         self._locator = None
@@ -89,7 +90,7 @@ class Global(object):
             return self._locator
         else:
             try:
-                locator = Locator(self.host, self.port)
+                locator = Locator(endpoints=self.endpoints)
                 self._locator = locator
                 return locator
             except Exception as err:
@@ -97,7 +98,7 @@ class Global(object):
 
     def getService(self, name):
         try:
-            service = Service(name, host=self.host, port=self.port)
+            service = Service(name, endpoints=self.endpoints)
             return service
         except Exception as err:
             raise ToolsError(err)
