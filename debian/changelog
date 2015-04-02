@@ -1,3 +1,9 @@
+cocaine-tools (0.12.0.0-rc20) unstable; urgency=low
+
+  * [Proxy] Update to a new Service signature
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 31 Mar 2015 15:31:50 +0300
+
 cocaine-tools (0.12.0.0-rc19) unstable; urgency=low
 
   * [Proxy] Fix filelogger: attach handler to a logger
