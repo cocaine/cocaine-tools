@@ -84,6 +84,7 @@ def fill_response_in(request, code, status, message, headers=None):
     headers = headers or httputil.HTTPHeaders({"Content-Length": str(len(message))})
     if "Content-Length" not in headers:
         headers.add("Content-Length", str(len(message)))
+    headers.add("X-Powered-By", "Cocaine")
 
     request.connection.write_headers(
         # start_line
@@ -214,6 +215,7 @@ class CocaineProxy(HTTPServer):
 
     @gen.coroutine
     def process(self, request, name, app, event, data):
+        # ToDo: support chunked encoding
         headers = {}
         body_parts = []
         timeout = self.get_timeout(name)
