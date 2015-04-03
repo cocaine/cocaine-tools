@@ -84,11 +84,11 @@ class Copy(Specific):
     def __init__(self, storage, name, copyname):
         super(Copy, self).__init__(storage, name)
         self.copyname = copyname
+        if self.name == self.copyname:
+            raise ToolsError("unable to copy an instance to itself")
 
     @coroutine
     def execute(self):
-        if self.name == self.copyname:
-            raise ToolsError("unable to copy an instance to itself")
         log.info('Rename "%s" to "%s"', self.name, self.copyname)
         oldprofile = yield View(self.storage, self.name).execute()
         yield Upload(self.storage, self.copyname, oldprofile).execute()
@@ -125,15 +125,14 @@ class AddApplication(Specific):
 
         runlists = yield List(self.storage).execute()
         if self.force and self.name not in runlists:
-            log.debug('Runlist does not exist. Creating new one ...')
+            log.debug('Runlist does not exist. Create a new one ...')
             yield Create(self.storage, self.name).execute()
             result['status'] = 'created'
 
         runlist = yield View(self.storage, name=self.name).execute()
-        log.debug('Found runlist: {0}'.format(runlist))
+        log.debug('Found runlist: %s', runlist)
         runlist[self.app] = self.profile
-        runlistUploadAction = Upload(self.storage, name=self.name, runlist=runlist)
-        yield runlistUploadAction.execute()
+        yield Upload(self.storage, name=self.name, runlist=runlist).execute()
         raise gen.Return(result)
 
 
@@ -154,14 +153,13 @@ class RemoveApplication(Specific):
 
         runlists = yield List(self.storage).execute()
         if self.name not in runlists:
-            log.debug('Runlist does not exist.')
-            raise ValueError('Runlist {0} is missing.'.format(self.name))
+            log.debug('Runlist does not exist')
+            raise ToolsError('Runlist %s is missing', self.name)
 
         runlist = yield View(self.storage, name=self.name).execute()
-        log.debug('Found runlist: {0}'.format(runlist))
+        log.debug('Found runlist: %s', runlist)
         if runlist.pop(self.app, None) is None:
             result['status'] = 'the application named {0} is not in runlist'.format(self.app)
         else:
-            runlistUploadAction = Upload(self.storage, name=self.name, runlist=runlist)
-            yield runlistUploadAction.execute()
+            yield Upload(self.storage, name=self.name, runlist=runlist).execute()
         raise gen.Return(result)

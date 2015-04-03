@@ -33,6 +33,7 @@ from cocaine.tools.actions import crashlog
 from cocaine.tools.actions import group
 from cocaine.tools.actions import profile
 from cocaine.tools.actions import runlist
+from cocaine.tools.error import Error as ToolsError
 from cocaine.tools.helpers._unix import AsyncUnixHTTPClient
 
 from nose import tools
@@ -70,6 +71,15 @@ def test_isJsonValid():
     invalid = ":dsdll"
     assert actions.isJsonValid(valid)
     assert not actions.isJsonValid(invalid)
+
+
+def test_locate():
+    locator = Locator()
+    res = io.run_sync(common.Locate(locator, "locator").execute, timeout=2)
+    assert isinstance(res, dict)
+    assert "api" in res
+    assert "version" in res
+    assert "endpoints" in res
 
 
 class TestAppActions(object):
@@ -126,12 +136,19 @@ class TestProfileActions(object):
 
     def test_profile(self):
         name = "dummy_profile_name %d" % time.time()
+        copyname = "copy_%s" % name
+        renamedname = "move_%s" % name
         dummy_profile = {"aaa": [1, 2, 3]}
         io.run_sync(profile.Upload(self.storage, name, dummy_profile).execute, timeout=2)
+
+        io.run_sync(profile.Copy(self.storage, name, copyname).execute, timeout=2)
+        io.run_sync(profile.Rename(self.storage, copyname, renamedname).execute, timeout=2)
 
         listing = io.run_sync(profile.List(self.storage).execute, timeout=2)
         assert isinstance(listing, (list, tuple)), listing
         assert name in listing
+        assert copyname not in listing
+        assert renamedname in listing
 
         pr = io.run_sync(profile.View(self.storage, name).execute, timeout=2)
         assert pr == dummy_profile
@@ -141,6 +158,16 @@ class TestProfileActions(object):
             io.run_sync(profile.View(self.storage, name).execute, timeout=2)
         except ServiceError:
             pass
+        else:
+            raise AssertionError("an exception is expected")
+
+    @tools.raises(ValueError)
+    def test_upload_invalid_value(self):
+        profile.Upload(self.storage, "dummy", None)
+
+    @tools.raises(ToolsError)
+    def test_copy_value_error(self):
+        profile.Copy(None, "the_same", "the_same")
 
 
 class TestRunlistActions(object):
@@ -149,14 +176,21 @@ class TestRunlistActions(object):
 
     def test_runlist(self):
         name = "dummy_runlist %d" % time.time()
+        copyname = "copy_%s" % name
+        renamedname = "move_%s" % name
         app_name = "test_app"
         profile_name = "test_profile"
         dummy_runlist = {app_name: profile_name}
         io.run_sync(runlist.Upload(self.storage, name, dummy_runlist).execute, timeout=2)
 
+        io.run_sync(runlist.Copy(self.storage, name, copyname).execute, timeout=2)
+        io.run_sync(runlist.Rename(self.storage, copyname, renamedname).execute, timeout=2)
+
         listing = io.run_sync(runlist.List(self.storage).execute, timeout=2)
         assert isinstance(listing, (list, tuple)), listing
         assert name in listing
+        assert copyname not in listing
+        assert renamedname in listing
 
         res = io.run_sync(runlist.View(self.storage, name).execute, timeout=2)
         assert isinstance(res, dict), res
@@ -172,13 +206,47 @@ class TestRunlistActions(object):
         res = io.run_sync(runlist.View(self.storage, name).execute, timeout=2)
         assert res == {}, res
 
-        res = io.run_sync(runlist.AddApplication(self.storage, name, app_name, profile_name, force=True).execute, timeout=2)
+        res = io.run_sync(runlist.AddApplication(self.storage, name, app_name, profile_name, force=False).execute, timeout=2)
         assert isinstance(res, dict), res
         assert "added" in res, res
         assert app_name == res["added"]["app"] and profile_name == res["added"]["profile"], res
 
+        res = io.run_sync(runlist.AddApplication(self.storage, "ZZ" + name, app_name, profile_name, force=True).execute, timeout=2)
+        assert isinstance(res, dict), res
+        assert "added" in res, res
+        assert app_name == res["added"]["app"] and profile_name == res["added"]["profile"], res
+
+        missing_name = "ZZZZ" + app_name
+        res = io.run_sync(runlist.RemoveApplication(self.storage, name, missing_name).execute, timeout=2)
+        assert res['status'] == "the application named %s is not in runlist" % missing_name
+
         res = io.run_sync(runlist.RemoveApplication(self.storage, name, app_name).execute, timeout=2)
         assert isinstance(res, dict), res
+
+    @tools.raises(ToolsError)
+    def test_copy_value_error(self):
+        runlist.Copy(None, "the_same", "the_same")
+
+    @tools.raises(ValueError)
+    def test_upload_value_error(self):
+        runlist.Upload(None, "the_same", None)
+
+    @tools.raises(ValueError)
+    def test_add_application_no_appname(self):
+        runlist.AddApplication(None, "dummy_name", "", None, force=True)
+
+    @tools.raises(ValueError)
+    def test_add_application_no_profile(self):
+        runlist.AddApplication(None, "dummy_name", "dummy", None, force=True)
+
+    @tools.raises(ValueError)
+    def test_remove_application_no_appname(self):
+        runlist.RemoveApplication(None, "dummy_name", "")
+
+    @tools.raises(ToolsError)
+    def test_remove_application_no_runlist(self):
+        action = runlist.RemoveApplication(self.storage, "dummy_random_name", "appname")
+        io.run_sync(action.execute, timeout=2)
 
 
 class TestGroupActions(object):

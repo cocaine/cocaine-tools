@@ -19,11 +19,14 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import json
 import os
 import tarfile
 
 from cocaine.tools.actions import readArchive
 from cocaine.tools.actions import CocaineConfigReader
+
+from cocaine.tools.helpers import JSONUnpacker
 
 from nose import tools
 
@@ -37,3 +40,16 @@ def test_read_archive():
 def test_config_reader():
     CocaineConfigReader.load(os.path.join(os.path.abspath(os.path.dirname(__file__)),
                              "fixtures/simple_app/manifest.json"))
+
+
+def test_json():
+    j = JSONUnpacker()
+    data = {"A": 1}
+    js = json.dumps(data)
+    j.feed(js)
+    j.feed(js)
+    j.feed("A")
+    for i in j:
+        assert i == data
+
+    assert j.buff == "A"
