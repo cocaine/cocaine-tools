@@ -19,17 +19,12 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import ast
-import re
-
 from tornado import gen
 
 
-from cocaine.exceptions import ServiceError
 from cocaine.decorators import coroutine
 from cocaine.services import Service
 from cocaine.tools.actions import profile
-from cocaine.tools.error import ServiceCallError
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
