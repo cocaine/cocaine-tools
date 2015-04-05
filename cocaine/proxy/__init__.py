@@ -24,7 +24,6 @@ import pwd
 import time
 import os
 import sys
-import json
 from signal import SIGTERM
 
 
