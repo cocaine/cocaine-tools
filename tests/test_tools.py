@@ -20,6 +20,7 @@
 #
 
 import logging
+import json
 import os
 import time
 
@@ -33,7 +34,7 @@ from cocaine.tools.actions import crashlog
 from cocaine.tools.actions import group
 from cocaine.tools.actions import profile
 from cocaine.tools.actions import runlist
-from cocaine.tools.error import Error as ToolsError
+from cocaine.tools.error import ToolsError
 from cocaine.tools.helpers._unix import AsyncUnixHTTPClient
 
 from nose import tools
@@ -88,6 +89,56 @@ class TestAppActions(object):
         self.node = Service("node")
         self.locator = Locator()
 
+    @tools.raises(ValueError)
+    def test_upload_no_appname(self):
+        app.Upload(self.storage, "", "dummy_manifest", None, True)
+
+    @tools.raises(ValueError)
+    def test_upload_no_manifest(self):
+        app.Upload(self.storage, "appname", "", None, True)
+
+    @tools.raises(ValueError)
+    def test_upload_no_manifest_no_package(self):
+        app.Upload(self.storage, "appname", "dummy_manifest", None, False)
+
+    @tools.raises(ValueError)
+    def test_remove_no_appname(self):
+        app.Remove(self.storage, "")
+
+    @tools.raises(ToolsError)
+    def test_remove_no_such_app(self):
+        io.run_sync(app.Remove(self.storage, "no_such_app_name").execute, timeout=2)
+
+    @tools.raises(ValueError)
+    def test_start_no_name(self):
+        app.Start(self.node, "", "dummy_profile_name")
+
+    @tools.raises(ValueError)
+    def test_start_no_profile(self):
+        app.Start(self.node, "dummy_app_name", "")
+
+    @tools.raises(ValueError)
+    def test_stop_no_name(self):
+        app.Stop(self.node, "")
+
+    @tools.raises(ValueError)
+    def test_restart_no_name(self):
+        app.Restart(self.node, self.locator, "", "dummy_profile_name", self.storage)
+
+    @tools.raises(ToolsError)
+    def test_restart_no_such_app(self):
+        io.run_sync(app.Restart(self.node, self.locator,
+                                "no_such_app_name", None, self.storage).execute, timeout=2)
+
+    @tools.raises(ToolsError)
+    def test_check_no_such_app(self):
+        io.run_sync(app.Check(self.node, self.storage,
+                              self.locator, "no_such_app_name").execute, timeout=2)
+
+    @tools.raises(ValueError)
+    def test_check_no_appname(self):
+        app.Check(self.node, self.storage, self.locator, "")
+
     def test_app_a_upload(self):
         name = "random_name"
         manifest = "{\"slave\": \"__init__.py\"}"
@@ -97,6 +148,8 @@ class TestAppActions(object):
                              manifest, path).execute, timeout=2)
 
         assert result == "Uploaded successfully", result
+        result = io.run_sync(app.View(self.storage, name).execute, timeout=2)
+        assert result == json.loads(manifest), result
 
     def test_app_e_list(self):
         listing = io.run_sync(app.List(self.storage).execute, timeout=2)
@@ -109,10 +162,18 @@ class TestAppActions(object):
                              "random_profile").execute, timeout=2)
         assert "application `random_name` has been started with profile `random_profile`" == result, result
 
+        result = io.run_sync(app.Check(self.node, self.storage, self.locator, name).execute, timeout=2)
+        assert result['state'] == "running"
+
     def test_app_d_stop(self):
         name = "random_name"
         result = io.run_sync(app.Stop(self.node, name).execute, timeout=2)
         assert "application `random_name` has been stoped" == result, result
+
+    @tools.raises(ToolsError)
+    def test_app_d_stop_after_check(self):
+        name = "random_name"
+        io.run_sync(app.Check(self.node, self.storage, self.locator, name).execute, timeout=2)
 
     def test_app_c_restart(self):
         name = "random_name"
@@ -127,6 +188,10 @@ class TestAppActions(object):
         n = common.NodeInfo(self.node, self.locator, self.storage)
         result = io.run_sync(n.execute, timeout=2)
         assert isinstance(result, dict) and "apps" in result, result
+
+    def test_app_f_remove(self):
+        result = io.run_sync(app.Remove(self.storage, "random_name").execute, timeout=2)
+        assert result == "Removed successfully"
 
 
 class TestProfileActions(object):
@@ -256,14 +321,21 @@ class TestGroupActions(object):
 
     def test_group(self):
         name = "dummy_group %d" % time.time()
+        copyname = "copy_%s" % name
+        renamedname = "move_%s" % name
         app_name = "test_app"
         weight = 100
         dummy_group = {app_name: weight}
         io.run_sync(group.Create(self.storage, name, dummy_group).execute, timeout=2)
 
+        io.run_sync(group.Copy(self.storage, name, copyname).execute, timeout=2)
+        io.run_sync(group.Rename(self.storage, copyname, renamedname).execute, timeout=2)
+
         listing = io.run_sync(group.List(self.storage).execute, timeout=2)
         assert isinstance(listing, (list, tuple)), listing
         assert name in listing
+        assert copyname not in listing
+        assert renamedname in listing
 
         res = io.run_sync(group.View(self.storage, name).execute, timeout=2)
         assert isinstance(res, dict), res
@@ -285,8 +357,19 @@ class TestGroupActions(object):
         res = io.run_sync(group.RemoveApplication(self.storage, name, app_name).execute, timeout=2)
         assert res is None, res
 
+        io.run_sync(group.Refresh(self.locator, self.storage, name).execute, timeout=2)
+
     def test_refresh(self):
-        io.run_sync(group.Refresh(self.locator, self.storage, "").execute, timeout=2)
+        io.run_sync(group.Refresh(self.locator, self.storage, None).execute, timeout=2)
+
+    @tools.raises(ValueError)
+    def test_validation_in_create(self):
+        bad_content = {"A": 1.0}
+        io.run_sync(group.Create(self.storage, "bad_group", bad_content).execute, timeout=2)
+
+    @tools.raises(ToolsError)
+    def test_group_rename_itself(self):
+        group.Copy(self.storage, "itself", "itself")
 
 
 class TestCrashlogsAction(object):

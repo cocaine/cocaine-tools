@@ -29,7 +29,7 @@ from opster import Dispatcher
 from cocaine.services import Locator, Service
 from cocaine.tools import ColoredFormatter, interactiveEmit
 from cocaine.tools.cli import Executor
-from cocaine.tools.error import Error as ToolsError
+from cocaine.tools.error import ToolsError
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 

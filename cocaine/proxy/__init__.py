@@ -28,7 +28,7 @@ import json
 from signal import SIGTERM
 
 
-class Daemon(object):
+class Daemon(object):  # pragma: no cover
     def __init__(self, pidfile, userid=None, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
         self.stdin = stdin
         self.stdout = stdout
@@ -155,16 +155,3 @@ class Daemon(object):
 
     def run(self, *args):
         pass
-
-
-def load_config(path):
-    with open(path, 'r') as cfg:
-        return json.load(cfg)
-
-
-def coroutine(func):
-    def start(*args, **kwargs):
-        cr = func(*args, **kwargs)
-        cr.next()
-        return cr
-    return start

@@ -53,7 +53,7 @@ class ColoredFormatter(logging.Formatter):
         return logging.Formatter.format(self, record)
 
 
-def interactiveEmit(self, record):
+def interactiveEmit(self, record):  # pragma: no cover
     # Monkey patch Emit function to avoid new lines between records
     try:
         if str(record.msg).endswith('... '):

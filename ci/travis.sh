@@ -5,7 +5,7 @@ install_utility () {
 }
 
 build_cocaine () {
-  git clone --recursive https://github.com/cocaine/cocaine-core.git -b master
+  git clone --recursive https://github.com/cocaine/cocaine-core.git -b v0.12
   cd cocaine-core
   # Travis has Cgroups unmounted
   echo "DEB_CMAKE_EXTRA_FLAGS=-DCOCAINE_ALLOW_CGROUPS=OFF" >> debian/rules

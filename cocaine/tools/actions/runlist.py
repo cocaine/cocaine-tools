@@ -25,7 +25,7 @@ from tornado import gen
 
 from cocaine.decorators import coroutine
 
-from cocaine.tools.error import Error as ToolsError
+from cocaine.tools.error import ToolsError
 from cocaine.tools import actions, log
 from cocaine.tools.actions import CocaineConfigReader
 from cocaine.tools.printer import printer

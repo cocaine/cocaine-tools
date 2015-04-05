@@ -36,7 +36,7 @@ from cocaine.exceptions import ServiceError
 from cocaine.tools import actions, log
 from cocaine.tools.actions import common, readArchive, CocaineConfigReader, docker
 from cocaine.tools.actions.common import NodeInfo
-from cocaine.tools.error import Error as ToolsError
+from cocaine.tools.error import ToolsError
 from cocaine.tools.installer import PythonModuleInstaller, ModuleInstallError, _locateFile
 from cocaine.tools.printer import printer
 from cocaine.tools.repository import GitRepositoryDownloader, RepositoryDownloadError
@@ -54,9 +54,9 @@ venvFactory = {
 }
 
 
-class Specific(actions.Specific):
-    def __init__(self, storage, name):
-        super(Specific, self).__init__(storage, 'application', name)
+# class Specific(actions.Specific):
+#     def __init__(self, storage, name):
+#         super(Specific, self).__init__(storage, 'application', name)
 
 
 class List(actions.List):
@@ -135,7 +135,7 @@ class Remove(actions.Storage):
                 channel = yield self.storage.remove('apps', self.name)
                 yield channel.rx.get()
             except ServiceError:
-                log.info('Unable to delete an application source from storage.',
+                log.info('Unable to delete an application source from storage. ',
                          'It\'s okay, if the application is a Docker image')
 
         raise gen.Return("Removed successfully")
@@ -195,7 +195,7 @@ class Restart(common.Node):
             yield Start(self.node, name=self.name, profile=profile).execute()
         except KeyError:
             raise ToolsError('Application "{0}" is not running and profile not specified'.format(self.name))
-        except Exception as err:
+        except ServiceError as err:
             raise ToolsError('Unknown error - {0}'.format(err))
 
         raise gen.Return("application `%s` has been restarted with profile `%s`" % (self.name,
@@ -225,6 +225,7 @@ class Check(common.Node):
             log.info(info['state'])
         except (LocatorResolveError, ServiceError):
             raise ToolsError('stopped')
+        raise gen.Return(info)
 
 
 class DockerUpload(actions.Storage):

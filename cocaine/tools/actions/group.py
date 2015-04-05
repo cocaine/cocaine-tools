@@ -23,7 +23,7 @@ import msgpack
 
 from cocaine.decorators import coroutine
 
-from cocaine.tools.error import Error as ToolsError
+from cocaine.tools.error import ToolsError
 from cocaine.tools import actions
 from cocaine.tools.actions import CocaineConfigReader, log
 from cocaine.tools.tags import GROUPS_TAGS
@@ -82,11 +82,11 @@ class Copy(Specific):
     def __init__(self, storage, name, copyname):
         super(Copy, self).__init__(storage, name)
         self.copyname = copyname
+        if self.name == self.copyname:
+            raise ToolsError("unable to copy an instance to itself")
 
     @coroutine
     def execute(self):
-        if self.name == self.copyname:
-            raise ToolsError("unable to copy an instance to itself")
         log.info('Rename "%s" to "%s"', self.name, self.copyname)
         oldprofile = yield View(self.storage, self.name).execute()
         yield Create(self.storage, self.copyname, oldprofile).execute()

@@ -22,7 +22,7 @@
 from cocaine.decorators import coroutine
 from cocaine.exceptions import ServiceError
 
-from cocaine.tools.error import Error as ToolsError
+from cocaine.tools.error import ToolsError
 from cocaine.tools import actions
 from cocaine.tools.actions import CocaineConfigReader, log
 from cocaine.tools.printer import printer
