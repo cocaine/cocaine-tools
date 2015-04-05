@@ -23,8 +23,10 @@ from collections import Iterable
 
 try:
     import simplejson as json
+    from simplejson import JSONDecodeError
 except ImportError:  # pragma: no cover
     import json
+    JSONDecodeError = ValueError
 
 
 class JSONUnpacker(Iterable):
@@ -43,5 +45,5 @@ class JSONUnpacker(Iterable):
             res, index = js.raw_decode(self.buff)
             self.buff = self.buff[index:]
             return res
-        except json.JSONDecodeError:
+        except JSONDecodeError:
             raise StopIteration
