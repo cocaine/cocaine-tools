@@ -27,6 +27,7 @@ Package: cocaine-tornado-proxy
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
  cocaine-framework-python (>=0.12),
+ cocaine-tools (=${Source-Version}),
  python (>= 2.6),
 XB-Python-Version: >= 2.6
 Description: Tornado-based cocaine HTTP proxy
