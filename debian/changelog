@@ -1,3 +1,9 @@
+cocaine-tools (0.12.0.0-rc22) unstable; urgency=low
+
+  * [Proxy] Reconnection retry to an application
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 09 Apr 2015 14:43:26 +0300
+
 cocaine-tools (0.12.0.0-rc21) unstable; urgency=low
 
   * [Proxy] Update deps
