@@ -43,6 +43,7 @@ from toro import Timeout
 from cocaine.services import Service
 from cocaine.services import Locator
 from cocaine.exceptions import ServiceError
+from cocaine.exceptions import DisconnectionError
 from cocaine.detail.service import EmptyResponse
 
 
@@ -219,41 +220,64 @@ class CocaineProxy(HTTPServer):
         headers = {}
         body_parts = []
         timeout = self.get_timeout(name)
-        try:
-            channel = yield app.enqueue(event)
-            yield channel.tx.write(msgpack.packb(data))
-            code_and_headers = yield channel.rx.get(timeout=timeout)
-            # the first chunk is packed code and headers
-            code, raw_headers = msgpack.unpackb(code_and_headers)
-            headers = tornado.httputil.HTTPHeaders(raw_headers)
-            while True:
-                body = yield channel.rx.get(timeout=timeout)
-                if not isinstance(body, EmptyResponse):
-                    body_parts.append(msgpack.unpackb(body))
-                else:
-                    break
-        except Timeout as err:
-            request.logger.error("%d: %s", id(app), err)
-            message = "Application `%s` error: %s" % (name, str(err))
-            fill_response_in(request, httplib.GATEWAY_TIMEOUT,
-                             httplib.responses[httplib.GATEWAY_TIMEOUT], message)
+        # allow to reconnect this amount of times.
+        attemps = 2  # make it configurable
+        while attemps > 0:
+            attemps = attemps - 1
+            try:
+                channel = yield app.enqueue(event)
+                yield channel.tx.write(msgpack.packb(data))
+                code_and_headers = yield channel.rx.get(timeout=timeout)
+                # the first chunk is packed code and headers
+                code, raw_headers = msgpack.unpackb(code_and_headers)
+                headers = tornado.httputil.HTTPHeaders(raw_headers)
+                while True:
+                    body = yield channel.rx.get(timeout=timeout)
+                    if not isinstance(body, EmptyResponse):
+                        body_parts.append(msgpack.unpackb(body))
+                    else:
+                        break
+            except Timeout as err:
+                request.logger.error("%d: %s", id(app), err)
+                message = "Application `%s` error: %s" % (name, str(err))
+                fill_response_in(request, httplib.GATEWAY_TIMEOUT,
+                                 httplib.responses[httplib.GATEWAY_TIMEOUT], message)
 
-        except ServiceError as err:
-            request.logger.error("%d: %s", id(app), err)
-            message = "Application `%s` error: %s" % (name, str(err))
-            fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
-                             httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
+            except DisconnectionError as err:
+                request.logger.error("%d: %s", id(app), err)
+                # Seems on_close callback is not called in case of connecting through IPVS
+                # We detect disconnection here to avoid unnecessary errors.
+                # Try to reconnect here and give the request a go
+                try:
+                    yield app.connect()
+                except Exception as err:
+                    if attemps > 0:
+                        # there are still some attemps to reconnect
+                        continue
+                    else:
+                        request.logger.error("%d: %s", id(app), err)
+                        message = "Application `%s` error: %s" % (name, str(err))
+                        fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
+                                         httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
+                        return
 
-        except Exception as err:
-            request.logger.error("%d: %s", id(app), err)
-            message = "Unknown `%s` error: %s" % (name, str(err))
-            fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
-                             httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
-        else:
-            message = ''.join(body_parts)
-            fill_response_in(request, code,
-                             httplib.responses.get(code, httplib.OK),
-                             message, headers)
+            except ServiceError as err:
+                request.logger.error("%d: %s", id(app), err)
+                message = "Application `%s` error: %s" % (name, str(err))
+                fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
+                                 httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
+
+            except Exception as err:
+                request.logger.error("%d: %s", id(app), err)
+                message = "Unknown `%s` error: %s" % (name, str(err))
+                fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
+                                 httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
+            else:
+                message = ''.join(body_parts)
+                fill_response_in(request, code,
+                                 httplib.responses.get(code, httplib.OK),
+                                 message, headers)
+            return
 
     @gen.coroutine
     def get_service(self, name, logger):
