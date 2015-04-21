@@ -31,6 +31,7 @@ import hashlib
 import logging
 import random
 import re
+import time
 
 import msgpack
 import tornado
@@ -56,20 +57,24 @@ DEFAULT_TIMEOUT = 5
 
 class ContextAdapter(logging.LoggerAdapter):
     def process(self, msg, kwargs):
-        return '%s %s' % (self.extra["id"], msg), kwargs
+        return '%s\t%s' % (self.extra["id"], msg), kwargs
 
 
 def generate_request_id(request):
-    m = hashlib.md5()
-    m.update("%s" % id(request))
-    return m.hexdigest()[:15]
+    data = "%d:%f" % (id(request), time.time())
+    return hashlib.md5(data).hexdigest()
+
+
+def get_request_id(request_id_header, request):
+    return request.headers.get(request_id_header) or generate_request_id(request)
 
 
 def context(func):
     def wrapper(self, request):
-        adaptor = ContextAdapter(self.tracking_logger, {"id": generate_request_id(request)})
+        trace_id = self.get_request_id(request)[:16]
+        adaptor = ContextAdapter(self.tracking_logger, {"id": trace_id})
         request.logger = adaptor
-        request.logger.info("%s %s %s", request.host, request.remote_ip, request.uri)
+        request.logger.info("start request: %s %s %s", request.host, request.remote_ip, request.uri)
         return func(self, request)
     return wrapper
 
@@ -95,7 +100,7 @@ def fill_response_in(request, code, status, message, headers=None):
         # data
         message)
     request.connection.finish()
-    request.logger.info("%s %d %.2fms", status, code, 1000.0 * request.request_time())
+    request.logger.info("finish request: %d %s %.2fms", code, status, 1000.0 * request.request_time())
 
 
 def parse_locators_endpoints(endpoint):
@@ -111,7 +116,7 @@ def parse_locators_endpoints(endpoint):
 
 class CocaineProxy(HTTPServer):
     def __init__(self, port=8080, locators=("localhost:10053",),
-                 cache=DEFAULT_SERVICE_CACHE_COUNT, **config):
+                 cache=DEFAULT_SERVICE_CACHE_COUNT, request_id_header="", **config):
         super(CocaineProxy, self).__init__(self.handle_request, **config)
         self.port = port
         self.serviceCacheCount = cache
@@ -126,9 +131,14 @@ class CocaineProxy(HTTPServer):
         # active applications
         self.cache = collections.defaultdict(list)
 
-        self.logger = logging.getLogger()
+        self.logger = ContextAdapter(logging.getLogger(), {"id": "0" * 16})
         self.tracking_logger = logging.getLogger("proxy.tracking")
         self.logger.info("locators %s", str(self.locator_endpoints))
+
+        if request_id_header:
+            self.get_request_id = functools.partial(get_request_id, request_id_header)
+        else:
+            self.get_request_id = generate_request_id
 
     def get_timeout(self, name):
         return self.timeouts.get(name, DEFAULT_TIMEOUT)
@@ -328,8 +338,8 @@ def enable_logging(options):
 
     logger = logging.getLogger()
     logger.setLevel(getattr(logging, options.logging.upper()))
-    fmt = logging.Formatter("%(levelname)-5.5s %(asctime)s %(module)5.5s:%(lineno)-3d %(message)s",
-                            datefmt="%d-%m-%Y %H:%M:%S %z")
+    fmt = logging.Formatter("[%(asctime)s]\t%(levelname)s\t%(message)s",
+                            datefmt="%d/%b/%Y:%H:%M:%S %z")
 
     if options.log_file_prefix:
         handler = logging.handlers.WatchedFileHandler(
@@ -357,6 +367,7 @@ def main():
                 callback=lambda path: opts.parse_config_file(path, final=False))
     opts.define("count", default=1, type=int, help="count of tornado processes")
     opts.define("port", default=8080, type=int, help="listening port number")
+    opts.define("request_header", default="X-Request-Id", type=str, help="header used as a trace id")
 
     # various logging options
     opts.define("logging", default="info",
@@ -372,7 +383,8 @@ def main():
     opts.parse_command_line()
     enable_logging(opts)
 
-    proxy = CocaineProxy(locators=opts.locators, port=opts.port, cache=opts.cache)
+    proxy = CocaineProxy(locators=opts.locators, port=opts.port,
+                         cache=opts.cache, request_id_header=opts.request_header)
     proxy.run(opts.count)
 
 
