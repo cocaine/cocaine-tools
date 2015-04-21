@@ -1,3 +1,9 @@
+cocaine-tools (0.12.0.0-rc23) unstable; urgency=low
+
+  * [Proxy] Use request_id from headers
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 21 Apr 2015 17:41:00 +0300
+
 cocaine-tools (0.12.0.0-rc22) unstable; urgency=low
 
   * [Proxy] Reconnection retry to an application
