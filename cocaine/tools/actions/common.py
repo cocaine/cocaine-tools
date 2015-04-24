@@ -79,7 +79,7 @@ class NodeInfo(Node):
         for app_ in apps:
             info = ''
             try:
-                app = Service(app_)
+                app = Service(app_, locator=self.locator)
                 channel = yield app.info()
                 info = yield channel.rx.get()
                 if all([self._expand, self._storage is not None, 'profile' in info]):
