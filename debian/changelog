@@ -1,3 +1,9 @@
+cocaine-tools (0.12.0.0-rc24) unstable; urgency=low
+
+  * [Info] Use the proper locator to get Info from a remote host
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Fri, 24 Apr 2015 13:42:42 +0300
+
 cocaine-tools (0.12.0.0-rc23) unstable; urgency=low
 
   * [Proxy] Use request_id from headers
