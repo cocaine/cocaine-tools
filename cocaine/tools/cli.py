@@ -55,7 +55,7 @@ class ToolHandler(object):
             log.error(err)
             exit(errno.EINVAL)
         except Exception as err:
-            log.error(err)
+            log.exception(err)
             exit(128)
 
     def _processResult(self, result):

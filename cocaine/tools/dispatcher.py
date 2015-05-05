@@ -64,7 +64,7 @@ class Global(object):
         message = '%(message)s'
         level = logging.INFO
         if debug != 'disable':
-            message = '[%(asctime)s] %(name)s: %(levelname)-8s: %(message)s'
+            message = '[%(asctime)s] %(module)s %(name)s:%(lineno)d %(levelname)-8s: %(message)s'
             level = logging.DEBUG
 
         ch = logging.StreamHandler()
