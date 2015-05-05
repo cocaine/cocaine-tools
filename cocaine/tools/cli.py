@@ -120,6 +120,7 @@ class CallActionCli(ToolHandler):
 NG_ACTIONS = {
     'info': JsonToolHandler(common.NodeInfo),
     'locate': JsonToolHandler(common.Locate),
+    'cluster': JsonToolHandler(common.Cluster),
 
     'app:check': ToolHandler(app.Check),
     'app:list': JsonToolHandler(app.List),

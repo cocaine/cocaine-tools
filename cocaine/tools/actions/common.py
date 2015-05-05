@@ -55,6 +55,17 @@ class Locate(object):
         raise gen.Return(result)
 
 
+class Cluster(object):
+    def __init__(self, locator):
+        self.locator = locator
+
+    @coroutine
+    def execute(self):
+        ch = yield self.locator.cluster()
+        result = yield ch.rx.get()
+        raise gen.Return(result)
+
+
 class NodeInfo(Node):
     def __init__(self, node, locator, storage, name=None, expand=False):
         super(NodeInfo, self).__init__(node)

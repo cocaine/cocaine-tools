@@ -144,6 +144,14 @@ def locate(options,
     })
 
 
+@d.command(name='cluster')
+def cluster(options):
+    """Show cluster info"""
+    options.executor.executeAction('cluster', **{
+        'locator': options.getService('locator')
+    })
+
+
 @d.command(name='info', usage='[--name=NAME]')
 def info(options,
          name=('n', '', 'application name'),
