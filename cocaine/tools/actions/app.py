@@ -186,8 +186,14 @@ class Restart(common.Node):
     @coroutine
     def execute(self):
         try:
-            info = yield NodeInfo(self.node, self.locator, self.storage).execute()
-            profile = self.profile or info['apps'][self.name]['profile']
+            if self.profile:
+                profile = self.profile
+            else:
+                info = yield NodeInfo(self.node, self.locator, self.storage).execute()
+                app_info = info['apps'][self.name]
+                if not isinstance(app_info, dict):
+                    raise ToolsError('Unable to determine a profile name from info: %s', app_info)
+                profile = app_info['profile']
             try:
                 yield Stop(self.node, name=self.name).execute()
             except ServiceError as err:  # application is not running
