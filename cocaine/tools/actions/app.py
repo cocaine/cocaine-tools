@@ -204,8 +204,7 @@ class Restart(common.Node):
         except ServiceError as err:
             raise ToolsError('Unknown error - {0}'.format(err))
 
-        raise gen.Return("application `%s` has been restarted with profile `%s`" % (self.name,
-                                                                                    self.profile))
+        raise gen.Return("application `%s` has been restarted with profile `%s`" % (self.name, profile))
 
 
 class Check(common.Node):
