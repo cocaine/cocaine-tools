@@ -41,6 +41,8 @@ class Node(object):
 class Locate(object):
     def __init__(self, locator, name):
         self.locator = locator
+        if not name:
+            raise ValueError("option `name` must be specified")
         self.name = name
 
     @coroutine
