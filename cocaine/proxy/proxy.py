@@ -116,7 +116,8 @@ def parse_locators_endpoints(endpoint):
 
 class CocaineProxy(HTTPServer):
     def __init__(self, port=8080, locators=("localhost:10053",),
-                 cache=DEFAULT_SERVICE_CACHE_COUNT, request_id_header="", **config):
+                 cache=DEFAULT_SERVICE_CACHE_COUNT,
+                 request_id_header="", sticky_header="X-Cocaine-Sticky", **config):
         super(CocaineProxy, self).__init__(self.handle_request, **config)
         self.port = port
         self.serviceCacheCount = cache
@@ -134,6 +135,8 @@ class CocaineProxy(HTTPServer):
         self.logger = ContextAdapter(logging.getLogger(), {"id": "0" * 16})
         self.tracking_logger = logging.getLogger("proxy.tracking")
         self.logger.info("locators %s", str(self.locator_endpoints))
+
+        self.sticky_header = sticky_header
 
         if request_id_header:
             self.get_request_id = functools.partial(get_request_id, request_id_header)
@@ -211,7 +214,13 @@ class CocaineProxy(HTTPServer):
             request.uri = other
             request.path, _, _ = other.partition("?")
 
-        app = yield self.get_service(name, request.logger)
+        if self.sticky_header not in request.headers:
+            app = yield self.get_service(name, request.logger)
+        else:
+            seed = request.headers.get(self.sticky_header)
+            request.logger.debug('sticky_header has been found: %s', seed)
+            app = yield self.get_service_with_seed(name, seed, request.logger)
+
         if app is None:
             message = "Current application %s is unavailable" % name
             fill_response_in(request, httplib.NOT_FOUND, httplib.responses[httplib.NOT_FOUND], message)
@@ -312,6 +321,18 @@ class CocaineProxy(HTTPServer):
         chosen = random.choice(self.cache[name])
         raise gen.Return(chosen)
 
+    @gen.coroutine
+    def get_service_with_seed(self, name, seed, logger):
+        app = Service(name, seed=seed, locator=self.locator)
+        try:
+            logger.info("%d: creating an instance of %s, seed %s", id(app), name, seed)
+            yield app.connect()
+        except Exception as err:
+            logger.error("%d: unable to connect to `%s`: %s", id(app), name, err)
+            raise gen.Return()
+
+        raise gen.Return(app)
+
     def run(self, count=1):
         try:
             self.logger.info('Proxy will be started at %d port with %d instance(s)',
@@ -368,6 +389,7 @@ def main():
     opts.define("count", default=1, type=int, help="count of tornado processes")
     opts.define("port", default=8080, type=int, help="listening port number")
     opts.define("request_header", default="X-Request-Id", type=str, help="header used as a trace id")
+    opts.define("sticky_header", default="X-Cocaine-Sticky", type=str, help="sticky header name")
 
     # various logging options
     opts.define("logging", default="info",
@@ -384,7 +406,8 @@ def main():
     enable_logging(opts)
 
     proxy = CocaineProxy(locators=opts.locators, port=opts.port,
-                         cache=opts.cache, request_id_header=opts.request_header)
+                         cache=opts.cache, request_id_header=opts.request_header,
+                         sticky_header=opts.sticky_header)
     proxy.run(opts.count)
 
 
