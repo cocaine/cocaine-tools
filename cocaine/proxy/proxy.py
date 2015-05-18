@@ -316,6 +316,8 @@ class CocaineProxy(HTTPServer):
                 if app in self.cache[name]:
                     self.cache[name].remove(app)
                 raise gen.Return()
+            else:
+                raise gen.Return(app)
 
         # get an instance from cache
         chosen = random.choice(self.cache[name])
@@ -359,7 +361,7 @@ def enable_logging(options):
 
     logger = logging.getLogger()
     logger.setLevel(getattr(logging, options.logging.upper()))
-    fmt = logging.Formatter("[%(asctime)s]\t%(levelname)s\t%(message)s",
+    fmt = logging.Formatter("[%(asctime)s]\t[%(module)s:%(filename)s:%(lineno)d]\t%(levelname)s\t%(message)s",
                             datefmt="%d/%b/%Y:%H:%M:%S %z")
 
     if options.log_file_prefix:
