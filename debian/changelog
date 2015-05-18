@@ -1,3 +1,10 @@
+cocaine-tools (0.12.0.0-rc28) unstable; urgency=low
+
+  * [Proxy] More debug logs, add msecs to default timestamp
+  * [Proxy] datefmt and logfmt are configurable now
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 19 May 2015 00:16:36 +0300
+
 cocaine-tools (0.12.0.0-rc27) unstable; urgency=low
 
   * [Proxy] Log filename and lineno
