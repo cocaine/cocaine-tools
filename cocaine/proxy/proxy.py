@@ -222,12 +222,12 @@ class CocaineProxy(HTTPServer):
             app = yield self.get_service_with_seed(name, seed, request.logger)
 
         if app is None:
-            message = "Current application %s is unavailable" % name
+            message = "current application %s is unavailable" % name
             fill_response_in(request, httplib.NOT_FOUND, httplib.responses[httplib.NOT_FOUND], message)
             return
 
         try:
-            request.logger.debug("%d: processing request %s %s", id(app), app.name, event)
+            request.logger.debug("%d: processing request app: `%s`, event `%s`", id(app), app.name, event)
             yield self.process(request, name, app, event, pack_httprequest(request))
         except Exception as err:
             request.logger.error("error during processing request %s", err)
@@ -240,25 +240,31 @@ class CocaineProxy(HTTPServer):
         body_parts = []
         timeout = self.get_timeout(name)
         # allow to reconnect this amount of times.
-        attemps = 2  # make it configurable
-        while attemps > 0:
-            attemps = attemps - 1
+        attempts = 2  # make it configurable
+        while attempts > 0:
+            attempts = attempts - 1
             try:
+                request.logger.debug("%d: enqueue event (attempt %d)", id(app), attempts)
                 channel = yield app.enqueue(event)
+                request.logger.debug("%d: send event data (attempt %d)", id(app), attempts)
                 yield channel.tx.write(msgpack.packb(data))
+                request.logger.debug("%d: waiting for a code and headers (attempt %d)", id(app), attempts)
                 code_and_headers = yield channel.rx.get(timeout=timeout)
-                # the first chunk is packed code and headers
+                request.logger.debug("%d: code and headers have been received (attempt %d)", id(app), attempts)
                 code, raw_headers = msgpack.unpackb(code_and_headers)
                 headers = tornado.httputil.HTTPHeaders(raw_headers)
                 while True:
                     body = yield channel.rx.get(timeout=timeout)
                     if not isinstance(body, EmptyResponse):
+                        request.logger.debug("%d: received %d bytes as a body chunk (attempt %d)",
+                                             id(app), len(body), attempts)
                         body_parts.append(msgpack.unpackb(body))
                     else:
+                        request.logger.debug("%d: body finished (attempt %d)", id(app), attempts)
                         break
             except Timeout as err:
                 request.logger.error("%d: %s", id(app), err)
-                message = "Application `%s` error: %s" % (name, str(err))
+                message = "application `%s` error: %s" % (name, str(err))
                 fill_response_in(request, httplib.GATEWAY_TIMEOUT,
                                  httplib.responses[httplib.GATEWAY_TIMEOUT], message)
 
@@ -270,25 +276,25 @@ class CocaineProxy(HTTPServer):
                 try:
                     yield app.connect()
                 except Exception as err:
-                    if attemps > 0:
-                        # there are still some attemps to reconnect
+                    if attempts > 0:
+                        # there are still some attempts to reconnect
                         continue
                     else:
                         request.logger.error("%d: %s", id(app), err)
-                        message = "Application `%s` error: %s" % (name, str(err))
+                        message = "application `%s` error: %s" % (name, str(err))
                         fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                          httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
                         return
 
             except ServiceError as err:
                 request.logger.error("%d: %s", id(app), err)
-                message = "Application `%s` error: %s" % (name, str(err))
+                message = "application `%s` error: %s" % (name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                  httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
 
             except Exception as err:
                 request.logger.error("%d: %s", id(app), err)
-                message = "Unknown `%s` error: %s" % (name, str(err))
+                message = "unknown `%s` error: %s" % (name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                  httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
             else:
@@ -361,8 +367,7 @@ def enable_logging(options):
 
     logger = logging.getLogger()
     logger.setLevel(getattr(logging, options.logging.upper()))
-    fmt = logging.Formatter("[%(asctime)s]\t[%(module)s:%(filename)s:%(lineno)d]\t%(levelname)s\t%(message)s",
-                            datefmt="%d/%b/%Y:%H:%M:%S %z")
+    fmt = logging.Formatter(options.logfmt, datefmt=options.datefmt)
 
     if options.log_file_prefix:
         handler = logging.handlers.WatchedFileHandler(
@@ -396,14 +401,16 @@ def main():
     # various logging options
     opts.define("logging", default="info",
                 help=("Set the Python log level. If 'none', tornado won't touch the "
-                      "logging configuration."),
-                metavar="debug|info|warning|error|none")
+                      "logging configuration."), metavar="debug|info|warning|error|none")
     opts.define("log_to_stderr", type=bool, default=None,
                 help=("Send log output to stderr. "
                       "By default use stderr if --log_file_prefix is not set and "
                       "no other logging is configured."))
     opts.define("log_file_prefix", type=str, default=None, metavar="PATH",
                 help=("Path prefix for log file"))
+    opts.define("datefmt", type=str, default="%z %d/%b/%Y:%H:%M:%S", help="datefmt")
+    opts.define("logfmt", type=str, help="logfmt",
+                default="[%(asctime)s.%(msecs)d]\t[%(module)s:%(filename)s:%(lineno)d]\t%(levelname)s\t%(message)s")
     opts.parse_command_line()
     enable_logging(opts)
 
