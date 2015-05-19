@@ -55,7 +55,7 @@ class BaseEditor(object):
         with printer('Editing "%s"', self.name):
             with tempfile.NamedTemporaryFile(delete=False) as fh:
                 name = fh.name
-                fh.write(json.dumps(content))
+                fh.write(json.dumps(content, indent=4))
 
             ec = None
 
