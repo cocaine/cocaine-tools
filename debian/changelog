@@ -1,3 +1,9 @@
+cocaine-tools (0.12.0.0-rc29) unstable; urgency=low
+
+  * [Debian] Package renaming
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Fri, 22 May 2015 15:50:09 +0300
+
 cocaine-tools (0.12.0.0-rc28) unstable; urgency=low
 
   * [Proxy] More debug logs, add msecs to default timestamp
