@@ -68,6 +68,7 @@ class Upload(Specific):
 
 
 class Create(Specific):
+    @coroutine
     def execute(self):
         return Upload(self.storage, self.name, '{}').execute()
 
