@@ -1,3 +1,9 @@
+cocaine-tools (0.12.0.0-rc32) unstable; urgency=low
+
+  * [Proxy] Accept packed and non-packed body chunks
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Fri, 05 Jun 2015 18:45:03 +0300
+
 cocaine-tools (0.12.0.0-rc31) unstable; urgency=low
 
   * [Proxy] Fix packages deps
