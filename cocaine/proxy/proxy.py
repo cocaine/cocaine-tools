@@ -259,9 +259,16 @@ class CocaineProxy(HTTPServer):
                         request.logger.debug("%d: received %d bytes as a body chunk (attempt %d)",
                                              id(app), len(body), attempts)
                         try:
-                            # Temp fallback. Body must be unpacked according to spec
-                            # Unfortunately, it doesn't work with one-symbol-strings
-                            body_parts.append(msgpack.unpackb(body))
+                            # Temp solution. If the body is not packed
+                            # an exception will be raised. Unfortunately,
+                            # it doesn't work for single-letter string and
+                            # for msgpack_python 0.1.1. So we have to check if
+                            # the chunk is a string.
+                            chunk = msgpack.unpackb(body)
+                            if isinstance(chunk, str):
+                                body_parts.append(chunk)
+                            else:
+                                body_parts.append(body)
                         except Exception:
                             body_parts.append(body)
                     else:
