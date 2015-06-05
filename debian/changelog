@@ -1,3 +1,9 @@
+cocaine-tools (0.12.0.0-rc33) unstable; urgency=low
+
+  * [Proxy] Workaround for msgpack less than 0.4
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Fri, 05 Jun 2015 20:49:52 +0300
+
 cocaine-tools (0.12.0.0-rc32) unstable; urgency=low
 
   * [Proxy] Accept packed and non-packed body chunks
