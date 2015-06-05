@@ -52,7 +52,7 @@ URL_REGEX = re.compile(r"/([^/]*)/([^/?]*)(.*)")
 
 DEFAULT_SERVICE_CACHE_COUNT = 5
 DEFAULT_REFRESH_PERIOD = 120
-DEFAULT_TIMEOUT = 5
+DEFAULT_TIMEOUT = 30
 
 
 class ContextAdapter(logging.LoggerAdapter):
@@ -258,7 +258,12 @@ class CocaineProxy(HTTPServer):
                     if not isinstance(body, EmptyResponse):
                         request.logger.debug("%d: received %d bytes as a body chunk (attempt %d)",
                                              id(app), len(body), attempts)
-                        body_parts.append(msgpack.unpackb(body))
+                        try:
+                            # Temp fallback. Body must be unpacked according to spec
+                            # Unfortunately, it doesn't work with one-symbol-strings
+                            body_parts.append(msgpack.unpackb(body))
+                        except Exception:
+                            body_parts.append(body)
                     else:
                         request.logger.debug("%d: body finished (attempt %d)", id(app), attempts)
                         break
