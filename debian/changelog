@@ -1,3 +1,9 @@
+cocaine-tools (0.12.0.0-rc34) unstable; urgency=low
+
+  * [Tools] Parse Docker protocol properly
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Sat, 06 Jun 2015 08:33:58 +0300
+
 cocaine-tools (0.12.0.0-rc33) unstable; urgency=low
 
   * [Proxy] Workaround for msgpack less than 0.4
