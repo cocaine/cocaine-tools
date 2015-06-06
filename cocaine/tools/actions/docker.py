@@ -179,9 +179,9 @@ class StreamingAction(Action):
 
     def _handle_message(self, message):
         if "stream" in message:
-            log.info(message["stream"])
+            log.info(message["stream"].rstrip('\n'))
         elif "error" in message:
-            error_msg = message["error"]
+            error_msg = message["error"].rstrip('\n')
             self._lasterr = DockerException(error_msg)
             log.error(error_msg)
 
@@ -190,7 +190,8 @@ class StreamingAction(Action):
 
     def _on_body(self, data):
         self._jsonunpacker.feed(data)
-        map(self._handle_message, self._jsonunpacker)
+        for i in self._jsonunpacker:
+            self._handle_message(i)
 
 
 class Build(StreamingAction):

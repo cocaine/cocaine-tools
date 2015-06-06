@@ -43,7 +43,7 @@ class JSONUnpacker(Iterable):
         js = json.JSONDecoder()
         try:
             res, index = js.raw_decode(self.buff)
-            self.buff = self.buff[index:]
+            self.buff = self.buff[index:].lstrip('\r\n')
             return res
         except JSONDecodeError:
             raise StopIteration
