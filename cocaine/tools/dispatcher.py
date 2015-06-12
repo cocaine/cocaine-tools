@@ -653,7 +653,7 @@ def group_list(options):
 
 @dispatcher.group.command(name='view', usage='NAME')
 def group_view(options,
-               name):
+               name=('n', '', 'group name')):
     """Show specified routing group.
     """
     options.executor.executeAction('group:view', **{
@@ -664,7 +664,7 @@ def group_view(options,
 
 @dispatcher.group.command(name='create', usage='NAME [CONTENT]')
 def group_create(options,
-                 name,
+                 name=('n', '', 'group name'),
                  content=None):
     """Create routing group.
 
@@ -734,11 +734,11 @@ def group_refresh(options,
     })
 
 
-@dispatcher.group.command(name='push', usage='NAME APP WEIGHT')
+@dispatcher.group.command(name='push', usage='-n=NAME --app=APP -w=WEIGHT')
 def group_push(options,
-               name,
-               app,
-               weight):
+               name=('n', '', 'group name'),
+               app=('', '', 'app name'),
+               weight=('w', '', 'weight')):
     """Add application with its weight into the routing group.
 
     Warning: application weight must be positive integer.
@@ -751,10 +751,10 @@ def group_push(options,
     })
 
 
-@dispatcher.group.command(name='pop', usage='NAME APP')
+@dispatcher.group.command(name='pop', usage='-n NAME --app=APP')
 def group_pop(options,
-              name,
-              app):
+              name=('n', '', 'group name'),
+              app=('', '', 'app name')):
     """Remove application from routing group.
     """
     options.executor.executeAction('group:app:remove', **{
@@ -764,7 +764,15 @@ def group_pop(options,
     })
 
 
-DEFAULT_COCAINE_PROXY_PID_FILE = '/var/run/cocaine-python-proxy.pid'
+@dispatcher.group.command(name='edit', usage='-n NAME')
+def group_edit(options,
+               name=('n', '', 'group name')):
+    """Edit group in an interactive editor"""
+    options.executor.timeout = None
+    options.executor.executeAction('group:edit', **{
+        'storage': options.getService('storage'),
+        'name': name,
+    })
 
 
 # @proxyDispatcher.command()

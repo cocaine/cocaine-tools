@@ -37,8 +37,8 @@ __author__ = 'EvgenySafronov <division494@gmail.com>'
 
 
 class ToolHandler(object):
-    def __init__(self, Action):
-        self._Action = Action
+    def __init__(self, action):
+        self._Action = action
 
     @coroutine
     def execute(self, **config):
@@ -158,6 +158,7 @@ NG_ACTIONS = {
     'group:app:remove': ToolHandler(group.RemoveApplication),
     'group:create': ToolHandler(group.Create),
     'group:copy': ToolHandler(group.Copy),
+    'group:edit': ToolHandler(interactive.GroupEditor),
     'group:list': JsonToolHandler(group.List),
     'group:remove': ToolHandler(group.Remove),
     'group:rename': ToolHandler(group.Rename),
@@ -201,8 +202,3 @@ class Executor(object):
 
         action = NG_ACTIONS[actionName]
         self.loop.run_sync(lambda: action.execute(**options), timeout=self.timeout)
-
-    def timeoutErrorback(self):
-        log.error('Timeout')
-        self.loop.stop()
-        exit(errno.ETIMEDOUT)
