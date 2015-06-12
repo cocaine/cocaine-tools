@@ -45,7 +45,7 @@ from cocaine.services import Service
 from cocaine.services import Locator
 from cocaine.exceptions import ServiceError
 from cocaine.exceptions import DisconnectionError
-from cocaine.detail.service import EmptyResponse
+from cocaine.services import EmptyResponse
 
 
 URL_REGEX = re.compile(r"/([^/]*)/([^/?]*)(.*)")
