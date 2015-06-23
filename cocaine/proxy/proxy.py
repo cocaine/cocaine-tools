@@ -114,12 +114,13 @@ def parse_locators_endpoints(endpoint):
     raise Exception("invalid endpoint: %s" % endpoint)
 
 
-class CocaineProxy(HTTPServer):
-    def __init__(self, port=8080, locators=("localhost:10053",),
+class CocaineProxy(object):
+    def __init__(self, locators=("localhost:10053",),
                  cache=DEFAULT_SERVICE_CACHE_COUNT,
-                 request_id_header="", sticky_header="X-Cocaine-Sticky", **config):
-        super(CocaineProxy, self).__init__(self.handle_request, **config)
-        self.port = port
+                 request_id_header="", sticky_header="X-Cocaine-Sticky",
+                 ioloop=None, **config):
+
+        self.io_loop = ioloop or tornado.ioloop.IOLoop.current()
         self.serviceCacheCount = cache
         self.spoolSize = int(self.serviceCacheCount * 1.5)
         self.refreshPeriod = config.get("refresh_timeout", DEFAULT_REFRESH_PERIOD)
@@ -127,14 +128,14 @@ class CocaineProxy(HTTPServer):
         self.locator_endpoints = map(parse_locators_endpoints, locators)
         # it's initialized after start
         # to avoid an io_loop creation before fork
-        self.locator = None
+        self.locator = Locator(endpoints=self.locator_endpoints)
 
         # active applications
         self.cache = collections.defaultdict(list)
 
         self.logger = ContextAdapter(logging.getLogger(), {"id": "0" * 16})
         self.tracking_logger = logging.getLogger("proxy.tracking")
-        self.logger.info("locators %s", str(self.locator_endpoints))
+        self.logger.info("locators %s", ','.join("%s:%d" % (h, p) for h, p in self.locator_endpoints))
 
         self.sticky_header = sticky_header
 
@@ -168,7 +169,7 @@ class CocaineProxy(HTTPServer):
 
     @gen.coroutine
     @context
-    def handle_request(self, request):
+    def __call__(self, request):
         if "X-Cocaine-Service" in request.headers and "X-Cocaine-Event" in request.headers:
             request.logger.debug('dispatch by headers')
             name = request.headers['X-Cocaine-Service']
@@ -353,25 +354,6 @@ class CocaineProxy(HTTPServer):
 
         raise gen.Return(app)
 
-    def run(self, count=1):
-        try:
-            self.logger.info('Proxy will be started at %d port with %d instance(s)',
-                             self.port, count if count >= 1 else process.cpu_count())
-            self.bind(self.port)
-            self.start(count)
-            self.locator = Locator(endpoints=self.locator_endpoints)
-            self._io_loop = tornado.ioloop.IOLoop.current()
-            self._io_loop.start()
-        except KeyboardInterrupt:
-            pass
-        except Exception as err:
-            self.logger.error(err)
-
-        if process.task_id() is not None:
-            self._io_loop.stop()
-        else:
-            self.logger.info("stopped")
-
 
 def enable_logging(options):
     if options.logging is None or options.logging.lower() == "none":
@@ -426,10 +408,22 @@ def main():
     opts.parse_command_line()
     enable_logging(opts)
 
-    proxy = CocaineProxy(locators=opts.locators, port=opts.port,
-                         cache=opts.cache, request_id_header=opts.request_header,
-                         sticky_header=opts.sticky_header)
-    proxy.run(opts.count)
+    logger = logging.getLogger()
+    sockets = tornado.netutil.bind_sockets(opts.port)
+    logger.info("Listen %s", ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in sockets))
+    try:
+        if opts.count != 1:
+            process.fork_processes(opts.count)
+
+        proxy = CocaineProxy(locators=opts.locators, cache=opts.cache,
+                             request_id_header=opts.request_header,
+                             sticky_header=opts.sticky_header)
+        server = HTTPServer(proxy)
+        server.add_sockets(sockets)
+
+        tornado.ioloop.IOLoop.current().start()
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == '__main__':
