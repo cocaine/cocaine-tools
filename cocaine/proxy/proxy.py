@@ -249,6 +249,7 @@ class CocaineProxy(object):
                 channel = yield app.enqueue(event)
                 request.logger.debug("%d: send event data (attempt %d)", id(app), attempts)
                 yield channel.tx.write(msgpack.packb(data))
+                yield channel.tx.close()
                 request.logger.debug("%d: waiting for a code and headers (attempt %d)", id(app), attempts)
                 code_and_headers = yield channel.rx.get(timeout=timeout)
                 request.logger.debug("%d: code and headers have been received (attempt %d)", id(app), attempts)
