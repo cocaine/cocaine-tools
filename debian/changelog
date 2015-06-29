@@ -1,3 +1,9 @@
+cocaine-tools (0.12.1.1) unstable; urgency=low
+
+  * [Proxy] Close tx after sending a request
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Mon, 29 Jun 2015 23:33:47 +0300
+
 cocaine-tools (0.12.1.0) unstable; urgency=low
 
   * [Proxy] Remove detail import
