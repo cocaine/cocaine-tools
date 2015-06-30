@@ -1,3 +1,9 @@
+cocaine-tools (0.12.1.2) unstable; urgency=low
+
+  * [Info] Sort timings
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 30 Jun 2015 13:57:17 +0300
+
 cocaine-tools (0.12.1.1) unstable; urgency=low
 
   * [Proxy] Close tx after sending a request
