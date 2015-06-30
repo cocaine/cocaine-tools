@@ -64,7 +64,7 @@ class ToolHandler(object):
 
 class JsonToolHandler(ToolHandler):
     def _processResult(self, result):
-        print(json.dumps(result, indent=4))
+        print(json.dumps(result, sort_keys=True, indent=4))
 
 
 class PrintToolHandler(ToolHandler):
