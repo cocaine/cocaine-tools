@@ -9,12 +9,12 @@ _cocaine_tool()
 
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
-    subcommands_1="info call app profile runlist group crashlog help"
+    subcommands_1="info call cluster locate app profile runlist group crashlog help"
     subcommands_app="start stop restart pause check list view upload remove"
-    subcommands_profile="list view upload remove"
-    subcommands_runlist="list view upload remove add-app"
-    subcommands_crashlog="list view remove removeall"
-    subcommands_group="list view create remove refresh push pop"
+    subcommands_profile="edit list view upload remove rename"
+    subcommands_runlist="edit list view upload remove add-app rename"
+    subcommands_crashlog="edit list view remove removeall"
+    subcommands_group="edit list view create remove refresh push pop rename"
 
     if [[ ${COMP_CWORD} == 1 ]] ; then 
         COMPREPLY=( $(compgen -W "${subcommands_1}" -- ${cur}) )
