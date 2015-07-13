@@ -29,8 +29,10 @@ import collections
 import functools
 import hashlib
 import logging
+import os
 import random
 import re
+import socket
 import time
 
 import msgpack
@@ -114,6 +116,19 @@ def parse_locators_endpoints(endpoint):
     raise Exception("invalid endpoint: %s" % endpoint)
 
 
+def gen_uid():
+    return "%s_%d_%f" % (socket.gethostname(), os.getpid(), time.time())
+
+
+def scan_for_updates(current, new):
+    # add removed groups and new groups to updated
+    # mark routing group as updated if its current ring is not
+    # the same as new
+    updated = filter(lambda k: new[k] != current.pop(k, None), new.keys())
+    updated.extend(current.keys())
+    return updated
+
+
 class CocaineProxy(object):
     def __init__(self, locators=("localhost:10053",),
                  cache=DEFAULT_SERVICE_CACHE_COUNT,
@@ -144,8 +159,55 @@ class CocaineProxy(object):
         else:
             self.get_request_id = generate_request_id
 
+        # post the watcher for routing groups
+        self.io_loop.add_future(self.on_routing_groups_update(),
+                                lambda x: self.logger.error("the updater must not exit"))
+
+    @gen.coroutine
+    def on_routing_groups_update(self):
+        uid = gen_uid()
+        self.logger.info("generate new uniqque id %s", uid)
+        while True:
+            current = {}
+            try:
+                self.logger.info("subscribe to updates with id %s", uid)
+                channel = yield self.locator.routing(uid, True)
+                while True:
+                    new = yield channel.rx.get()
+                    updates = scan_for_updates(current, new)
+                    # replace current
+                    current = new
+                    if len(updates) == 0:
+                        self.logger.info("locator sends an update message, "
+                                         "but no updates have been found")
+                        continue
+
+                    self.logger.info("%d routing groups have been refreshed %s",
+                                     len(updates), updates)
+                    for group in updates:
+                        # if we have not created an instance of
+                        # the group it is absent in cache
+                        if group not in self.cache:
+                            self.logger.info("nothing to update in group %s", group)
+                            continue
+
+                        for app in self.cache[group]:
+                            self.logger.info("%d: move %s to the inactive queue to refresh"
+                                             " routing group", id(app), app.name)
+                            self.migrate_from_cache_to_inactive(app, group)
+            except Exception as err:
+                self.logger.exception("error occured while watching for group updates %s", err)
+
     def get_timeout(self, name):
         return self.timeouts.get(name, DEFAULT_TIMEOUT)
+
+    def migrate_from_cache_to_inactive(self, app, name):
+        try:
+            self.cache[name].remove(app)
+        except ValueError:
+            self.logger.error("broken cache")
+
+        self.io_loop.call_later(self.get_timeout(name) * 3, functools.partial(self.dispose, app, name))
 
     def move_to_inactive(self, app, name):
         def wrapper():
@@ -154,13 +216,9 @@ class CocaineProxy(object):
                 self.io_loop.call_later(self.get_timeout(name), self.move_to_inactive(app, name))
                 return
 
-            self.logger.info("%d: move %s %s to an inactive queue (active %d)", id(app), app.name, "{0}:{1}".format(*app.address), active_apps)
-            try:
-                self.cache[name].remove(app)
-            except ValueError:
-                self.logger.error("broken cache")
-
-            self.io_loop.call_later(self.get_timeout(name) * 3, functools.partial(self.dispose, app, name))
+            self.logger.info("%d: move %s %s to an inactive queue (active %d)",
+                             id(app), app.name, "{0}:{1}".format(*app.address), active_apps)
+            self.migrate_from_cache_to_inactive(app, name)
         return wrapper
 
     def dispose(self, app, name):

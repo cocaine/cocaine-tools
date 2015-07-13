@@ -22,6 +22,7 @@ from tornado.httputil import HTTPServerRequest
 from tornado.httputil import HTTPHeaders
 
 from cocaine.proxy.proxy import pack_httprequest
+from cocaine.proxy.proxy import scan_for_updates
 
 
 class _FakeConnection():
@@ -46,3 +47,10 @@ def test_proxy_pack_httprequest():
     assert res[2] == "1.0", "version has been parsed unproperly %s" % res[2]
     assert res[3] == h.items(), "headers has been parsed unproperly %s" % res[3]
     assert res[4] == body, "body has been parsed unproperly"
+
+
+def test_scan_for_updates():
+    current = {"A": 1, "B": 2, "C": 3}
+    new = {"A": 2, "B": 2, "D": 0}
+    updated = scan_for_updates(current, new)
+    assert set(updated) == set(("A", "C", "D"))
