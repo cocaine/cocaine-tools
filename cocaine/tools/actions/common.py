@@ -19,10 +19,17 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+from __future__ import division
+
+from collections import defaultdict
+import os
+import time
+import socket
+
 from tornado import gen
 
-
 from cocaine.decorators import coroutine
+from cocaine.tools.error import ToolsError
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
@@ -64,6 +71,45 @@ class Cluster(object):
         ch = yield self.locator.cluster()
         result = yield ch.rx.get()
         raise gen.Return(result)
+
+
+class Routing(object):
+    extent = pow(2, 32)
+
+    def __init__(self, locator, name=None):
+        self.locator = locator
+        self.name = name
+
+    def generate_group(self, body):
+        if len(body) == 0:
+            return {}
+        apps = defaultdict(int)
+        # initialize with maximum value
+        # from the routing
+        prev = body[-1][0] - Routing.extent
+        for value, app in body:
+            apps[app] += (value - prev)
+            prev = value
+
+        output = dict((a, w / Routing.extent) for a, w in apps.items())
+        return output
+
+    @coroutine
+    def execute(self):
+        uid = "%s_%d_%f" % (socket.gethostname(), os.getpid(), time.time())
+        channel = yield self.locator.routing(uid, True)
+        rings = yield channel.rx.get()
+        groups = {}
+        if not self.name:
+            for name, ring in rings.items():
+                groups[name] = self.generate_group(ring)
+        elif self.name in rings:
+            groups[self.name] = self.generate_group(rings[self.name])
+        else:
+            raise ToolsError("No such group `%s` in the routing. "
+                             "Probably you should refresh the locator" % self.name)
+
+        raise gen.Return(groups)
 
 
 class NodeInfo(Node):

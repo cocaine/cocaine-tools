@@ -144,6 +144,16 @@ def locate(options,
     })
 
 
+@d.command(name='routing', usage='[--name=NAME]')
+def routing(options,
+            name=('n', '', 'group name')):
+    """Show information about the requested routing group"""
+    options.executor.executeAction('routing', **{
+        'name': name,
+        'locator': options.locator,
+    })
+
+
 @d.command(name='cluster')
 def cluster(options):
     """Show cluster info"""
