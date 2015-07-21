@@ -152,22 +152,36 @@ def cluster(options):
     })
 
 
-@d.command(name='info', usage='[--name=NAME]')
+@d.command(name='info', usage='[--name=NAME] [-pmb]')
 def info(options,
          name=('n', '', 'application name'),
-         expand=('', False, 'expand all nesting info (like profile)')):
+         profile=('p', False, 'expand profile'),
+         manifest=('m', False, 'expand manifest'),
+         brief=('b', False, 'show brief info only (disable -p and -m)')):
     """Show information about cocaine runtime
 
     Return json-like string with information about cocaine-runtime.
 
     If the name option is not specified, shows information about all applications.
+    Flags can be specified to set detalization of the output.
     """
+    flag_brief = 0x00
+    flag_verbose = 0x01
+    flag_manifest = 0x02
+    flag_profile = 0x04
+    # bried disables all further flags
+    flags = flag_brief if brief else flag_verbose
+
+    if manifest:
+        flags |= flag_manifest
+    if profile:
+        flags |= flag_profile
+
     options.executor.executeAction('info', **{
         'node': options.getService('node'),
         'locator': options.locator,
-        'storage': options.getService('storage') if expand else None,
         'name': name,
-        'expand': expand
+        'flags': flags,
     })
 
 

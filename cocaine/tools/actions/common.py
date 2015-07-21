@@ -23,8 +23,6 @@ from tornado import gen
 
 
 from cocaine.decorators import coroutine
-from cocaine.services import Service
-from cocaine.tools.actions import profile
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
@@ -69,12 +67,11 @@ class Cluster(object):
 
 
 class NodeInfo(Node):
-    def __init__(self, node, locator, storage, name=None, expand=False):
+    def __init__(self, node, locator, name=None, flags=0x1):
         super(NodeInfo, self).__init__(node)
         self.locator = locator
-        self._storage = storage
         self._name = name
-        self._expand = expand
+        self._flags = flags
 
     @coroutine
     def execute(self):
@@ -89,80 +86,16 @@ class NodeInfo(Node):
     @coroutine
     def info(self, apps):
         infos = {}
-        for app_ in apps:
+        for app in apps:
             info = ''
             try:
-                app = Service(app_, locator=self.locator)
-                channel = yield app.info()
+                channel = yield self.node.info(app, self._flags)
                 info = yield channel.rx.get()
-                if all([self._expand, self._storage is not None, 'profile' in info]):
-                    info['profile'] = yield profile.View(self._storage, info['profile']).execute()
             except Exception as err:
                 info = str(err)
             finally:
-                infos[app_] = info
+                infos[app] = info
         result = {
             'apps': infos
         }
         raise gen.Return(result)
-
-
-# class Call(object):
-#     def __init__(self, command, host='localhost', port=10053):
-#         if not command:
-#             raise ValueError('Please specify service name for getting API or full command to invoke')
-#         self.host = host
-#         self.port = port
-#         self.serviceName, separator, methodWithArguments = command.partition('.')
-#         rx = re.compile(r'(.*?)\((.*)\)')
-#         match = rx.match(methodWithArguments)
-#         if match:
-#             self.methodName, self.args = match.groups()
-#         else:
-#             self.methodName = methodWithArguments
-
-#     @coroutine
-#     def execute(self):
-#         service = self.getService()
-#         response = {
-#             'service': self.serviceName,
-#         }
-#         if not self.methodName:
-#             api = service.api
-#             response['request'] = 'api'
-#             response['response'] = api
-#         else:
-#             method = self.getMethod(service)
-#             args = self.parseArguments()
-#             result = yield method(*args)
-#             response['request'] = 'invoke'
-#             response['response'] = result
-#         yield response
-
-#     def get_service(self):
-#         try:
-#             service = Service(self.serviceName, endpoints=[(self.host, self.port)])
-#             return service
-#         except Exception as err:
-#             raise ServiceCallError(self.serviceName, err)
-
-#     def get_method(self, service):
-#         try:
-#             method = service.__getattribute__(self.methodName)
-#             return method
-#         except AttributeError:
-#             raise ServiceError(self.serviceName, 'method "{0}" is not found'.format(self.methodName), 1)
-
-#     def parse_arguments(self):
-#         if not self.args:
-#             return ()
-
-#         try:
-#             args = ast.literal_eval(self.args)
-#             if not isinstance(args, tuple):
-#                 args = (args,)
-#             return args
-#         except (SyntaxError, ValueError) as err:
-#             raise ServiceCallError(self.serviceName, err)
-#         except Exception as err:
-#             print(err, type(err))
