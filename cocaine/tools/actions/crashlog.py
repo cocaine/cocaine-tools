@@ -25,7 +25,7 @@ import time
 
 from tornado import gen
 
-from cocaine.tools import actions
+from cocaine.tools import actions, log
 from cocaine.decorators import coroutine
 from cocaine.tools.actions import app
 
@@ -68,9 +68,9 @@ class View(Specific):
     def execute(self):
         channel = yield self.storage.find('crashlogs', [self.name])
         crashlogs = yield channel.rx.get()
-        parsedCrashlogs = _parseCrashlogs(crashlogs, timestamp=self.timestamp)
+        parsed_crashlogs = _parseCrashlogs(crashlogs, timestamp=self.timestamp)
         contents = []
-        for crashlog in parsedCrashlogs:
+        for crashlog in parsed_crashlogs:
             key = '%s:%s' % (crashlog[0], crashlog[2])
             channel = yield self.storage.read('crashlogs', key)
             content = yield channel.rx.get()
@@ -83,11 +83,14 @@ class Remove(Specific):
     def execute(self):
         channel = yield self.storage.find('crashlogs', [self.name])
         crashlogs = yield channel.rx.get()
-        parsedCrashlogs = _parseCrashlogs(crashlogs, timestamp=self.timestamp)
-        for crashlog in parsedCrashlogs:
-            key = '%s:%s' % (crashlog[0], crashlog[2])
-            channel = yield self.storage.remove('crashlogs', key)
-            yield channel.rx.get()
+        parsed_crashlogs = _parseCrashlogs(crashlogs, timestamp=self.timestamp)
+        for crashlog in parsed_crashlogs:
+            try:
+                key = '%s:%s' % (crashlog[0], crashlog[2])
+                channel = yield self.storage.remove('crashlogs', key)
+                yield channel.rx.get()
+            except Exception as err:
+                log.error("unable to delete crashlog %s: %s", str(crashlog), err)
         raise gen.Return('Done')
 
 
