@@ -170,7 +170,7 @@ class TestAppActions(object):
     def test_app_d_stop(self):
         name = "random_name"
         result = io.run_sync(app.Stop(self.node, name).execute, timeout=2)
-        assert "application `random_name` has been stoped" == result, result
+        assert "application `random_name` has been stopped" == result, result
 
     @tools.raises(ToolsError)
     def test_app_d_stop_after_check(self):

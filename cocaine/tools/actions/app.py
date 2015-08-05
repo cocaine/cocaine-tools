@@ -170,7 +170,7 @@ class Stop(common.Node):
     def execute(self):
         channel = yield self.node.pause_app(self.name)
         yield channel.rx.get()
-        raise gen.Return("application `%s` has been stoped" % self.name)
+        raise gen.Return("application `%s` has been stopped" % self.name)
 
 
 class Restart(common.Node):
