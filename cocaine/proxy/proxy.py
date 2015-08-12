@@ -29,6 +29,7 @@ import collections
 import errno
 import functools
 import hashlib
+import json
 import logging
 import os
 import platform
@@ -43,6 +44,7 @@ import tornado
 from tornado import gen
 from tornado import httputil
 from tornado.httpserver import HTTPServer
+from tornado.iostream import StreamClosedError
 from tornado.platform.auto import set_close_exec
 from tornado.util import errno_from_exception
 from tornado import web
@@ -165,12 +167,18 @@ def get_request_id(request_id_header, request):
 
 
 def context(func):
+    @gen.coroutine
     def wrapper(self, request):
+        self.requests_in_progress += 1
+        self.requests_total += 1
         trace_id = self.get_request_id(request)[:16]
         adaptor = ContextAdapter(self.tracking_logger, {"id": trace_id})
         request.logger = adaptor
         request.logger.info("start request: %s %s %s", request.host, request.remote_ip, request.uri)
-        return func(self, request)
+        try:
+            yield func(self, request)
+        finally:
+            self.requests_in_progress -= 1
     return wrapper
 
 
@@ -231,6 +239,10 @@ class CocaineProxy(object):
                  cache=DEFAULT_SERVICE_CACHE_COUNT,
                  request_id_header="", sticky_header="X-Cocaine-Sticky",
                  ioloop=None, **config):
+        # stats
+        self.requests_in_progress = 0
+        self.requests_disconnections = 0
+        self.requests_total = 0
 
         self.io_loop = ioloop or tornado.ioloop.IOLoop.current()
         self.serviceCacheCount = cache
@@ -301,8 +313,10 @@ class CocaineProxy(object):
     def migrate_from_cache_to_inactive(self, app, name):
         try:
             self.cache[name].remove(app)
-        except ValueError:
-            self.logger.error("broken cache")
+        except ValueError as err:
+            self.logger.error("broken cache: %s", err)
+        except KeyError as err:
+            self.logger.error("broken cache: no such key %s", err)
 
         self.io_loop.call_later(self.get_timeout(name) * 3, functools.partial(self.dispose, app, name))
 
@@ -322,8 +336,8 @@ class CocaineProxy(object):
         self.logger.info("dispose service %s %d", name, id(app))
         app.disconnect()
 
-    @gen.coroutine
     @context
+    @gen.coroutine
     def __call__(self, request):
         if "X-Cocaine-Service" in request.headers and "X-Cocaine-Event" in request.headers:
             request.logger.debug('dispatch by headers')
@@ -334,25 +348,22 @@ class CocaineProxy(object):
             match = URL_REGEX.match(request.uri)
             if match is None:
                 if request.path == "/ping":
-                    fill_response_in(request, 200, "OK", "OK")
+                    fill_response_in(request, httplib.OK, "OK", "OK")
                 elif request.path == '/__info':
-                    import json
-
-                    # It's likely I'm going to Hell for this one,
-                    # but seems there is no other way to obtain internal
-                    # statistics.
-                    if tornado.version_info[0] == 4:
-                        connections = len(self._connections)
-                    else:
-                        connections = len(self._sockets)
-
+                    # ToDo: may we should remove keys with len == 0 values from cache
+                    # to avoid memory consumption for strings and the dict
                     body = json.dumps({
                         'services': {
-                            'cache': len(self.cache),
+                            'cache': dict(((k, len(v)) for k, v in self.cache.items())),
                         },
-                        'connections': connections,
-                        'pending': len(self._pending_sockets),
-                    })
+                        'requests': {
+                            'inprogress': self.requests_in_progress,
+                            'total': self.requests_total,
+                        },
+                        'errors': {
+                            'disconnections': self.requests_disconnections,
+                        }
+                    }, sort_keys=True)
                     headers = httputil.HTTPHeaders({"Content-Type": "application/json"})
                     fill_response_in(request, httplib.OK, httplib.responses[httplib.OK], body, headers)
                 else:
@@ -374,7 +385,7 @@ class CocaineProxy(object):
             app = yield self.get_service(name, request.logger)
         else:
             seed = request.headers.get(self.sticky_header)
-            request.logger.debug('sticky_header has been found: %s', seed)
+            request.logger.info('sticky_header has been found: %s', seed)
             app = yield self.get_service_with_seed(name, seed, request.logger)
 
         if app is None:
@@ -400,7 +411,7 @@ class CocaineProxy(object):
         while attempts > 0:
             attempts = attempts - 1
             try:
-                request.logger.debug("%d: enqueue event (attempt %d)", id(app), attempts)
+                request.logger.info("%d: enqueue event (attempt %d)", id(app), attempts)
                 channel = yield app.enqueue(event)
                 request.logger.debug("%d: send event data (attempt %d)", id(app), attempts)
                 yield channel.tx.write(msgpack.packb(data))
@@ -413,7 +424,7 @@ class CocaineProxy(object):
                 while True:
                     body = yield channel.rx.get(timeout=timeout)
                     if isinstance(body, EmptyResponse):
-                        request.logger.debug("%d: body finished (attempt %d)", id(app), attempts)
+                        request.logger.info("%d: body finished (attempt %d)", id(app), attempts)
                         break
 
                     request.logger.debug("%d: received %d bytes as a body chunk (attempt %d)",
@@ -425,7 +436,11 @@ class CocaineProxy(object):
                 fill_response_in(request, httplib.GATEWAY_TIMEOUT,
                                  httplib.responses[httplib.GATEWAY_TIMEOUT], message)
 
-            except DisconnectionError as err:
+            except (DisconnectionError, StreamClosedError) as err:
+                self.requests_disconnections += 1
+                # Probably it's dangerous to retry requests all the time.
+                # I must find the way to determine whether it failed during writing
+                # or reading a reply. And retry only writing fails.
                 request.logger.error("%d: %s", id(app), err)
                 # Seems on_close callback is not called in case of connecting through IPVS
                 # We detect disconnection here to avoid unnecessary errors.
