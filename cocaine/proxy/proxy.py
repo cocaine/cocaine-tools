@@ -146,7 +146,7 @@ def support_reuseport():
         return True
 
     if (sys.platform.startswith("linux") and
-       float('.'.join(platform.release().split('.')[:2])) >= 3.9):
+       map(int, platform.release().split('.')[:2]) >= [3, 9]):
         return True
 
     return False
