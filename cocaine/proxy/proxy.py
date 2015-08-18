@@ -411,8 +411,8 @@ class CocaineProxy(object):
         attempts = 2  # make it configurable
         while attempts > 0:
             attempts = attempts - 1
-            trace_id = random.randint(0, 1 << 63 - 1)
-            trace = Trace(traceid=trace_id, spanid=trace_id, parentid=0)
+            traceid = random.randint(0, 1 << 63 - 1)
+            trace = Trace(traceid=traceid, spanid=traceid, parentid=0)
             try:
                 request.logger.info("%d: enqueue event (attempt %d)", id(app), attempts)
                 channel = yield app.enqueue(event, trace=trace)
