@@ -308,13 +308,12 @@ class CocaineProxy(object):
         attempts = 2  # make it configurable
         while attempts > 0:
             attempts = attempts - 1
-            trace = Trace(traceid=random.randint(0, 1 << 63 - 1), spanid=1, parentid=0)
+            trace_id = random.randint(0, 1 << 63 - 1)
+            trace = Trace(traceid=trace_id, spanid=trace_id, parentid=0)
             try:
                 request.logger.debug("%d: enqueue event (attempt %d)", id(app), attempts)
-                trace = Trace(traceid=trace.traceid, spanid=random.randint(0, 1 << 63 - 1), parentid=trace.spanid)
                 channel = yield app.enqueue(event, trace=trace)
                 request.logger.debug("%d: send event data (attempt %d)", id(app), attempts)
-                trace = Trace(traceid=trace.traceid, spanid=random.randint(0, 1 << 63 - 1), parentid=trace.spanid)
                 yield channel.tx.write(msgpack.packb(data), trace=trace)
                 yield channel.tx.close()
                 request.logger.debug("%d: waiting for a code and headers (attempt %d)", id(app), attempts)
