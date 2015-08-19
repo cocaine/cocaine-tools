@@ -1,3 +1,9 @@
+cocaine-tools (0.12.3.2) unstable; urgency=low
+
+  * [Logs] Pass id to the framework. Support logs from the framerwork
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Wed, 19 Aug 2015 15:32:50 +0300
+
 cocaine-tools (0.12.3.1) unstable; urgency=low
 
   * [Tracing] Actually send traceid.
