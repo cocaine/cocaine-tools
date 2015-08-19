@@ -67,6 +67,9 @@ DEFAULT_TIMEOUT = 30
 
 _DEFAULT_BACKLOG = 128
 
+# sec Time to wait for the response chunk from locator
+RESOLVE_TIMEOUT = 5
+
 
 def bind_sockets_with_reuseport(port, address=None, family=socket.AF_UNSPEC,
                                 backlog=_DEFAULT_BACKLOG, flags=None):
@@ -157,6 +160,9 @@ class ContextAdapter(logging.LoggerAdapter):
     def process(self, msg, kwargs):
         return '%s\t%s' % (self.extra["id"], msg), kwargs
 
+    def traceid(self):
+        return self.extra["id"]
+
 
 def generate_request_id(request):
     data = "%d:%f" % (id(request), time.time())
@@ -172,9 +178,10 @@ def context(func):
     def wrapper(self, request):
         self.requests_in_progress += 1
         self.requests_total += 1
-        trace_id = self.get_request_id(request)[:16]
-        adaptor = ContextAdapter(self.tracking_logger, {"id": trace_id})
+        traceid = self.get_request_id(request)[:16]
+        adaptor = ContextAdapter(self.tracking_logger, {"id": traceid})
         request.logger = adaptor
+        request.traceid = traceid
         request.logger.info("start request: %s %s %s", request.host, request.remote_ip, request.uri)
         try:
             yield func(self, request)
@@ -258,8 +265,8 @@ class CocaineProxy(object):
         # active applications
         self.cache = collections.defaultdict(list)
 
-        self.logger = ContextAdapter(logging.getLogger(), {"id": "0" * 16})
-        self.tracking_logger = logging.getLogger("proxy.tracking")
+        self.logger = ContextAdapter(logging.getLogger("cocaine.proxy"), {"id": "0" * 16})
+        self.tracking_logger = logging.getLogger("cocaine.proxy.tracking")
         self.logger.info("locators %s", ','.join("%s:%d" % (h, p) for h, p in self.locator_endpoints))
 
         self.sticky_header = sticky_header
@@ -303,7 +310,7 @@ class CocaineProxy(object):
 
                         for app in self.cache[group]:
                             self.logger.info("%d: move %s to the inactive queue to refresh"
-                                             " routing group", id(app), app.name)
+                                             " routing group", app.id, app.name)
                             self.migrate_from_cache_to_inactive(app, group)
             except Exception as err:
                 self.logger.exception("error occured while watching for group updates %s", err)
@@ -328,13 +335,13 @@ class CocaineProxy(object):
                 self.io_loop.call_later(self.get_timeout(name), self.move_to_inactive(app, name))
                 return
 
-            self.logger.info("%d: move %s %s to an inactive queue (active %d)",
-                             id(app), app.name, "{0}:{1}".format(*app.address), active_apps)
+            self.logger.info("%s: move %s %s to an inactive queue (active %d)",
+                             app.id, app.name, "{0}:{1}".format(*app.address), active_apps)
             self.migrate_from_cache_to_inactive(app, name)
         return wrapper
 
     def dispose(self, app, name):
-        self.logger.info("dispose service %s %d", name, id(app))
+        self.logger.info("dispose service %s %s", name, app.id)
         app.disconnect()
 
     @context
@@ -383,11 +390,11 @@ class CocaineProxy(object):
             request.path, _, _ = other.partition("?")
 
         if self.sticky_header not in request.headers:
-            app = yield self.get_service(name, request.logger)
+            app = yield self.get_service(name, request)
         else:
             seed = request.headers.get(self.sticky_header)
             request.logger.info('sticky_header has been found: %s', seed)
-            app = yield self.get_service_with_seed(name, seed, request.logger)
+            app = yield self.get_service_with_seed(name, seed, request)
 
         if app is None:
             message = "current application %s is unavailable" % name
@@ -395,7 +402,7 @@ class CocaineProxy(object):
             return
 
         try:
-            request.logger.debug("%d: processing request app: `%s`, event `%s`", id(app), app.name, event)
+            request.logger.debug("%s: processing request app: `%s`, event `%s`", app.id, app.name, event)
             yield self.process(request, name, app, event, pack_httprequest(request))
         except Exception as err:
             request.logger.error("error during processing request %s", err)
@@ -403,38 +410,42 @@ class CocaineProxy(object):
 
     @gen.coroutine
     def process(self, request, name, app, event, data):
-        # ToDo: support chunked encoding
-        headers = {}
-        body_parts = []
+        request.logger.info("start processing request after %.3f ms", request.request_time() * 1000)
         timeout = self.get_timeout(name)
         # allow to reconnect this amount of times.
         attempts = 2  # make it configurable
         while attempts > 0:
-            attempts = attempts - 1
-            traceid = random.randint(0, 1 << 63 - 1)
+            headers = {}
+            body_parts = []
+
+            attempts -= 1
+            # We generate the start trace here, as nginx right now cannot send proper initial traceid.
+            # So both traceid & spaid are both random and the same,
+            # parentid = 0 (means the root of trace)
+            traceid = int(request.traceid, 16)
             trace = Trace(traceid=traceid, spanid=traceid, parentid=0)
             try:
-                request.logger.info("%d: enqueue event (attempt %d)", id(app), attempts)
-                channel = yield app.enqueue(event, trace=trace)
-                request.logger.debug("%d: send event data (attempt %d)", id(app), attempts)
+                request.logger.info("%s: enqueue event (attempt %d)", app.id, attempts)
+                channel = yield app.enqueue(event, trace=trace, traceid=request.traceid)
+                request.logger.debug("%s: send event data (attempt %d)", app.id, attempts)
                 yield channel.tx.write(msgpack.packb(data), trace=trace)
                 yield channel.tx.close(trace=trace)
-                request.logger.debug("%d: waiting for a code and headers (attempt %d)", id(app), attempts)
+                request.logger.debug("%s: waiting for a code and headers (attempt %d)", app.id, attempts)
                 code_and_headers = yield channel.rx.get(timeout=timeout)
-                request.logger.debug("%d: code and headers have been received (attempt %d)", id(app), attempts)
+                request.logger.debug("%s: code and headers have been received (attempt %d)", app.id, attempts)
                 code, raw_headers = msgpack.unpackb(code_and_headers)
                 headers = tornado.httputil.HTTPHeaders(raw_headers)
                 while True:
                     body = yield channel.rx.get(timeout=timeout)
                     if isinstance(body, EmptyResponse):
-                        request.logger.info("%d: body finished (attempt %d)", id(app), attempts)
+                        request.logger.info("%s: body finished (attempt %d)", app.id, attempts)
                         break
 
-                    request.logger.debug("%d: received %d bytes as a body chunk (attempt %d)",
-                                         id(app), len(body), attempts)
+                    request.logger.debug("%s: received %d bytes as a body chunk (attempt %d)",
+                                         app.id, len(body), attempts)
                     body_parts.append(body)
             except Timeout as err:
-                request.logger.error("%d: %s", id(app), err)
+                request.logger.error("%s: %s", app.id, err)
                 message = "application `%s` error: %s" % (name, str(err))
                 fill_response_in(request, httplib.GATEWAY_TIMEOUT,
                                  httplib.responses[httplib.GATEWAY_TIMEOUT], message)
@@ -444,31 +455,37 @@ class CocaineProxy(object):
                 # Probably it's dangerous to retry requests all the time.
                 # I must find the way to determine whether it failed during writing
                 # or reading a reply. And retry only writing fails.
-                request.logger.error("%d: %s", id(app), err)
+                request.logger.error("%s: %s", app.id, err)
                 # Seems on_close callback is not called in case of connecting through IPVS
                 # We detect disconnection here to avoid unnecessary errors.
                 # Try to reconnect here and give the request a go
                 try:
-                    yield app.connect()
+                    start_time = time.time()
+                    reconn_timeout = timeout - request.request_time()
+                    request.logger.info("%s: connecting with timeout %.fms", app.id, reconn_timeout * 1000)
+                    yield gen.with_timeout(start_time + reconn_timeout, app.connect(request.logger.traceid))
+                    reconn_time = time.time() - start_time
+                    request.logger.info("%s: connecting took %.3fms", app.id, reconn_time * 1000)
                 except Exception as err:
                     if attempts > 0:
+                        request.logger.error("%s: unable to reconnect: %s (%d attempts left)", err, attempts)
                         # there are still some attempts to reconnect
                         continue
                     else:
-                        request.logger.error("%d: %s", id(app), err)
+                        request.logger.error("%s: %s (no attempts left)", app.id, err)
                         message = "application `%s` error: %s" % (name, str(err))
                         fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                          httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
                         return
 
             except ServiceError as err:
-                request.logger.error("%d: %s", id(app), err)
+                request.logger.error("%s: %s", app.id, err)
                 message = "application `%s` error: %s" % (name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                  httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
 
             except Exception as err:
-                request.logger.error("%d: %s", id(app), err)
+                request.logger.error("%s: %s", app.id, err)
                 message = "unknown `%s` error: %s" % (name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                  httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
@@ -480,20 +497,21 @@ class CocaineProxy(object):
             return
 
     @gen.coroutine
-    def get_service(self, name, logger):
+    def get_service(self, name, request):
         # cache isn't full for the current application
         if len(self.cache[name]) < self.spoolSize:
+            logger = request.logger
             try:
-                app = Service(name, locator=self.locator)
-                logger.info("%d: creating an instance of %s", id(app), name)
+                app = Service(name, locator=self.locator, timeout=RESOLVE_TIMEOUT)
+                logger.info("%s: creating an instance of %s", app.id, name)
                 self.cache[name].append(app)
-                yield app.connect()
-                logger.info("%d: connect to an app %s endpoint %s ", id(app), app.name, "{0}:{1}".format(*app.address))
+                yield app.connect(request.traceid)
+                logger.info("%s: connect to an app %s endpoint %s ", app.id, app.name, "{0}:{1}".format(*app.address))
 
                 timeout = (1 + random.random()) * self.refreshPeriod
                 self.io_loop.call_later(timeout, self.move_to_inactive(app, name))
             except Exception as err:
-                logger.error("%d: unable to connect to `%s`: %s", id(app), name, err)
+                logger.error("%s: unable to connect to `%s`: %s", app.id, name, err)
                 if app in self.cache[name]:
                     self.cache[name].remove(app)
                 raise gen.Return()
@@ -505,13 +523,14 @@ class CocaineProxy(object):
         raise gen.Return(chosen)
 
     @gen.coroutine
-    def get_service_with_seed(self, name, seed, logger):
+    def get_service_with_seed(self, name, seed, request):
+        logger = request.logger
         app = Service(name, seed=seed, locator=self.locator)
         try:
-            logger.info("%d: creating an instance of %s, seed %s", id(app), name, seed)
-            yield app.connect()
+            logger.info("%s: creating an instance of %s, seed %s", app.id, name, seed)
+            yield app.connect(logger.traceid)
         except Exception as err:
-            logger.error("%d: unable to connect to `%s`: %s", id(app), name, err)
+            logger.error("%s: unable to connect to `%s`: %s", app.id, name, err)
             raise gen.Return()
 
         raise gen.Return(app)
@@ -589,9 +608,14 @@ def enable_logging(options):
     if options.logging is None or options.logging.lower() == "none":
         return
 
-    logger = logging.getLogger()
+    logger = logging.getLogger("cocaine.proxy")
     logger.setLevel(getattr(logging, options.logging.upper()))
     fmt = logging.Formatter(options.logfmt, datefmt=options.datefmt)
+
+    cocainelogger = None
+    if options.logframework:
+        cocainelogger = logging.getLogger("cocaine.baseservice")
+        cocainelogger.setLevel(getattr(logging, options.logging.upper()))
 
     if options.log_file_prefix:
         handler = logging.handlers.WatchedFileHandler(
@@ -600,10 +624,19 @@ def enable_logging(options):
         handler.setFormatter(fmt)
         logger.addHandler(handler)
 
+        if cocainelogger:
+            cocainehandler = logging.handlers.WatchedFileHandler(
+                filename=options.log_file_prefix + "framework.log"
+            )
+            cocainehandler.setFormatter(fmt)
+            cocainelogger.addHandler(cocainehandler)
+
     if options.log_to_stderr or (options.log_to_stderr is None and not logger.handlers):
-        channel = logging.StreamHandler()
-        channel.setFormatter(fmt)
-        logger.addHandler(channel)
+        stdout_handler = logging.StreamHandler()
+        stdout_handler.setFormatter(fmt)
+        logger.addHandler(stdout_handler)
+        if cocainelogger:
+            cocainelogger.addHandler(stdout_handler)
 
 
 def main():
@@ -634,7 +667,8 @@ def main():
                 help=("Path prefix for log file"))
     opts.define("datefmt", type=str, default="%z %d/%b/%Y:%H:%M:%S", help="datefmt")
     opts.define("logfmt", type=str, help="logfmt",
-                default="[%(asctime)s.%(msecs)d]\t[%(module)s:%(filename)s:%(lineno)d]\t%(levelname)s\t%(message)s")
+                default="[%(asctime)s.%(msecs)d]\t[%(module).10s:%(filename).5s:%(lineno)d]\t%(levelname)s\t%(message)s")
+    opts.define("logframework", type=bool, help="enable logging various fraework messages", default=False)
 
     # util server
     opts.define("utilport", default=8081, type=int, help="listening port number for an util server")
@@ -646,7 +680,7 @@ def main():
     opts.parse_command_line()
     enable_logging(opts)
 
-    logger = logging.getLogger()
+    logger = logging.getLogger("cocaine.proxy")
 
     use_reuseport = False
 
@@ -673,8 +707,7 @@ def main():
 
         if use_reuseport:
             sockets = bind_sockets_with_reuseport(opts.port)
-            logger.info("Listen with SO_REUSEPORT %s",
-                        ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in sockets))
+            logger.info("Listen with SO_REUSEPORT %s", ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in sockets))
 
         proxy = CocaineProxy(locators=opts.locators, cache=opts.cache,
                              request_id_header=opts.request_header,
