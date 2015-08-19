@@ -408,6 +408,8 @@ class CocaineProxy(object):
             request.logger.error("error during processing request %s", err)
             fill_response_in(request, 502, "Server error", str(err))
 
+        request.logger.info("exit from process")
+
     @gen.coroutine
     def process(self, request, name, app, event, data):
         request.logger.info("start processing request after %.3f ms", request.request_time() * 1000)
@@ -467,16 +469,20 @@ class CocaineProxy(object):
                     reconn_time = time.time() - start_time
                     request.logger.info("%s: connecting took %.3fms", app.id, reconn_time * 1000)
                 except Exception as err:
-                    if attempts > 0:
-                        request.logger.error("%s: unable to reconnect: %s (%d attempts left)", err, attempts)
-                        # there are still some attempts to reconnect
-                        continue
-                    else:
+                    if attempts <= 0:
+                        # we have no attempts more, so quit here
                         request.logger.error("%s: %s (no attempts left)", app.id, err)
                         message = "application `%s` error: %s" % (name, str(err))
                         fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                          httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
                         return
+
+                    request.logger.error("%s: unable to reconnect: %s (%d attempts left)", err, attempts)
+
+                # We have an attempt to process request again.
+                # Jump to the begining of `while attempts > 0`, either we connected successfully
+                # or we were failed to connect
+                continue
 
             except ServiceError as err:
                 request.logger.error("%s: %s", app.id, err)
