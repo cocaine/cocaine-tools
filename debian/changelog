@@ -1,3 +1,11 @@
+cocaine-tools (0.12.3.6) unstable; urgency=low
+
+  * [Proxy] Do not reconnect if we have no attempts
+  * [Proxy] Return UID to the user with every error message
+  * [Proxy] Get only 15 digits from Request-Id
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Fri, 21 Aug 2015 02:04:06 +0300
+
 cocaine-tools (0.12.3.5) unstable; urgency=low
 
   * [Proxy] Fix logical bug when Service disconnects during request
