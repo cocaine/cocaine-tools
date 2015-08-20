@@ -178,7 +178,9 @@ def context(func):
     def wrapper(self, request):
         self.requests_in_progress += 1
         self.requests_total += 1
-        traceid = self.get_request_id(request)[:16]
+        # assume we have hexdigest form of number
+        # to be sure that the number < 2**63, get only 15 digits
+        traceid = self.get_request_id(request)[:15]
         adaptor = ContextAdapter(self.tracking_logger, {"id": traceid})
         request.logger = adaptor
         request.traceid = traceid
