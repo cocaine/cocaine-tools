@@ -406,7 +406,9 @@ class CocaineProxy(object):
             yield self.process(request, name, app, event, pack_httprequest(request))
         except Exception as err:
             request.logger.error("error during processing request %s", err)
-            fill_response_in(request, 502, "Server error", str(err))
+            fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
+                             httplib.responses[httplib.INTERNAL_SERVER_ERROR],
+                             "UID %s: %s" % (request.traceid, str(err)))
 
         request.logger.info("exit from process")
 
@@ -448,7 +450,7 @@ class CocaineProxy(object):
                     body_parts.append(body)
             except Timeout as err:
                 request.logger.error("%s: %s", app.id, err)
-                message = "application `%s` error: %s" % (name, str(err))
+                message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.GATEWAY_TIMEOUT,
                                  httplib.responses[httplib.GATEWAY_TIMEOUT], message)
 
@@ -458,6 +460,13 @@ class CocaineProxy(object):
                 # I must find the way to determine whether it failed during writing
                 # or reading a reply. And retry only writing fails.
                 request.logger.error("%s: %s", app.id, err)
+                if attempts <= 0:
+                    request.logger.info("%s: no more attempts", app.id)
+                    fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
+                                     httplib.responses[httplib.INTERNAL_SERVER_ERROR],
+                                     "UID %s: Connection problem" % request.traceid)
+                    return
+
                 # Seems on_close callback is not called in case of connecting through IPVS
                 # We detect disconnection here to avoid unnecessary errors.
                 # Try to reconnect here and give the request a go
@@ -472,13 +481,12 @@ class CocaineProxy(object):
                     if attempts <= 0:
                         # we have no attempts more, so quit here
                         request.logger.error("%s: %s (no attempts left)", app.id, err)
-                        message = "application `%s` error: %s" % (name, str(err))
+                        message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
                         fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                          httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
                         return
 
                     request.logger.error("%s: unable to reconnect: %s (%d attempts left)", err, attempts)
-
                 # We have an attempt to process request again.
                 # Jump to the begining of `while attempts > 0`, either we connected successfully
                 # or we were failed to connect
@@ -486,13 +494,13 @@ class CocaineProxy(object):
 
             except ServiceError as err:
                 request.logger.error("%s: %s", app.id, err)
-                message = "application `%s` error: %s" % (name, str(err))
+                message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                  httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
 
             except Exception as err:
                 request.logger.error("%s: %s", app.id, err)
-                message = "unknown `%s` error: %s" % (name, str(err))
+                message = "UID %s: unknown `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                  httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
             else:
@@ -500,6 +508,8 @@ class CocaineProxy(object):
                 fill_response_in(request, code,
                                  httplib.responses.get(code, httplib.OK),
                                  message, headers)
+            # to return from all errors except Disconnection
+            # or receiving a good reply
             return
 
     @gen.coroutine
