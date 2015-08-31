@@ -169,8 +169,9 @@ def generate_request_id(request):
     return hashlib.md5(data).hexdigest()
 
 
-def get_request_id(request_id_header, request):
-    return request.headers.get(request_id_header) or generate_request_id(request)
+def get_request_id(request_id_header, request, force=False):
+    return request.headers.get(request_id_header) or\
+        (generate_request_id(request) if force else None)
 
 
 def context(func):
@@ -178,11 +179,24 @@ def context(func):
     def wrapper(self, request):
         self.requests_in_progress += 1
         self.requests_total += 1
-        # assume we have hexdigest form of number
-        # to be sure that the number < 2**63, get only 15 digits
-        traceid = self.get_request_id(request)[:15]
-        adaptor = ContextAdapter(self.tracking_logger, {"id": traceid})
-        request.logger = adaptor
+        generated_traceid = self.get_request_id(request)
+        if generated_traceid is not None:
+            # assume we have hexdigest form of number
+            # to be sure that the number < 2**63, get only 15 digits
+            traceid = generated_traceid[:15]
+            adaptor = ContextAdapter(self.tracking_logger, {"id": traceid})
+            request.logger = adaptor
+            # verify user input: request_header must be valid hexdigest
+            try:
+                int(traceid, 16)
+            except ValueError:
+                fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
+                                 httplib.responses[httplib.INTERNAL_SERVER_ERROR],
+                                 "Request-Id `%s` is not a hexdigest" % traceid)
+                return
+        else:
+            traceid = None
+            request.logger = self.tracking_logger
         request.traceid = traceid
         request.logger.info("start request: %s %s %s", request.host, request.remote_ip, request.uri)
         try:
@@ -420,19 +434,25 @@ class CocaineProxy(object):
         timeout = self.get_timeout(name)
         # allow to reconnect this amount of times.
         attempts = 2  # make it configurable
+
+        parentid = 0
+
+        # We generate the start trace here, as nginx right now cannot send proper initial traceid.
+        # So both traceid & spaid are both random and the same,
+        # parentid = 0 (means the root of trace)
+        if request.traceid is not None:
+            traceid = int(request.traceid, 16)
+            trace = Trace(traceid=traceid, spanid=traceid, parentid=parentid)
+        else:
+            trace = None
+
         while attempts > 0:
             headers = {}
             body_parts = []
-
             attempts -= 1
-            # We generate the start trace here, as nginx right now cannot send proper initial traceid.
-            # So both traceid & spaid are both random and the same,
-            # parentid = 0 (means the root of trace)
-            traceid = int(request.traceid, 16)
-            trace = Trace(traceid=traceid, spanid=traceid, parentid=0)
             try:
                 request.logger.info("%s: enqueue event (attempt %d)", app.id, attempts)
-                channel = yield app.enqueue(event, trace=trace, traceid=request.traceid)
+                channel = yield app.enqueue(event, trace=trace)
                 request.logger.debug("%s: send event data (attempt %d)", app.id, attempts)
                 yield channel.tx.write(msgpack.packb(data), trace=trace)
                 yield channel.tx.close(trace=trace)
@@ -671,6 +691,7 @@ def main():
     opts.define("count", default=1, type=int, help="count of tornado processes")
     opts.define("port", default=8080, type=int, help="listening port number")
     opts.define("request_header", default="X-Request-Id", type=str, help="header used as a trace id")
+    opts.define("forcegen_request_header", default=False, type=bool, help="enable force generation of the request header")
     opts.define("sticky_header", default="X-Cocaine-Sticky", type=str, help="sticky header name")
 
     # various logging options
