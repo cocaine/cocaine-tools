@@ -1,3 +1,9 @@
+cocaine-tools (0.12.3.7) unstable; urgency=low
+
+  * [Proxy] Support sampling control via revproxy
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Mon, 31 Aug 2015 14:21:56 +0300
+
 cocaine-tools (0.12.3.6) unstable; urgency=low
 
   * [Proxy] Do not reconnect if we have no attempts
