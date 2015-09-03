@@ -70,7 +70,7 @@ _DEFAULT_BACKLOG = 128
 # sec Time to wait for the response chunk from locator
 RESOLVE_TIMEOUT = 5
 
-# cocaine systme category, I hope it will never been changed
+# cocaine system category, I hope it will never be changed
 ESYSTEMCATEGORY = 255
 
 
