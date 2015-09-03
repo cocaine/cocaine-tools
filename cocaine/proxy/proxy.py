@@ -70,6 +70,9 @@ _DEFAULT_BACKLOG = 128
 # sec Time to wait for the response chunk from locator
 RESOLVE_TIMEOUT = 5
 
+# cocaine systme category, I hope it will never been changed
+ESYSTEMCATEGORY = 255
+
 
 def bind_sockets_with_reuseport(port, address=None, family=socket.AF_UNSPEC,
                                 backlog=_DEFAULT_BACKLOG, flags=None):
@@ -471,7 +474,7 @@ class CocaineProxy(object):
                                          app.id, len(body), attempts)
                     body_parts.append(body)
             except Timeout as err:
-                request.logger.error("%s: %s", app.id, err)
+                request.logger.error("%s %s:  %s", app.id, name, err)
                 message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.GATEWAY_TIMEOUT,
                                  httplib.responses[httplib.GATEWAY_TIMEOUT], message)
@@ -515,6 +518,13 @@ class CocaineProxy(object):
                 continue
 
             except ServiceError as err:
+                # if the application has been restarted, we get broken pipe code
+                # and system category
+                if err.code == errno.EPIPE and err.category == ESYSTEMCATEGORY:
+                    request.logger.error("%s: the application has been restarted", app.id)
+                    app.disconnect()
+                    continue
+
                 request.logger.error("%s: %s", app.id, err)
                 message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
