@@ -1,3 +1,9 @@
+cocaine-tools (0.11.7.6) unstable; urgency=low
+
+  * [Docker] Bump default API version to 1.12
+
+ -- Dmitry Unkovsky <diunko@yandex-team.ru>  Mon, 07 Sep 2015 18:01:06 +0300
+
 cocaine-tools (0.11.7.5) unstable; urgency=low
 
   * [Bugfix] Set default io_loop in Docker client options too
