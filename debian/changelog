@@ -1,3 +1,9 @@
+cocaine-tools (0.12.4.0) unstable; urgency=low
+
+  * [Tornado] Get rid of Toro
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 08 Sep 2015 22:37:15 +0300
+
 cocaine-tools (0.12.3.8) unstable; urgency=low
 
   * [Proxy] Handle case when an application was restarted
