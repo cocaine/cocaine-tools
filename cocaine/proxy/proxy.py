@@ -49,7 +49,6 @@ from tornado.platform.auto import set_close_exec
 from tornado.util import errno_from_exception
 from tornado import web
 from tornado import process
-from toro import Timeout
 
 from cocaine.services import Service
 from cocaine.services import Locator
@@ -440,9 +439,6 @@ class CocaineProxy(object):
 
         parentid = 0
 
-        # We generate the start trace here, as nginx right now cannot send proper initial traceid.
-        # So both traceid & spaid are both random and the same,
-        # parentid = 0 (means the root of trace)
         if request.traceid is not None:
             traceid = int(request.traceid, 16)
             trace = Trace(traceid=traceid, spanid=traceid, parentid=parentid)
@@ -473,7 +469,7 @@ class CocaineProxy(object):
                     request.logger.debug("%s: received %d bytes as a body chunk (attempt %d)",
                                          app.id, len(body), attempts)
                     body_parts.append(body)
-            except Timeout as err:
+            except gen.TimeotError as err:
                 request.logger.error("%s %s:  %s", app.id, name, err)
                 message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.GATEWAY_TIMEOUT,
