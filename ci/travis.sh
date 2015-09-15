@@ -19,7 +19,7 @@ build_node_service () {
   mkdir build && cd build
   cmake ../ -DCOCAINE_ALLOW_CGROUPS=OFF -DCACHE=OFF -DCHRONO=OFF -DDOCKER=OFF -DELASTICSEARCH=OFF -DIPVS=OFF -DMONGO=OFF -DURLFETCH=OFF -DGRAPHITE=OFF -DUNICORN=OFF
   make && cp -v ./node/node.2* /usr/lib/cocaine/
-  cd ../.. && sudo cp ci/cocaine-runtime.conf /etc/cocaine/
+  cd ../.. && sudo cp ci/cocaine-runtime.conf /etc/cocaine/ && rm -rf cocaine-plugins
   sudo service cocaine-runtime restart
 }
 
