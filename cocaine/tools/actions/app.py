@@ -31,7 +31,6 @@ from tornado import gen
 
 from cocaine.decorators import coroutine
 from cocaine.exceptions import LocatorResolveError
-from cocaine.services import Service
 from cocaine.exceptions import ServiceError
 from cocaine.tools import actions, log
 from cocaine.tools.actions import common, readArchive, CocaineConfigReader, docker
