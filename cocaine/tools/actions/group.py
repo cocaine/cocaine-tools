@@ -33,6 +33,28 @@ __author__ = 'EvgenySafronov <division494@gmail.com>'
 GROUP_COLLECTION = 'groups'
 
 
+class MalformedGroup(ValueError):
+    pass
+
+
+class GroupWithZeroTotalWeight(MalformedGroup):
+    pass
+
+
+def validate_routing_group(group):
+    accepted_value_types = (int, long)
+
+    if not group:
+        raise GroupWithZeroTotalWeight("routing group must not be empty")
+
+    if not sum(group.values()):
+        raise GroupWithZeroTotalWeight("routing group must have non-zero total weight")
+
+    if not all(((isinstance(value, accepted_value_types) and value >= 0)
+                for value in group.values())):
+        raise MalformedGroup("weight must be positive integer value")
+
+
 class Specific(actions.Specific):
     def __init__(self, storage, name):
         super(Specific, self).__init__(storage, 'group', name)
@@ -49,23 +71,14 @@ class View(actions.View):
 
 
 class Create(actions.Specific):
-    def __init__(self, storage, name, content=None):
+    def __init__(self, storage, name, content):
         super(Create, self).__init__(storage, 'group', name)
-        self.content = content
+        self.content = CocaineConfigReader.load(content, validate=validate_routing_group)
 
     @coroutine
     def execute(self):
-        if self.content is not None:
-            content = CocaineConfigReader.load(self.content, validate=self._validate)
-        else:
-            content = msgpack.dumps({})
-        channel = yield self.storage.write(GROUP_COLLECTION, self.name, content, GROUPS_TAGS)
+        channel = yield self.storage.write(GROUP_COLLECTION, self.name, self.content, GROUPS_TAGS)
         yield channel.rx.get()
-
-    def _validate(self, content):
-        for app, weight in content.items():
-            if not isinstance(weight, (int, long)):
-                raise ValueError('all weights must be integer')
 
 
 class Remove(actions.Specific):
@@ -128,6 +141,7 @@ class AddApplication(actions.Specific):
         group = yield channel.rx.get()
         group = msgpack.loads(group)
         group[self.app] = self.weight
+        validate_routing_group(group)
         channel = yield self.storage.write(GROUP_COLLECTION, self.name, msgpack.dumps(group), GROUPS_TAGS)
         yield channel.rx.get()
 
@@ -144,5 +158,6 @@ class RemoveApplication(actions.Specific):
         group = msgpack.loads(group)
         if self.app in group:
             del group[self.app]
+        validate_routing_group(group)
         channel = yield self.storage.write(GROUP_COLLECTION, self.name, msgpack.dumps(group), GROUPS_TAGS)
         yield channel.rx.get()

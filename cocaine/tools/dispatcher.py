@@ -685,10 +685,10 @@ def group_view(options,
     })
 
 
-@dispatcher.group.command(name='create', usage='NAME [CONTENT]')
+@dispatcher.group.command(name='create', usage='NAME CONTENT')
 def group_create(options,
                  name=('n', '', 'group name'),
-                 content=None):
+                 content=''):
     """Create routing group.
 
     You can optionally specify content for created routing group. It can be both direct json expression in single

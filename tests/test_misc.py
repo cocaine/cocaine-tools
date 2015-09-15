@@ -26,6 +26,8 @@ import tarfile
 from cocaine.tools.actions import readArchive
 from cocaine.tools.actions import CocaineConfigReader
 
+from cocaine.tools.actions.group import validate_routing_group, GroupWithZeroTotalWeight, MalformedGroup
+
 from cocaine.tools.helpers import JSONUnpacker
 
 from nose import tools
@@ -53,3 +55,33 @@ def test_json():
         assert i == data
 
     assert j.buff == "A"
+
+
+@tools.raises(GroupWithZeroTotalWeight)
+def test_validate_group_empty():
+    gr = {}
+    validate_routing_group(gr)
+
+
+@tools.raises(GroupWithZeroTotalWeight)
+def test_validate_group_with_zero_total_weight():
+    gr = {"A": 0, "B": 0}
+    validate_routing_group(gr)
+
+
+@tools.raises(MalformedGroup)
+def test_validate_group_malformed_group_with_float():
+    gr = {"A": 9.0, "B": 0}
+    validate_routing_group(gr)
+
+
+@tools.raises(MalformedGroup)
+def test_validate_group_malformed_group_with_negative_weight():
+    gr = {"A": -1, "B": 1}
+    validate_routing_group(gr)
+
+
+def test_validate_group():
+    gr = {"A": 1,
+          "B": 99999999999999999999999999}
+    validate_routing_group(gr)

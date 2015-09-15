@@ -124,12 +124,12 @@ class TestAppActions(object):
 
     @tools.raises(ValueError)
     def test_restart_no_name(self):
-        app.Restart(self.node, self.locator, "", "dummy_profile_name", self.storage)
+        app.Restart(self.node, self.locator, "", "dummy_profile_name")
 
     @tools.raises(ToolsError)
     def test_restart_no_such_app(self):
         io.run_sync(app.Restart(self.node, self.locator,
-                                "no_such_app_name", None, self.storage).execute, timeout=2)
+                                "no_such_app_name", None).execute, timeout=2)
 
     @tools.raises(ToolsError)
     def test_check_no_such_app(self):
@@ -157,7 +157,6 @@ class TestAppActions(object):
         assert isinstance(listing, (list, tuple))
 
     def test_app_b_start(self):
-        raise SkipTest("Skipped")
         name = "random_name"
         io.run_sync(profile.Upload(self.storage, "random_profile", "{}").execute, timeout=2)
         result = io.run_sync(app.Start(self.node, name,
@@ -181,8 +180,7 @@ class TestAppActions(object):
         name = "random_name"
         profile_name = "random_profile"
         result = io.run_sync(app.Restart(self.node, self.locator,
-                                         name, profile_name,
-                                         self.storage).execute, timeout=2)
+                                         name, profile_name).execute, timeout=2)
 
         assert "application `random_name` has been restarted with profile `random_profile`" == result, result
 
@@ -349,9 +347,9 @@ class TestGroupActions(object):
         except ServiceError:
             pass
 
-        io.run_sync(group.Create(self.storage, name).execute, timeout=2)
+        io.run_sync(group.Create(self.storage, name, '{"A": 1}').execute, timeout=2)
         res = io.run_sync(group.View(self.storage, name).execute, timeout=2)
-        assert res == {}, res
+        assert res == {'A': 1}, res
 
         res = io.run_sync(group.AddApplication(self.storage, name, app_name, weight).execute, timeout=2)
         assert res is None, res
