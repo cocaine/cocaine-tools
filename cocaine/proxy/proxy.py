@@ -469,7 +469,7 @@ class CocaineProxy(object):
                     request.logger.debug("%s: received %d bytes as a body chunk (attempt %d)",
                                          app.id, len(body), attempts)
                     body_parts.append(body)
-            except gen.TimeotError as err:
+            except gen.TimeoutError as err:
                 request.logger.error("%s %s:  %s", app.id, name, err)
                 message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.GATEWAY_TIMEOUT,
