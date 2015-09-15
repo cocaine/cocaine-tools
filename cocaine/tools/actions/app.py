@@ -174,10 +174,9 @@ class Stop(common.Node):
 
 
 class Restart(common.Node):
-    def __init__(self, node, locator, name, profile, storage):
+    def __init__(self, node, locator, name, profile):
         super(Restart, self).__init__(node)
         self.locator = locator
-        self.storage = storage
         self.name = name
         self.profile = profile
         if not self.name:
@@ -189,11 +188,11 @@ class Restart(common.Node):
             if self.profile:
                 profile = self.profile
             else:
-                info = yield NodeInfo(self.node, self.locator, self.storage).execute()
+                info = yield NodeInfo(self.node, self.locator, self.name).execute()
                 app_info = info['apps'][self.name]
                 if not isinstance(app_info, dict):
                     raise ToolsError('Unable to determine a profile name from info: %s', app_info)
-                profile = app_info['profile']
+                profile = app_info['profile']['name']
             try:
                 yield Stop(self.node, name=self.name).execute()
             except ServiceError as err:  # application is not running

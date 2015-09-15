@@ -385,7 +385,6 @@ def app_restart(options,
     """
     options.executor.executeAction('app:restart', **{
         'node': options.getService('node'),
-        'storage': options.getService('storage'),
         'locator': options.locator,
         'name': name,
         'profile': profile
