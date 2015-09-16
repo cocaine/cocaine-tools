@@ -1,3 +1,10 @@
+cocaine-tools (0.12.4.4) unstable; urgency=low
+
+  * [Tools] Node.Info supports Unix shell-style wildcards
+  * [Tools] Validate routing groups before uploading
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Wed, 16 Sep 2015 22:54:44 +0300
+
 cocaine-tools (0.12.4.3) unstable; urgency=low
 
   * [Tools] Fix app restart
