@@ -22,6 +22,7 @@
 from __future__ import division
 
 from collections import defaultdict
+import fnmatch
 import os
 import time
 import socket
@@ -113,19 +114,26 @@ class Routing(object):
 
 
 class NodeInfo(Node):
-    def __init__(self, node, locator, name=None, flags=0x1):
+    def __init__(self, node, locator, name=None, flags=0x1, use_wildcard=False):
         super(NodeInfo, self).__init__(node)
         self.locator = locator
         self._name = name
         self._flags = flags
+        self._use_wildcard = use_wildcard
 
     @coroutine
     def execute(self):
-        if self._name:
+        # name is provided and wildcard is switched off
+        # so we use exact match
+        if self._name and not self._use_wildcard:
             apps = [self._name]
         else:
             channel = yield self.node.list()
             apps = yield channel.rx.get()
+            # wildcard has been already checked
+            if self._name:
+                apps = fnmatch.filter(apps, self._name)
+
         result = yield self.info(apps)
         raise gen.Return(result)
 
