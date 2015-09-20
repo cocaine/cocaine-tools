@@ -19,6 +19,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import datetime
 import logging
 import json
 import os
@@ -402,7 +403,7 @@ class HTTPUnixClientTestCase(AsyncHTTPTestCase):
         super(HTTPUnixClientTestCase, self).tearDown()
         try:
             os.remove(self.socket_path)
-        except:
+        except Exception:
             pass
 
     def test_Client(self):
@@ -410,3 +411,46 @@ class HTTPUnixClientTestCase(AsyncHTTPTestCase):
         http_client.fetch("http://localhost", self.stop)
         response = self.wait()
         self.assertEqual(200, response.code)
+
+
+class TestCrashlog(object):
+    def __init__(self):
+        self.day_format = "cocaine-%Y-%m-%d"
+        self.year, self.month, self.day = 1988, 12, 30
+        self.given_day = datetime.date(year=self.year, month=self.month, day=self.day)
+        self.today = datetime.date.today()
+
+    def test_parse_today(self):
+        today = datetime.date.today()
+        day = crashlog.parse_crashlog_day_format("tod")
+        assert today.strftime(self.day_format) == day
+
+    def test_parse_yesterday(self):
+        yesterday = datetime.date.today() - datetime.timedelta(days=1)
+        day = crashlog.parse_crashlog_day_format("ye")
+        assert yesterday.strftime(self.day_format) == day
+
+    def test_parse_whole_date(self):
+        whole_date = "%d-%d-%d" % (self.day, self.month, self.year)
+        day = crashlog.parse_crashlog_day_format(whole_date)
+        assert self.given_day.strftime(self.day_format) == day, day
+
+    def test_parse_day_only_date(self):
+        whole_date = "%d" % (self.day,)
+        day = crashlog.parse_crashlog_day_format(whole_date)
+        assert self.today.replace(day=self.day).strftime(self.day_format) == day, day
+
+    def test_parse_day_and_month_date(self):
+        whole_date = "%d-%d" % (self.day, self.month)
+        day = crashlog.parse_crashlog_day_format(whole_date)
+        assert self.today.replace(day=self.day,
+                                  month=self.month).strftime(self.day_format) == day, day
+
+
+@tools.raises(ValueError)
+def test_parse_invalid_day():
+    crashlog.parse_crashlog_day_format("1988-18-29-")
+
+
+def test_parse_empty():
+    assert crashlog.parse_crashlog_day_format("") == ""

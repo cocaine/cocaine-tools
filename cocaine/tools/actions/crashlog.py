@@ -19,8 +19,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import itertools
 import datetime
+import itertools
 import time
 
 from tornado import gen
@@ -32,23 +32,53 @@ from cocaine.tools.actions import app
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
 
+def parse_crashlog_day_format(day_string):
+    index_format = 'cocaine-%Y-%m-%d'
+    if not day_string:
+        return day_string
+
+    if 'today'.startswith(day_string):
+        return datetime.date.today().strftime(index_format)
+    elif 'yesterday'.startswith(day_string):
+        yesterday = datetime.date.today() - datetime.timedelta(days=1)
+        return yesterday.strftime(index_format)
+    else:
+        values_count = day_string.count("-")
+        if values_count == 0:  # only day specified
+            today = datetime.date.today()
+            day = datetime.datetime.strptime(day_string, "%d").replace(year=today.year,
+                                                                       month=today.month)
+            return day.strftime(index_format)
+        elif values_count == 1:  # day and month
+            day = datetime.datetime.strptime(day_string,
+                                             "%d-%m").replace(year=datetime.date.today().year)
+            return day.strftime(index_format)
+        elif values_count == 2:  # the whole date
+            return datetime.datetime.strptime(day_string, "%d-%m-%Y").strftime(index_format)
+    raise ValueError("Invalid day format %s. Must be day-month-year|today|yesterday" % day_string)
+
+
 class List(actions.Storage):
-    def __init__(self, storage, name):
+    def __init__(self, storage, name, day_string=''):
         super(List, self).__init__(storage)
         self.name = name
         if not self.name:
-            raise ValueError('Please specify crashlog name')
+            raise ValueError('Please specify a crashlog name')
+        self.day = parse_crashlog_day_format(day_string)
 
     @coroutine
     def execute(self):
-        channel = yield self.storage.find('crashlogs', [self.name])
+        indexes = [self.name]
+        if self.day:
+            indexes.append(self.day)
+        channel = yield self.storage.find('crashlogs', indexes)
         listing = yield channel.rx.get()
         raise gen.Return(listing)
 
 
 def _parseCrashlogs(crashlogs, timestamp=None):
-    def is_filter(x):
-        return (x == timestamp if timestamp else True)
+    def is_filter(arg):
+        return arg == timestamp if timestamp else True
 
     _list = (log.split(':', 1) for log in crashlogs)
     return [(ts, time.ctime(float(ts) / 1000000), name) for ts, name in _list if is_filter(ts)]
