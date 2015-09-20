@@ -608,14 +608,16 @@ def crashlog_status(options):
 
 @crashlogDispatcher.command(name='list')
 def crashlog_list(options,
-                  name=('n', '', 'name')):
+                  name=('n', '', 'name'),
+                  day=('d', '', 'day')):
     """Show crashlogs list for application.
 
     Prints crashlog list in timestamp - uuid format.
     """
     options.executor.executeAction('crashlog:list', **{
         'storage': options.getService('storage'),
-        'name': name
+        'name': name,
+        'day_string': day,
     })
 
 
