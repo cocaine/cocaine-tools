@@ -302,13 +302,20 @@ class CocaineProxy(object):
     def on_routing_groups_update(self):
         uid = gen_uid()
         self.logger.info("generate new uniqque id %s", uid)
+        maximum_timeout = 32  # sec
+        timeout = 1  # sec
         while True:
             current = {}
             try:
                 self.logger.info("subscribe to updates with id %s", uid)
                 channel = yield self.locator.routing(uid, True)
+                timeout = 1
                 while True:
                     new = yield channel.rx.get()
+                    if isinstance(new, EmptyResponse):
+                        # it means that the cocaine has been stopped
+                        self.logger.info("locator sends close")
+                        break
                     updates = scan_for_updates(current, new)
                     # replace current
                     current = new
@@ -331,7 +338,10 @@ class CocaineProxy(object):
                                              " routing group", app.id, app.name)
                             self.migrate_from_cache_to_inactive(app, group)
             except Exception as err:
-                self.logger.exception("error occured while watching for group updates %s", err)
+                timeout = min(timeout << 1, maximum_timeout)
+                self.logger.error("error occured while watching for group updates %s. Sleep %d",
+                                  err, timeout)
+                yield gen.sleep(timeout)
 
     def get_timeout(self, name):
         return self.timeouts.get(name, DEFAULT_TIMEOUT)
