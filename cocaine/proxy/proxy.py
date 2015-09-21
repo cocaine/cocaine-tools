@@ -344,7 +344,8 @@ class CocaineProxy(object):
         except KeyError as err:
             self.logger.error("broken cache: no such key %s", err)
 
-        self.io_loop.call_later(self.get_timeout(name) * 3, functools.partial(self.dispose, app, name))
+        self.io_loop.call_later(self.get_timeout(name) * 3,
+                                functools.partial(self.dispose, app, name))
 
     def move_to_inactive(self, app, name):
         def wrapper():
@@ -374,7 +375,14 @@ class CocaineProxy(object):
             match = URL_REGEX.match(request.uri)
             if match is None:
                 if request.path == "/ping":
-                    fill_response_in(request, httplib.OK, "OK", "OK")
+                    try:
+                        yield self.locator.connect()
+                        fill_response_in(request, httplib.OK, "OK", "OK")
+                    except Exception as err:
+                        request.logger.error("unable to conenct to the locator: %s", err)
+                        fill_response_in(request, httplib.SERVICE_UNAVAILABLE,
+                                         httplib.responses[httplib.SERVICE_UNAVAILABLE],
+                                         "locator is unavailable")
                 elif request.path == '/__info':
                     # ToDo: may we should remove keys with len == 0 values from cache
                     # to avoid memory consumption for strings and the dict
@@ -391,14 +399,17 @@ class CocaineProxy(object):
                         }
                     }, sort_keys=True)
                     headers = httputil.HTTPHeaders({"Content-Type": "application/json"})
-                    fill_response_in(request, httplib.OK, httplib.responses[httplib.OK], body, headers)
+                    fill_response_in(request, httplib.OK, httplib.responses[httplib.OK],
+                                     body, headers)
                 else:
-                    fill_response_in(request, httplib.NOT_FOUND, httplib.responses[httplib.NOT_FOUND], "Invalid url")
+                    fill_response_in(request, httplib.NOT_FOUND,
+                                     httplib.responses[httplib.NOT_FOUND], "Invalid url")
                 return
 
             name, event, other = match.groups()
             if name == '' or event == '':
-                fill_response_in(request, httplib.BAD_REQUEST, httplib.responses[httplib.BAD_REQUEST], "Proxy invalid request")
+                fill_response_in(request, httplib.BAD_REQUEST,
+                                 httplib.responses[httplib.BAD_REQUEST], "Proxy invalid request")
                 return
 
             # Drop from query appname and event's name
@@ -416,7 +427,8 @@ class CocaineProxy(object):
 
         if app is None:
             message = "current application %s is unavailable" % name
-            fill_response_in(request, httplib.NOT_FOUND, httplib.responses[httplib.NOT_FOUND], message)
+            fill_response_in(request, httplib.NOT_FOUND,
+                             httplib.responses[httplib.NOT_FOUND], message)
             return
 
         try:
