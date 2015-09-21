@@ -1,3 +1,11 @@
+cocaine-tools (0.12.4.5) unstable; urgency=low
+
+  * [Tools] Listing of crashlogs supports day frame
+  * [Proxy] Ping checks the locator
+  * [Proxy] Retry to connect to the locator with sleep
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Mon, 21 Sep 2015 15:21:44 +0300
+
 cocaine-tools (0.12.4.4) unstable; urgency=low
 
   * [Tools] Node.Info supports Unix shell-style wildcards
