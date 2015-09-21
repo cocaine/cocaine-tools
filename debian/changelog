@@ -1,3 +1,9 @@
+cocaine-tools (0.12.4.6) unstable; urgency=low
+
+  * [Proxy] Return 498 if there's no such application
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Mon, 21 Sep 2015 16:42:31 +0300
+
 cocaine-tools (0.12.4.5) unstable; urgency=low
 
   * [Tools] Listing of crashlogs supports day frame
