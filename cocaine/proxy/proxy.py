@@ -72,6 +72,10 @@ RESOLVE_TIMEOUT = 5
 # cocaine system category, I hope it will never be changed
 ESYSTEMCATEGORY = 255
 
+# no such application
+# we are mature enough to have our own status code
+NO_SUCH_APP = 498
+
 
 def bind_sockets_with_reuseport(port, address=None, family=socket.AF_UNSPEC,
                                 backlog=_DEFAULT_BACKLOG, flags=None):
@@ -437,8 +441,8 @@ class CocaineProxy(object):
 
         if app is None:
             message = "current application %s is unavailable" % name
-            fill_response_in(request, httplib.NOT_FOUND,
-                             httplib.responses[httplib.NOT_FOUND], message)
+            fill_response_in(request, NO_SUCH_APP,
+                             "No Such Application", message)
             return
 
         try:
