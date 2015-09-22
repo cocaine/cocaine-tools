@@ -848,7 +848,6 @@ def main():
                             ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in socks))
                 sockets.extend(socks)
 
-
         proxy = CocaineProxy(locators=opts.locators, cache=opts.cache,
                              request_id_header=opts.request_header,
                              sticky_header=opts.sticky_header)
