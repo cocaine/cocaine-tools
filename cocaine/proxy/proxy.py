@@ -787,7 +787,7 @@ def main():
     opts.define("logfmt", type=str, help="logfmt",
                 default="[%(asctime)s.%(msecs)d]\t[%(module).10s:%(filename).5s:%(lineno)d]\t%(levelname)s\t%(message)s")
     opts.define("logframework", type=bool, default=False,
-                help="enable logging various fraework messages")
+                help="enable logging various framework messages")
 
     # util server
     opts.define("utilport", default=8081, type=int, help="listening port number for an util server")
