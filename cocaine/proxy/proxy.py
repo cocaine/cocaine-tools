@@ -74,7 +74,8 @@ ESYSTEMCATEGORY = 255
 
 # no such application
 # we are mature enough to have our own status code
-NO_SUCH_APP = 498
+# but nginx proxy_next_upstream does NOT support custom codes
+NO_SUCH_APP = httplib.SERVICE_UNAVAILABLE
 
 
 def bind_sockets_with_reuseport(port, address=None, family=socket.AF_UNSPEC,
@@ -446,7 +447,8 @@ class CocaineProxy(object):
             return
 
         try:
-            request.logger.debug("%s: processing request app: `%s`, event `%s`", app.id, app.name, event)
+            request.logger.debug("%s: processing request app: `%s`, event `%s`",
+                                 app.id, app.name, event)
             yield self.process(request, name, app, event, pack_httprequest(request))
         except Exception as err:
             request.logger.error("error during processing request %s", err)
@@ -481,9 +483,11 @@ class CocaineProxy(object):
                 request.logger.debug("%s: send event data (attempt %d)", app.id, attempts)
                 yield channel.tx.write(msgpack.packb(data), trace=trace)
                 yield channel.tx.close(trace=trace)
-                request.logger.debug("%s: waiting for a code and headers (attempt %d)", app.id, attempts)
+                request.logger.debug("%s: waiting for a code and headers (attempt %d)",
+                                     app.id, attempts)
                 code_and_headers = yield channel.rx.get(timeout=timeout)
-                request.logger.debug("%s: code and headers have been received (attempt %d)", app.id, attempts)
+                request.logger.debug("%s: code and headers have been received (attempt %d)",
+                                     app.id, attempts)
                 code, raw_headers = msgpack.unpackb(code_and_headers)
                 headers = tornado.httputil.HTTPHeaders(raw_headers)
                 while True:
@@ -576,7 +580,8 @@ class CocaineProxy(object):
                 logger.info("%s: creating an instance of %s", app.id, name)
                 self.cache[name].append(app)
                 yield app.connect(request.traceid)
-                logger.info("%s: connect to an app %s endpoint %s ", app.id, app.name, "{0}:{1}".format(*app.address))
+                logger.info("%s: connect to an app %s endpoint %s ",
+                            app.id, app.name, "{0}:{1}".format(*app.address))
 
                 timeout = (1 + random.random()) * self.refreshPeriod
                 self.io_loop.call_later(timeout, self.move_to_inactive(app, name))
@@ -709,6 +714,44 @@ def enable_logging(options):
             cocainelogger.addHandler(stdout_handler)
 
 
+TcpEndpoint = collections.namedtuple('TcpEndpoint', ["host", "port"])
+
+
+class Endpoints(object):
+    unix_prefix = "unix://"
+    tcp_prefix = "tcp://"
+
+    def __init__(self, endpoints):
+        self.unix = []
+        self.tcp = []
+        for i in endpoints:
+            if i.startswith(Endpoints.unix_prefix):
+                self.unix.append(i[len(Endpoints.unix_prefix):])
+            elif i.startswith(Endpoints.tcp_prefix):
+                raw = i[len(Endpoints.tcp_prefix):]
+                delim_count = raw.count(":")
+                if delim_count == 0:  # no port
+                    raise ValueError("Endpoint has to containt host:port: %s" % i)
+                elif delim_count == 1:  # ipv4 or hostname
+                    host, _, port = raw.partition(":")
+                    self.tcp.append(TcpEndpoint(host=host, port=int(port)))
+                elif delim_count > 1:  # ipv6
+                    host, _, port = raw.rpartition(":")
+                    if host[0] != "[" or host[-1] != "]":
+                        raise ValueError("Invalid IPv6 address %s" % i)
+                    self.tcp.append(TcpEndpoint(host=host.strip("[]"), port=int(port)))
+            else:
+                raise ValueError("Endpoint has to begin either unix:// or tcp:// %s" % i)
+
+    @property
+    def has_unix(self):
+        return len(self.unix) > 0
+
+    @property
+    def has_tcp(self):
+        return len(self.tcp) > 0
+
+
 def main():
     from tornado import options
 
@@ -722,8 +765,12 @@ def main():
                 callback=lambda path: opts.parse_config_file(path, final=False))
     opts.define("count", default=1, type=int, help="count of tornado processes")
     opts.define("port", default=8080, type=int, help="listening port number")
-    opts.define("request_header", default="X-Request-Id", type=str, help="header used as a trace id")
-    opts.define("forcegen_request_header", default=False, type=bool, help="enable force generation of the request header")
+    opts.define("endpoints", default=["tcp://localhost:8080"], type=str, multiple=True,
+                help="Specify endpoints to bind on: prefix unix:// or tcp:// should be used")
+    opts.define("request_header", default="X-Request-Id", type=str,
+                help="header used as a trace id")
+    opts.define("forcegen_request_header", default=False, type=bool,
+                help="enable force generation of the request header")
     opts.define("sticky_header", default="X-Cocaine-Sticky", type=str, help="sticky header name")
 
     # various logging options
@@ -739,7 +786,8 @@ def main():
     opts.define("datefmt", type=str, default="%z %d/%b/%Y:%H:%M:%S", help="datefmt")
     opts.define("logfmt", type=str, help="logfmt",
                 default="[%(asctime)s.%(msecs)d]\t[%(module).10s:%(filename).5s:%(lineno)d]\t%(levelname)s\t%(message)s")
-    opts.define("logframework", type=bool, help="enable logging various fraework messages", default=False)
+    opts.define("logframework", type=bool, default=False,
+                help="enable logging various fraework messages")
 
     # util server
     opts.define("utilport", default=8081, type=int, help="listening port number for an util server")
@@ -755,6 +803,15 @@ def main():
 
     use_reuseport = False
 
+    endpoints = Endpoints(opts.endpoints)
+    sockets = []
+
+    if endpoints.has_unix:
+        logger.info("Start binding on unix sockets")
+        for path in endpoints.unix:
+            logger.info("Binding on %s", path)
+            sockets.append(tornado.netutil.bind_unix_socket(path, mode=0o666))
+
     if opts.so_reuseport:
         if not support_reuseport():
             logger.warning("Your system doesn't support SO_REUSEPORT."
@@ -763,22 +820,34 @@ def main():
             logger.info("SO_REUSEPORT will be used")
             use_reuseport = True
 
-    if not use_reuseport:
-        # We have to bind before fork to distribute sockets to our forks
-        sockets = tornado.netutil.bind_sockets(opts.port)
-        logger.info("Listen %s", ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in sockets))
+    if not use_reuseport and endpoints.has_tcp:
+        logger.info("Start binding on tcp sockets")
+        for endpoint in endpoints.tcp:
+            logger.info("Binding on %s:%d", endpoint.host, endpoint.port)
+            # We have to bind before fork to distribute sockets to our forks
+            socks = tornado.netutil.bind_sockets(endpoint.port, address=endpoint.host)
+            logger.info("Listening %s", ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in socks))
+            sockets.extend(socks)
 
     if opts.enableutil:
         utilsockets = tornado.netutil.bind_sockets(opts.utilport, address=opts.utiladdress)
-        logger.info("Util server is listening on %s", ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in utilsockets))
+        logger.info("Util server is listening on %s",
+                    ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in utilsockets))
 
     try:
         if opts.count != 1:
             process.fork_processes(opts.count)
 
-        if use_reuseport:
-            sockets = bind_sockets_with_reuseport(opts.port)
-            logger.info("Listen with SO_REUSEPORT %s", ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in sockets))
+        if use_reuseport and endpoints.has_tcp:
+            logger.info("Start binding on tcp sockets")
+            for endpoint in endpoints.tcp:
+                logger.info("Binding on %s:%d", endpoint.host, endpoint.port)
+                # We have to bind before fork to distribute sockets to our forks
+                socks = bind_sockets_with_reuseport(endpoint.port, address=endpoint.host)
+                logger.info("Listening %s",
+                            ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in socks))
+                sockets.extend(socks)
+
 
         proxy = CocaineProxy(locators=opts.locators, cache=opts.cache,
                              request_id_header=opts.request_header,
