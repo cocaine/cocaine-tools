@@ -1,3 +1,10 @@
+cocaine-tools (0.12.5.0) unstable; urgency=low
+
+  * [Proxy] Return 503 if there's no such application, because of nginx
+  * [Proxy] Support listening of unix sockets, multiple tcp sockets
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 22 Sep 2015 14:51:14 +0300
+
 cocaine-tools (0.12.4.6) unstable; urgency=low
 
   * [Proxy] Return 498 if there's no such application
