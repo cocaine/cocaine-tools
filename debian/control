@@ -1,8 +1,8 @@
 Source: cocaine-tools
 Section: utils
-Priority: extra
+Priority: optional
 Maintainer: Anton Tyurin <noxiouz@yandex-team.ru>
-Build-Depends: cdbs, debhelper (>= 7.0.13),
+Build-Depends: debhelper (>= 8.0.0),
  python,
  python-central | dh-python,
  python-setuptools,
@@ -28,9 +28,10 @@ Description: Cocaine - Toolset
 
 Package: cocaine-v12-tornado-proxy
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends},
+Depends: ${shlibs:Depends}, ${misc:Depends}, adduser,
  cocaine-v12-framework-python (>=0.12.4.2),
- cocaine-v12-tools (=${Source-Version}),
+ cocaine-v12-tools (=${source:Version}),
+ python-tornado (>= 4.2),
  python (>= 2.6),
 XB-Python-Version: >= 2.6
 Conflicts: cocaine-tornado-proxy
