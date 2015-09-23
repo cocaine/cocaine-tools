@@ -23,6 +23,7 @@ import datetime
 import logging
 import json
 import os
+import re
 import time
 
 from cocaine.services import Service, Locator
@@ -411,6 +412,41 @@ class HTTPUnixClientTestCase(AsyncHTTPTestCase):
         http_client.fetch("http://localhost", self.stop)
         response = self.wait()
         self.assertEqual(200, response.code)
+
+
+class TestMisc(object):
+    def test_versions(self):
+        '''
+        Check that latest version in debian/changelog matches version from setup.py
+        '''
+        setup_dict = {}
+
+        def patched_setup(**kwargs):
+            setup_dict.update(kwargs)
+
+        import setuptools
+        original_setup = setuptools.setup
+
+        setup_py = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), '..', 'setup.py'))
+
+        try:
+            setuptools.setup = patched_setup
+            execfile(setup_py, {'__file__': setup_py, '__name__': '__main__'}, {})
+        finally:
+            setuptools.setup = original_setup
+
+        setup_py_version = setup_dict['version']
+
+        debian_changelog = os.path.join(os.path.dirname(__file__), '..',
+                                        'debian', 'changelog')
+        with open(debian_changelog) as f:
+            changelog_firstline = f.readline()
+
+        match = re.match(r'^cocaine-tools \(([^)]+)\) .*$', changelog_firstline)
+        debian_changelog_version = match.group(1)
+
+        assert setup_py_version == debian_changelog_version
 
 
 class TestCrashlog(object):
