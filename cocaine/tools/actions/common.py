@@ -64,14 +64,26 @@ class Locate(object):
 
 
 class Cluster(object):
-    def __init__(self, locator):
+    def __init__(self, locator, resolve=True):
         self.locator = locator
+        self.resolve = resolve
 
     @coroutine
     def execute(self):
-        ch = yield self.locator.cluster()
-        result = yield ch.rx.get()
-        raise gen.Return(result)
+        channel = yield self.locator.cluster()
+        result = yield channel.rx.get()
+        if self.resolve:
+            raise gen.Return(result)
+
+        converted_result = {}
+        for uuid, (addr, port) in result.items():
+            try:
+                host = socket.gethostbyaddr(addr)[0]
+                converted_result[uuid] = [host, port]
+            except socket.gaierror:
+                converted_result[uuid] = [addr, port]
+
+        raise gen.Return(converted_result)
 
 
 class Routing(object):

@@ -155,10 +155,15 @@ def routing(options,
 
 
 @d.command(name='cluster')
-def cluster(options):
+def cluster(options,
+            resolve=('r', False, 'show IPs instead of hostnames')):
     """Show cluster info"""
     options.executor.executeAction('cluster', **{
-        'locator': options.getService('locator')
+        'locator': options.getService('locator'),
+        # Actually we have IPs and we need not do anything
+        # to resolve them to IPs.
+        # So the default behavior fits better to this option name.
+        'resolve': resolve,
     })
 
 
