@@ -1,3 +1,10 @@
+cocaine-tools (0.12.5.1) unstable; urgency=low
+
+  * [Tools] Cluster shows hostnames instead of IPs
+  * [Proxy] Add a unix endpoint to the default config
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 24 Sep 2015 18:29:27 +0300
+
 cocaine-tools (0.12.5.0) unstable; urgency=low
 
   * [Proxy] Return 503 if there's no such application, because of nginx
