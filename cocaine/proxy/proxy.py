@@ -78,6 +78,11 @@ ESYSTEMCATEGORY = 255
 NO_SUCH_APP = httplib.SERVICE_UNAVAILABLE
 
 
+PROXY_ERROR_HEADERS = httputil.HTTPHeaders({
+    "X-Error-Generated-By": "Cocaine-Tornado-Proxy",
+})
+
+
 def bind_sockets_with_reuseport(port, address=None, family=socket.AF_UNSPEC,
                                 backlog=_DEFAULT_BACKLOG, flags=None):
     # it's just a plain copy from tornado, but it sets SO_REUSEPORT
@@ -397,7 +402,7 @@ class CocaineProxy(object):
                         request.logger.error("unable to conenct to the locator: %s", err)
                         fill_response_in(request, httplib.SERVICE_UNAVAILABLE,
                                          httplib.responses[httplib.SERVICE_UNAVAILABLE],
-                                         "locator is unavailable")
+                                         "locator is unavailable", PROXY_ERROR_HEADERS)
                 elif request.path == '/__info':
                     # ToDo: may we should remove keys with len == 0 values from cache
                     # to avoid memory consumption for strings and the dict
@@ -418,13 +423,15 @@ class CocaineProxy(object):
                                      body, headers)
                 else:
                     fill_response_in(request, httplib.NOT_FOUND,
-                                     httplib.responses[httplib.NOT_FOUND], "Invalid url")
+                                     httplib.responses[httplib.NOT_FOUND],
+                                     "Invalid url", PROXY_ERROR_HEADERS)
                 return
 
             name, event, other = match.groups()
             if name == '' or event == '':
                 fill_response_in(request, httplib.BAD_REQUEST,
-                                 httplib.responses[httplib.BAD_REQUEST], "Proxy invalid request")
+                                 httplib.responses[httplib.BAD_REQUEST],
+                                 "Proxy invalid request", PROXY_ERROR_HEADERS)
                 return
 
             # Drop from query appname and event's name
@@ -442,8 +449,8 @@ class CocaineProxy(object):
 
         if app is None:
             message = "current application %s is unavailable" % name
-            fill_response_in(request, NO_SUCH_APP,
-                             "No Such Application", message)
+            fill_response_in(request, NO_SUCH_APP, "No Such Application",
+                             message, PROXY_ERROR_HEADERS)
             return
 
         try:
@@ -454,7 +461,7 @@ class CocaineProxy(object):
             request.logger.error("error during processing request %s", err)
             fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                              httplib.responses[httplib.INTERNAL_SERVER_ERROR],
-                             "UID %s: %s" % (request.traceid, str(err)))
+                             "UID %s: %s" % (request.traceid, str(err)), PROXY_ERROR_HEADERS)
 
         request.logger.info("exit from process")
 
@@ -501,9 +508,10 @@ class CocaineProxy(object):
                     body_parts.append(body)
             except gen.TimeoutError as err:
                 request.logger.error("%s %s:  %s", app.id, name, err)
-                message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
+                message = "UID %s: application `%s` error: TimeoutError" % (request.traceid, name)
                 fill_response_in(request, httplib.GATEWAY_TIMEOUT,
-                                 httplib.responses[httplib.GATEWAY_TIMEOUT], message)
+                                 httplib.responses[httplib.GATEWAY_TIMEOUT],
+                                 message, PROXY_ERROR_HEADERS)
 
             except (DisconnectionError, StreamClosedError) as err:
                 self.requests_disconnections += 1
@@ -515,7 +523,7 @@ class CocaineProxy(object):
                     request.logger.info("%s: no more attempts", app.id)
                     fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                      httplib.responses[httplib.INTERNAL_SERVER_ERROR],
-                                     "UID %s: Connection problem" % request.traceid)
+                                     "UID %s: Connection problem" % request.traceid, PROXY_ERROR_HEADERS)
                     return
 
                 # Seems on_close callback is not called in case of connecting through IPVS
@@ -534,7 +542,8 @@ class CocaineProxy(object):
                         request.logger.error("%s: %s (no attempts left)", app.id, err)
                         message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
                         fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
-                                         httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
+                                         httplib.responses[httplib.INTERNAL_SERVER_ERROR],
+                                         message, PROXY_ERROR_HEADERS)
                         return
 
                     request.logger.error("%s: unable to reconnect: %s (%d attempts left)", err, attempts)
@@ -554,13 +563,15 @@ class CocaineProxy(object):
                 request.logger.error("%s: %s", app.id, err)
                 message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
-                                 httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
+                                 httplib.responses[httplib.INTERNAL_SERVER_ERROR],
+                                 message, PROXY_ERROR_HEADERS)
 
             except Exception as err:
                 request.logger.error("%s: %s", app.id, err)
                 message = "UID %s: unknown `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
-                                 httplib.responses[httplib.INTERNAL_SERVER_ERROR], message)
+                                 httplib.responses[httplib.INTERNAL_SERVER_ERROR],
+                                 message, PROXY_ERROR_HEADERS)
             else:
                 message = ''.join(body_parts)
                 fill_response_in(request, code,
