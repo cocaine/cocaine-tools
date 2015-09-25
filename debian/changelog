@@ -1,3 +1,9 @@
+cocaine-tools (0.12.5.2) unstable; urgency=low
+
+  * [Proxy] Add error header to the proxy
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Fri, 25 Sep 2015 16:00:04 +0300
+
 cocaine-tools (0.12.5.1) unstable; urgency=low
 
   * [Tools] Cluster shows hostnames instead of IPs
