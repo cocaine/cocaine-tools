@@ -5,6 +5,12 @@ stop on runlevel [016]
 limit nofile 65535 65535
 
 pre-start script
+    UNIXSOCKETDIR="/var/run/cocaine-v12-tornado-proxy/"
+    if [ ! -d $UNIXSOCKETDIR ]; then
+        mkdir -p $UNIXSOCKETDIR
+        chown -R cocaine $UNIXSOCKETDIR
+    fi
+
     if [ -f /etc/default/$UPSTART_JOB ]; then
         . /etc/default/$UPSTART_JOB
     fi
