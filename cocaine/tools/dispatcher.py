@@ -683,7 +683,7 @@ def group_list(options):
     })
 
 
-@dispatcher.group.command(name='view', usage='NAME')
+@dispatcher.group.command(name='view', usage='-n NAME')
 def group_view(options,
                name=('n', '', 'group name')):
     """Show specified routing group.
@@ -694,22 +694,22 @@ def group_view(options,
     })
 
 
-@dispatcher.group.command(name='create', usage='NAME CONTENT')
+@dispatcher.group.command(name='create', usage='-n NAME -c CONTENT')
 def group_create(options,
                  name=('n', '', 'group name'),
-                 content=''):
+                 content=('c', '', 'group content')):
     """Create routing group.
-
     You can optionally specify content for created routing group. It can be both direct json expression in single
     quotes, or path to the json file with settings. The settings itself must be key-value list, where `key` represents
     application name, and `value` represents its weight. For example:
 
-    cocaine-tool group create new_group '{
+    cocaine-tool group create -n new_group -c '{
         "app": 1,
         "another_app": 2
     }'.
 
-    Warning: all application weights must be positive integers.
+    Warning: all application weights must be positive integers,
+             total weight must be positive.
     """
     options.executor.executeAction('group:create', **{
         'storage': options.getService('storage'),
