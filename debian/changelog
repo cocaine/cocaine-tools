@@ -1,3 +1,9 @@
+cocaine-tools (0.12.5.5) unstable; urgency=low
+
+  * [Tools] Fix options parsing and help for group Create
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 01 Oct 2015 21:17:58 +0300
+
 cocaine-tools (0.12.5.4) unstable; urgency=low
 
   * [Proxy] Improve upstart script
