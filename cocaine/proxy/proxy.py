@@ -81,7 +81,7 @@ NO_SUCH_APP = httplib.SERVICE_UNAVAILABLE
 def proxy_error_headers():
     return httputil.HTTPHeaders({
         "X-Error-Generated-By": "Cocaine-Tornado-Proxy",
-        })
+    })
 
 
 def bind_sockets_with_reuseport(port, address=None, family=socket.AF_UNSPEC,
