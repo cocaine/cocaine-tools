@@ -1,3 +1,9 @@
+cocaine-tools (0.12.5.4) unstable; urgency=low
+
+  * [Proxy] Improve upstart script
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 01 Oct 2015 16:01:49 +0300
+
 cocaine-tools (0.12.5.3) unstable; urgency=low
 
   * [Proxy] Bugfix: generate new error headers each time
