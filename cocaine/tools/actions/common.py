@@ -109,7 +109,7 @@ class Routing(object):
 
     @coroutine
     def execute(self):
-        uid = "%s_%d_%f" % (socket.gethostname(), os.getpid(), time.time())
+        uid = "tools:%s_%d_%f" % (socket.gethostname(), os.getpid(), time.time())
         channel = yield self.locator.routing(uid, True)
         rings = yield channel.rx.get()
         groups = {}

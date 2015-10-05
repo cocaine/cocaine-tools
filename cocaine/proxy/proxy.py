@@ -259,7 +259,7 @@ def parse_locators_endpoints(endpoint):
 
 
 def gen_uid():
-    return "%s_%d_%f" % (socket.gethostname(), os.getpid(), time.time())
+    return "proxy:%s_%d_%f" % (socket.gethostname(), os.getpid(), time.time())
 
 
 def scan_for_updates(current, new):
