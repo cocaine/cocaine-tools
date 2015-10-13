@@ -500,7 +500,7 @@ class CocaineProxy(object):
             body_parts = []
             attempts -= 1
             try:
-                request.logger.info("%s: enqueue event (attempt %d)", app.id, attempts)
+                request.logger.debug("%s: enqueue event (attempt %d)", app.id, attempts)
                 channel = yield app.enqueue(event, trace=trace)
                 request.logger.debug("%s: send event data (attempt %d)", app.id, attempts)
                 yield channel.tx.write(msgpack.packb(data), trace=trace)
@@ -535,7 +535,7 @@ class CocaineProxy(object):
                 # or reading a reply. And retry only writing fails.
                 request.logger.error("%s: %s", app.id, err)
                 if attempts <= 0:
-                    request.logger.info("%s: no more attempts", app.id)
+                    request.logger.error("%s: no more attempts", app.id)
                     fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                      httplib.responses[httplib.INTERNAL_SERVER_ERROR],
                                      "UID %s: Connection problem" % request.traceid, proxy_error_headers())
