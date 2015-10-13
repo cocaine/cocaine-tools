@@ -174,6 +174,23 @@ class ContextAdapter(logging.LoggerAdapter):
         return '%s\t%s' % (self.extra["id"], msg), kwargs
 
 
+class NullLogger(object):
+    def __call__(self, *args, **kwargs):
+        return self
+
+    def __getattribute__(self, name):
+        return self
+
+    def __setattr__(self, name, value):
+        pass
+
+    def __delattr__(self, name):
+        pass
+
+
+NULLLOGGER = NullLogger()
+
+
 def generate_request_id(request):
     data = "%d:%f" % (id(request), time.time())
     return hashlib.md5(data).hexdigest()
@@ -206,7 +223,7 @@ def context(func):
                 return
         else:
             traceid = None
-            request.logger = self.tracking_logger
+            request.logger = NULLLOGGER
         request.traceid = traceid
         request.logger.info("start request: %s %s %s", request.host, request.remote_ip, request.uri)
         try:
