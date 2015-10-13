@@ -1,3 +1,9 @@
+cocaine-tools (0.12.5.6) unstable; urgency=low
+
+  * [Proxy] Do not log without traceid
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 13 Oct 2015 15:41:59 +0300
+
 cocaine-tools (0.12.5.5) unstable; urgency=low
 
   * [Tools] Fix options parsing and help for group Create
