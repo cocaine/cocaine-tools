@@ -173,9 +173,6 @@ class ContextAdapter(logging.LoggerAdapter):
     def process(self, msg, kwargs):
         return '%s\t%s' % (self.extra["id"], msg), kwargs
 
-    def traceid(self):
-        return self.extra["id"]
-
 
 def generate_request_id(request):
     data = "%d:%f" % (id(request), time.time())
@@ -534,7 +531,7 @@ class CocaineProxy(object):
                     start_time = time.time()
                     reconn_timeout = timeout - request.request_time()
                     request.logger.info("%s: connecting with timeout %.fms", app.id, reconn_timeout * 1000)
-                    yield gen.with_timeout(start_time + reconn_timeout, app.connect(request.logger.traceid))
+                    yield gen.with_timeout(start_time + reconn_timeout, app.connect(request.traceid))
                     reconn_time = time.time() - start_time
                     request.logger.info("%s: connecting took %.3fms", app.id, reconn_time * 1000)
                 except Exception as err:
@@ -615,7 +612,7 @@ class CocaineProxy(object):
         app = Service(name, seed=seed, locator=self.locator)
         try:
             logger.info("%s: creating an instance of %s, seed %s", app.id, name, seed)
-            yield app.connect(logger.traceid)
+            yield app.connect(request.traceid)
         except Exception as err:
             logger.error("%s: unable to connect to `%s`: %s", app.id, name, err)
             raise gen.Return()
