@@ -258,7 +258,8 @@ def fill_response_in(request, code, status, message, headers=None):
         # data
         message)
     request.connection.finish()
-    request.logger.info("finish request: %d %s %.2fms", code, status, 1000.0 * request.request_time())
+    request.logger.info("finish request: %d %s %.2fms",
+                        code, status, 1000.0 * request.request_time())
 
 
 def parse_locators_endpoints(endpoint):
@@ -297,11 +298,11 @@ class CocaineProxy(object):
         self.requests_total = 0
 
         self.io_loop = ioloop or tornado.ioloop.IOLoop.current()
-        self.serviceCacheCount = cache
-        self.spoolSize = int(self.serviceCacheCount * 1.5)
-        self.refreshPeriod = config.get("refresh_timeout", DEFAULT_REFRESH_PERIOD)
+        self.service_cache_count = cache
+        self.spool_size = int(self.service_cache_count * 1.5)
+        self.refresh_period = config.get("refresh_timeout", DEFAULT_REFRESH_PERIOD)
         self.timeouts = config.get("timeouts", {})
-        self.locator_endpoints = map(parse_locators_endpoints, locators)
+        self.locator_endpoints = [parse_locators_endpoints(i) for i in locators]
         # it's initialized after start
         # to avoid an io_loop creation before fork
         self.locator = Locator(endpoints=self.locator_endpoints)
@@ -311,7 +312,8 @@ class CocaineProxy(object):
 
         self.logger = ContextAdapter(logging.getLogger("cocaine.proxy"), {"id": "0" * 16})
         self.tracking_logger = logging.getLogger("cocaine.proxy.tracking")
-        self.logger.info("locators %s", ','.join("%s:%d" % (h, p) for h, p in self.locator_endpoints))
+        self.logger.info("locators %s",
+                         ','.join("%s:%d" % (h, p) for h, p in self.locator_endpoints))
 
         self.sticky_header = sticky_header
 
@@ -387,7 +389,7 @@ class CocaineProxy(object):
     def move_to_inactive(self, app, name):
         def wrapper():
             active_apps = len(self.cache[name])
-            if active_apps < self.serviceCacheCount:
+            if active_apps < self.service_cache_count:
                 self.io_loop.call_later(self.get_timeout(name), self.move_to_inactive(app, name))
                 return
 
@@ -540,7 +542,8 @@ class CocaineProxy(object):
                     request.logger.error("%s: no more attempts", app.id)
                     fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                      httplib.responses[httplib.INTERNAL_SERVER_ERROR],
-                                     "UID %s: Connection problem" % request.traceid, proxy_error_headers())
+                                     "UID %s: Connection problem" % request.traceid,
+                                     proxy_error_headers())
                     return
 
                 # Seems on_close callback is not called in case of connecting through IPVS
@@ -563,7 +566,8 @@ class CocaineProxy(object):
                                          message, proxy_error_headers())
                         return
 
-                    request.logger.error("%s: unable to reconnect: %s (%d attempts left)", err, attempts)
+                    request.logger.error("%s: unable to reconnect: %s (%d attempts left)",
+                                         err, attempts)
                 # We have an attempt to process request again.
                 # Jump to the begining of `while attempts > 0`, either we connected successfully
                 # or we were failed to connect
@@ -601,7 +605,7 @@ class CocaineProxy(object):
     @gen.coroutine
     def get_service(self, name, request):
         # cache isn't full for the current application
-        if len(self.cache[name]) < self.spoolSize:
+        if len(self.cache[name]) < self.spool_size:
             logger = request.logger
             try:
                 app = Service(name, locator=self.locator, timeout=RESOLVE_TIMEOUT)
@@ -611,7 +615,7 @@ class CocaineProxy(object):
                 logger.info("%s: connect to an app %s endpoint %s ",
                             app.id, app.name, "{0}:{1}".format(*app.address))
 
-                timeout = (1 + random.random()) * self.refreshPeriod
+                timeout = (1 + random.random()) * self.refresh_period
                 self.io_loop.call_later(timeout, self.move_to_inactive(app, name))
             except Exception as err:
                 logger.error("%s: unable to connect to `%s`: %s", app.id, name, err)
