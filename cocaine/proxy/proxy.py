@@ -209,8 +209,8 @@ def context(func):
         generated_traceid = self.get_request_id(request)
         if generated_traceid is not None:
             # assume we have hexdigest form of number
-            # to be sure that the number < 2**63, get only 15 digits
-            traceid = generated_traceid[:15]
+            # get only 16 digits
+            traceid = generated_traceid[:16]
             adaptor = ContextAdapter(self.tracking_logger, {"id": traceid})
             request.logger = adaptor
             # verify user input: request_header must be valid hexdigest
