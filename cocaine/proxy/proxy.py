@@ -644,34 +644,6 @@ class PingHandler(web.RequestHandler):
         self.write("OK")
 
 
-class MemStatsHandler(web.RequestHandler):
-    def get(self):
-        log = self.application.logger
-        try:
-            memstats = {}
-            import gc
-            log.info("start GC collect")
-            memstats["collected"] = gc.collect()
-            log.info("GC has finished collecting")
-            try:
-                import objgraph
-                memstats["most_common_types"] = dict(objgraph.most_common_types(100))
-            except ImportError as err:
-                log.warning("can't create objgraph: %s", err)
-
-            try:
-                from guppy import hpy
-                hp = hpy()
-                h = hp.heap()
-                memstats["heap"] = str(h)
-            except ImportError as err:
-                log.warning("can't create heapdump: %s", err)
-
-            self.write(memstats)
-        except Exception as err:
-            self.write("unable to generate memstats %s" % err)
-
-
 class LogLevel(web.RequestHandler):
     def get(self):
         lvl = self.application.logger.getEffectiveLevel()
@@ -689,14 +661,11 @@ class LogLevel(web.RequestHandler):
 
 
 class UtilServer(web.Application):
-
     def __init__(self, proxy):
         self.proxy = proxy
         self.logger = logging.getLogger("proxy.utilserver")
         handlers = [
             (r"/ping", PingHandler),
-            # (r"/stats", StatsHandler),
-            (r"/memstats", MemStatsHandler),
             (r"/logger", LogLevel),
         ]
         super(UtilServer, self).__init__(handlers=handlers)
