@@ -124,14 +124,13 @@ d = Dispatcher(globaloptions=Global.options, middleware=middleware)
 appDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 
 
-class dispatcher:
+class dispatcher(object):
     group = Dispatcher(globaloptions=Global.options, middleware=middleware)
 
 
 profileDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 runlistDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 crashlogDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
-# proxyDispatcher = Dispatcher()
 
 
 @d.command(name='locate', usage='[--name=NAME]')
@@ -311,10 +310,10 @@ def app_import(options,
     You can control process of creating and uploading application by specifying `--debug=tools` option. This is helpful
     when some errors occurred.
     """
-    TIMEOUT_THRESHOLD = 120.0
-    if options.executor.timeout < TIMEOUT_THRESHOLD:
-        logging.getLogger('cocaine.tools').info('Setting timeout to the %fs', TIMEOUT_THRESHOLD)
-        options.executor.timeout = TIMEOUT_THRESHOLD
+    timeout_threshold = 120.0
+    if options.executor.timeout < timeout_threshold:
+        logging.getLogger('cocaine.tools').info('Setting timeout to the %fs', timeout_threshold)
+        options.executor.timeout = timeout_threshold
 
     if container_url and docker_address:
         options.executor.executeAction('app:import-docker', **{
@@ -691,6 +690,7 @@ def crashlog_cleanrange(options,
         'to_day': up_to_day,
     })
 
+
 @dispatcher.group.command(name='list', usage='')
 def group_list(options):
     """Show routing groups.
@@ -823,57 +823,8 @@ def group_edit(options,
         'name': name,
     })
 
-
-# @proxyDispatcher.command()
-# def start(port=('', 8080, 'server port'),
-#           count=('', 0, 'server subprocess count (0 means optimal for current CPU count)'),
-#           config=('', '/etc/cocaine/cocaine-tornado-proxy.conf', 'path to the configuration file'),
-#           daemon=('', False, 'run as daemon'),
-#           pidfile=('', DEFAULT_COCAINE_PROXY_PID_FILE, 'pidfile')):
-#     """Start embedded cocaine proxy.
-#     """
-#     Global.configureLog(logNames=['cocaine.tools', 'cocaine.proxy'])
-#     try:
-#         proxy.Start(**{
-#             'port': port,
-#             'daemon': daemon,
-#             'count': count,
-#             'config': config,
-#             'pidfile': pidfile,
-#         }).execute()
-#     except proxy.Error as err:
-#         logging.getLogger('cocaine.tools').error('Cocaine tool error - %s', err)
-
-
-# @proxyDispatcher.command()
-# def stop(pidfile=('', DEFAULT_COCAINE_PROXY_PID_FILE, 'pidfile')):
-#     """Stop embedded cocaine proxy.
-#     """
-#     Global.configureLog(logNames=['cocaine.tools', 'cocaine.proxy'])
-#     try:
-#         proxy.Stop(**{
-#             'pidfile': pidfile,
-#         }).execute()
-#     except proxy.Error as err:
-#         logging.getLogger('cocaine.tools').error('Cocaine tool error - %s', err)
-
-
-# @proxyDispatcher.command()
-# def status(pidfile=('', DEFAULT_COCAINE_PROXY_PID_FILE, 'pidfile')):
-#     """Show embedded cocaine proxy status.
-#     """
-#     Global.configureLog(logNames=['cocaine.tools', 'cocaine.proxy'])
-#     try:
-#         proxy.Status(**{
-#             'pidfile': pidfile,
-#         }).execute()
-#     except proxy.Error as err:
-#         logging.getLogger('cocaine.tools').error('Cocaine tool error - %s', err)
-
-
 d.nest('app', appDispatcher, 'application commands')
 d.nest('profile', profileDispatcher, 'profile commands')
 d.nest('runlist', runlistDispatcher, 'runlist commands')
 d.nest('crashlog', crashlogDispatcher, 'crashlog commands')
 d.nest('group', dispatcher.group, 'routing group commands')
-# d.nest('proxy', proxyDispatcher, 'cocaine proxy commands')

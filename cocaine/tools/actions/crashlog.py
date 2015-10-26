@@ -33,6 +33,7 @@ __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
 index_format = 'cocaine-%Y-%m-%d'
 
+
 def parse_crashlog_day_format(day_string):
     if not day_string:
         return day_string
@@ -219,13 +220,11 @@ class CleanRange(object):
             log.info("found %d crashlog(s) for %s", len(items), tag)
             listing.extend(items)
 
-
         log.info("there are %d crashlog(s)", len(listing))
-
         step = len(listing) / 100
         for i, key in enumerate(listing, start=1):
             try:
-                if not (i % step):
+                if not i % step:
                     log.info("(%d/%d) %d%% of crashlogs have been removed", i, len(listing), i / step)
                 yield (yield self.storage.remove('crashlogs', key)).rx.get()
             except Exception as err:
