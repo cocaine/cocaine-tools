@@ -22,6 +22,7 @@
 from __future__ import division
 
 from collections import defaultdict
+import datetime
 import fnmatch
 import os
 import time
@@ -33,6 +34,10 @@ from cocaine.decorators import coroutine
 from cocaine.tools.error import ToolsError
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
+
+
+def split_by_groups(items, split_by=10):
+    return (items[i-split_by:i] for i in xrange(split_by, len(items)+split_by, split_by))
 
 
 class Node(object):
@@ -126,12 +131,21 @@ class Routing(object):
 
 
 class NodeInfo(Node):
-    def __init__(self, node, locator, name=None, flags=0x1, use_wildcard=False):
+    def __init__(self, node, locator,
+                 name=None, flags=0x1,
+                 use_wildcard=False,
+                 timeout=5):
         super(NodeInfo, self).__init__(node)
         self.locator = locator
         self._name = name
         self._flags = flags
         self._use_wildcard = use_wildcard
+        self.timeout = datetime.timedelta(seconds=timeout)
+        self.on_timeout_reply = {
+            "error": "info was timeouted",
+            "state": "unresponsive",
+            "meta": "the error was genearated by tools"
+        }
 
     @coroutine
     def execute(self):
@@ -152,16 +166,24 @@ class NodeInfo(Node):
     @coroutine
     def info(self, apps):
         infos = {}
-        for app in apps:
-            info = ''
-            try:
-                channel = yield self.node.info(app, self._flags)
-                info = yield channel.rx.get()
-            except Exception as err:
-                info = str(err)
-            finally:
-                infos[app] = info
+        for names in split_by_groups(apps, 25):
+            futures = {}
+            for app in names:
+                res_future = (yield self.node.info(app, self._flags)).rx.get()
+                futures[app] = gen.with_timeout(self.timeout, res_future)
+
+            wait_iterator = gen.WaitIterator(**futures)
+            while not wait_iterator.done():
+                try:
+                    info = yield wait_iterator.next()
+                    infos[wait_iterator.current_index] = info
+                except gen.TimeoutError:
+                    infos[wait_iterator.current_index] = self.on_timeout_reply
+                except Exception as err:
+                    infos[wait_iterator.current_index] = str(err)
+
         result = {
-            'apps': infos
+            'apps': infos,
+            'count': len(infos),
         }
         raise gen.Return(result)

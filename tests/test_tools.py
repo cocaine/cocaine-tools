@@ -187,7 +187,7 @@ class TestAppActions(object):
         assert "application `random_name` has been restarted with profile `random_profile`" == result, result
 
     def test_node_info(self):
-        n = common.NodeInfo(self.node, self.locator, self.storage)
+        n = common.NodeInfo(self.node, self.locator)
         result = io.run_sync(n.execute, timeout=2)
         assert isinstance(result, dict) and "apps" in result, result
 

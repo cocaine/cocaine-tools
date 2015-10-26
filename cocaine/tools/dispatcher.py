@@ -173,7 +173,8 @@ def info(options,
          profile=('p', False, 'expand profile'),
          manifest=('m', False, 'expand manifest'),
          brief=('b', False, 'show brief info only (disable -p and -m)'),
-         no_wildcard=('w', True, 'do not use wildcard to match app name')):
+         no_wildcard=('w', True, 'do not use wildcard to match app name'),
+         info_timeout=('t', 5., 'wait timeout in sec for each app')):
     """Show information about cocaine runtime
 
     Return json-like string with information about cocaine-runtime.
@@ -199,6 +200,7 @@ def info(options,
         'name': name,
         'flags': flags,
         'use_wildcard': no_wildcard,
+        'timeout': info_timeout,
     })
 
 
