@@ -31,9 +31,9 @@ from cocaine.tools.actions import app
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
+index_format = 'cocaine-%Y-%m-%d'
 
 def parse_crashlog_day_format(day_string):
-    index_format = 'cocaine-%Y-%m-%d'
     if not day_string:
         return day_string
 
@@ -56,6 +56,15 @@ def parse_crashlog_day_format(day_string):
         elif values_count == 2:  # the whole date
             return datetime.datetime.strptime(day_string, "%d-%m-%Y").strftime(index_format)
     raise ValueError("Invalid day format %s. Must be day-month-year|today|yesterday" % day_string)
+
+
+def days_range(from_date, to_date, delta=datetime.timedelta(days=1)):
+    fdate = datetime.datetime.strptime(from_date, "%Y-%m-%d")
+    tdate = datetime.datetime.strptime(to_date, "%Y-%m-%d")
+    while fdate <= tdate:
+        yield fdate
+        fdate = fdate + delta
+    return
 
 
 class List(actions.Storage):
@@ -190,3 +199,34 @@ class Clean(Specific):
             channel = yield self.storage.remove('crashlogs', '%d:%s' % crashlog)
             yield channel.rx.get()
         raise gen.Return('Done')
+
+
+class CleanRange(object):
+    def __init__(self, storage, from_day, to_day="yesterday"):
+        self.storage = storage
+        if not from_day:
+            raise ValueError("from-day must have a value")
+        # strip cocaine-
+        self.from_day = parse_crashlog_day_format(from_day)[len("cocaine-"):]
+        self.to_day = parse_crashlog_day_format(to_day)[len("cocaine-"):]
+
+    @coroutine
+    def execute(self):
+        listing = list()
+        for day in days_range(self.from_day, self.to_day):
+            tag = day.strftime(index_format)
+            items = yield (yield self.storage.find('crashlogs', [tag])).rx.get()
+            log.info("found %d crashlog(s) for %s", len(items), tag)
+            listing.extend(items)
+
+
+        log.info("there are %d crashlog(s)", len(listing))
+
+        step = len(listing) / 100
+        for i, key in enumerate(listing, start=1):
+            try:
+                if not (i % step):
+                    log.info("(%d/%d) %d%% of crashlogs have been removed", i, len(listing), i / step)
+                yield (yield self.storage.remove('crashlogs', key)).rx.get()
+            except Exception as err:
+                log.error("unable to remove %s, %s", key, err)

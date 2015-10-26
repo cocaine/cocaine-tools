@@ -172,6 +172,7 @@ NG_ACTIONS = {
     'crashlog:remove': ToolHandler(crashlog.Remove),
     'crashlog:removeall': ToolHandler(crashlog.RemoveAll),
     'crashlog:clean': ToolHandler(crashlog.Clean),
+    'crashlog:cleanwhen': ToolHandler(crashlog.CleanRange),
 }
 
 

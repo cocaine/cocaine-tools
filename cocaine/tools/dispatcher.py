@@ -676,6 +676,21 @@ def crashlog_clean(options,
     })
 
 
+@crashlogDispatcher.command(name='cleanrange')
+def crashlog_cleanrange(options,
+                        from_day=('f', '', 'from day'),
+                        up_to_day=('u', 'yesterday', 'up to day')):
+    """Remove all crashlogs from one up to another.
+    The date can be specified as DAY-[MONTH-[YEAR]].
+    Example:
+        today, yesterday,
+        10, 10-09, 10-09-2015"""
+    options.executor.executeAction('crashlog:cleanwhen', **{
+        'storage': options.getService('storage'),
+        'from_day': from_day,
+        'to_day': up_to_day,
+    })
+
 @dispatcher.group.command(name='list', usage='')
 def group_list(options):
     """Show routing groups.

@@ -13,10 +13,10 @@ _cocaine_tool()
     subcommands_app="start stop restart pause check list view upload remove"
     subcommands_profile="edit list view upload remove rename"
     subcommands_runlist="edit list view upload remove add-app rename"
-    subcommands_crashlog="edit list view remove removeall"
+    subcommands_crashlog="edit list view remove removeall cleanrange"
     subcommands_group="edit list view create remove refresh push pop rename"
 
-    if [[ ${COMP_CWORD} == 1 ]] ; then 
+    if [[ ${COMP_CWORD} == 1 ]] ; then
         COMPREPLY=( $(compgen -W "${subcommands_1}" -- ${cur}) )
         return 0
     fi
@@ -30,7 +30,7 @@ _cocaine_tool()
         fi
 
         subcmd_2="${COMP_WORDS[2]}"
-        case "${subcmd_2}" in 
+        case "${subcmd_2}" in
         list)
 	        COMPREPLY=()
             return 0
@@ -94,7 +94,7 @@ _cocaine_tool()
         fi
 
         subcmd_2="${COMP_WORDS[2]}"
-        case "${subcmd_2}" in 
+        case "${subcmd_2}" in
         list)
 	        COMPREPLY=()
             return 0
@@ -131,13 +131,13 @@ _cocaine_tool()
         esac
         ;;
     runlist)
-        if [[ ${COMP_CWORD} == 2 ]] ; then 
+        if [[ ${COMP_CWORD} == 2 ]] ; then
             COMPREPLY=( $(compgen -W "${subcommands_runlist}" -- ${cur}) )
             return 0
         fi
 
         subcmd_2="${COMP_WORDS[2]}"
-        case "${subcmd_2}" in 
+        case "${subcmd_2}" in
         list)
 	        COMPREPLY=()
             return 0
@@ -194,13 +194,13 @@ _cocaine_tool()
         esac
         ;;
     crashlog)
-        if [[ ${COMP_CWORD} == 2 ]] ; then 
+        if [[ ${COMP_CWORD} == 2 ]] ; then
             COMPREPLY=( $(compgen -W "${subcommands_crashlog}" -- ${cur}) )
             return 0
         fi
 
         subcmd_2="${COMP_WORDS[2]}"
-        case "${subcmd_2}" in 
+        case "${subcmd_2}" in
         list|removeall)
             case "${COMP_WORDS[COMP_CWORD-1]}" in
             --name)
