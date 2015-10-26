@@ -1,3 +1,9 @@
+cocaine-tools (0.12.5.8) unstable; urgency=low
+
+  * [Tools] CleanRange: remove crashlogs by dates
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Mon, 26 Oct 2015 22:33:06 +0300
+
 cocaine-tools (0.12.5.7) unstable; urgency=low
 
   * [Tools] NodeInfo: does bulk info request
