@@ -289,6 +289,7 @@ class CocaineProxy(object):
     def __init__(self, locators=("localhost:10053",),
                  cache=DEFAULT_SERVICE_CACHE_COUNT,
                  request_id_header="", sticky_header="X-Cocaine-Sticky",
+                 forcegen_request_header=False,
                  ioloop=None, **config):
         # stats
         self.requests_in_progress = 0
@@ -315,7 +316,8 @@ class CocaineProxy(object):
         self.sticky_header = sticky_header
 
         if request_id_header:
-            self.get_request_id = functools.partial(get_request_id, request_id_header)
+            self.get_request_id = functools.partial(get_request_id, request_id_header,
+                                                    force=forcegen_request_header)
         else:
             self.get_request_id = generate_request_id
 
@@ -876,7 +878,8 @@ def main():
 
         proxy = CocaineProxy(locators=opts.locators, cache=opts.cache,
                              request_id_header=opts.request_header,
-                             sticky_header=opts.sticky_header)
+                             sticky_header=opts.sticky_header,
+                             forcegen_request_header=opts.forcegen_request_header)
         server = HTTPServer(proxy)
         server.add_sockets(sockets)
 
