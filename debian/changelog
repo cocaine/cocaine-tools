@@ -1,3 +1,11 @@
+cocaine-tools (0.12.5.7) unstable; urgency=low
+
+  * [Tools] NodeInfo: does bulk info request
+  * [Tools] NodeInfo: provides a configurable timeout for app info
+  * [Proxy] Bugfix: Handle forcegen_request_header properly
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Mon, 26 Oct 2015 14:17:42 +0300
+
 cocaine-tools (0.12.5.6) unstable; urgency=low
 
   * [Proxy] Do not log without traceid
