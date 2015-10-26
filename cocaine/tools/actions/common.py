@@ -37,7 +37,7 @@ __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
 
 def split_by_groups(items, split_by=10):
-    return (items[i-split_by:i] for i in xrange(split_by, len(items)+split_by, split_by))
+    return (items[i - split_by:i] for i in xrange(split_by, len(items) + split_by, split_by))
 
 
 class Node(object):
