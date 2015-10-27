@@ -30,6 +30,7 @@ from cocaine.services import Locator, Service
 from cocaine.tools import ColoredFormatter, interactiveEmit
 from cocaine.tools.cli import Executor
 from cocaine.tools.error import ToolsError
+from cocaine.tools.version import __version__
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
@@ -141,6 +142,12 @@ def locate(options,
         'name': name,
         'locator': options.locator,
     })
+
+
+@d.command(name='version')
+def show_version(options):
+    """Show version"""
+    print(__version__)
 
 
 @d.command(name='routing', usage='[--name=NAME]')
