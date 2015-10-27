@@ -19,6 +19,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+from __future__ import print_function
+
 import collections
 import logging
 import os
@@ -145,7 +147,7 @@ def locate(options,
 
 
 @d.command(name='version')
-def show_version(options):
+def show_version(dummy_options):
     """Show version"""
     print(__version__)
 
@@ -333,7 +335,7 @@ def app_import(options,
             'registry': registry
         })
     else:
-        print "wrong usage"
+        print("wrong usage")
         exit(os.EX_USAGE)
 
 
