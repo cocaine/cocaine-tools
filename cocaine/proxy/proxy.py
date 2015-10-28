@@ -23,7 +23,7 @@
 try:
     import httplib
 except ImportError:
-    import http.client as httplib
+    import http.client as httplib  # pylint: disable=F0401
 
 import collections
 import errno
@@ -171,7 +171,8 @@ def support_reuseport():
 
 class ContextAdapter(logging.LoggerAdapter):
     def process(self, msg, kwargs):
-        return '%s\t%s' % (self.extra["id"], msg), kwargs
+        kwargs.setdefault("extra", {}).update(self.extra)
+        return msg, kwargs
 
 
 class NullLogger(object):
@@ -191,6 +192,41 @@ class NullLogger(object):
 NULLLOGGER = NullLogger()
 
 
+class FingersCrossedItem(object):
+    def __init__(self):
+        self.triggered = False
+        self.records = list()
+
+    def append(self, record):
+        self.triggered |= record.levelno >= logging.ERROR
+        self.records.append(record)
+
+
+class FingersCrossedHandler(logging.Handler):
+    cache = dict()
+
+    def __init__(self, target, level=logging.NOTSET):
+        super(FingersCrossedHandler, self).__init__(level=logging.NOTSET)
+        self.target = target
+
+    def emit(self, record):
+        trace_id = getattr(record, "trace_id", None)
+        if trace_id is None:
+            return
+
+        fitem = FingersCrossedHandler.cache.setdefault(trace_id, FingersCrossedItem())
+        fitem.append(record)
+        if fitem.triggered:
+            for rec in fitem.records:
+                self.target.handle(rec)
+            fitem.records = fitem.records[:0]
+
+    @classmethod
+    def purge(cls, trace_id):
+        if trace_id:
+            cls.cache.pop(trace_id, None)
+
+
 def generate_request_id(request):
     data = "%d:%f" % (id(request), time.time())
     return hashlib.md5(data).hexdigest()
@@ -206,30 +242,32 @@ def context(func):
     def wrapper(self, request):
         self.requests_in_progress += 1
         self.requests_total += 1
-        generated_traceid = self.get_request_id(request)
-        if generated_traceid is not None:
-            # assume we have hexdigest form of number
-            # get only 16 digits
-            traceid = generated_traceid[:16]
-            adaptor = ContextAdapter(self.tracking_logger, {"id": traceid})
-            request.logger = adaptor
-            # verify user input: request_header must be valid hexdigest
-            try:
-                int(traceid, 16)
-            except ValueError:
-                fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
-                                 httplib.responses[httplib.INTERNAL_SERVER_ERROR],
-                                 "Request-Id `%s` is not a hexdigest" % traceid)
-                return
-        else:
-            traceid = None
-            request.logger = NULLLOGGER
-        request.traceid = traceid
-        request.logger.info("start request: %s %s %s", request.host, request.remote_ip, request.uri)
+        traceid = None
         try:
+            generated_traceid = self.get_request_id(request)
+            if generated_traceid is not None:
+                # assume we have hexdigest form of number
+                # get only 16 digits
+                traceid = generated_traceid[:16]
+                adaptor = ContextAdapter(self.access_log, {"trace_id": traceid})
+                request.logger = adaptor
+                # verify user input: request_header must be valid hexdigest
+                try:
+                    int(traceid, 16)
+                except ValueError:
+                    fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
+                                     httplib.responses[httplib.INTERNAL_SERVER_ERROR],
+                                     "Request-Id `%s` is not a hexdigest" % traceid,
+                                     proxy_error_headers())
+                    return
+            else:
+                request.logger = NULLLOGGER
+            request.traceid = traceid
+            request.logger.info("start request: %s %s %s", request.host, request.remote_ip, request.uri)
             yield func(self, request)
         finally:
             self.requests_in_progress -= 1
+            FingersCrossedHandler.purge(traceid)
     return wrapper
 
 
@@ -310,8 +348,9 @@ class CocaineProxy(object):
         # active applications
         self.cache = collections.defaultdict(list)
 
-        self.logger = ContextAdapter(logging.getLogger("cocaine.proxy"), {"id": "0" * 16})
-        self.tracking_logger = logging.getLogger("cocaine.proxy.tracking")
+        self.logger = logging.getLogger("cocaine.proxy.general")
+        self.access_log = logging.getLogger("cocaine.proxy.access")
+        self.access_log.propagate = False
         self.logger.info("locators %s",
                          ','.join("%s:%d" % (h, p) for h, p in self.locator_endpoints))
 
@@ -643,12 +682,12 @@ class CocaineProxy(object):
         raise gen.Return(app)
 
 
-class PingHandler(web.RequestHandler):
+class PingHandler(web.RequestHandler):  # pylint: disable=W0223
     def get(self):
         self.write("OK")
 
 
-class LogLevel(web.RequestHandler):
+class LogLevel(web.RequestHandler):  # pylint: disable=W0223
     def get(self):
         lvl = self.application.logger.getEffectiveLevel()
         self.write(logging.getLevelName(lvl))
@@ -664,7 +703,7 @@ class LogLevel(web.RequestHandler):
         self.write("level %s has been set" % logging.getLevelName(lvl))
 
 
-class UtilServer(web.Application):
+class UtilServer(web.Application):  # pylint: disable=W0223
     def __init__(self, proxy):
         self.proxy = proxy
         self.logger = logging.getLogger("proxy.utilserver")
@@ -684,9 +723,13 @@ def enable_logging(options):
     if options.logging is None or options.logging.lower() == "none":
         return
 
-    logger = logging.getLogger("cocaine.proxy")
-    logger.setLevel(getattr(logging, options.logging.upper()))
-    fmt = logging.Formatter(options.logfmt, datefmt=options.datefmt)
+    general_logger = logging.getLogger("cocaine.proxy.general")
+    general_logger.setLevel(getattr(logging, options.logging.upper()))
+    general_formatter = logging.Formatter(options.generallogfmt, datefmt=options.datefmt)
+
+    access_logger = logging.getLogger("cocaine.proxy.access")
+    access_logger.setLevel(getattr(logging, options.logging.upper()))
+    access_formatter = logging.Formatter(options.accesslogfmt, datefmt=options.datefmt)
 
     cocainelogger = None
     if options.logframework:
@@ -697,22 +740,33 @@ def enable_logging(options):
         handler = logging.handlers.WatchedFileHandler(
             filename=options.log_file_prefix,
         )
-        handler.setFormatter(fmt)
-        logger.addHandler(handler)
+        handler.setFormatter(general_formatter)
+        general_logger.addHandler(handler)
+
+        handler = logging.handlers.WatchedFileHandler(
+            filename=options.log_file_prefix,
+        )
+        handler.setFormatter(access_formatter)
+        access_logger.addHandler(FingersCrossedHandler(handler))
 
         if cocainelogger:
             cocainehandler = logging.handlers.WatchedFileHandler(
                 filename=options.log_file_prefix + "framework.log"
             )
-            cocainehandler.setFormatter(fmt)
+            cocainehandler.setFormatter(general_formatter)
             cocainelogger.addHandler(cocainehandler)
 
-    if options.log_to_stderr or (options.log_to_stderr is None and not logger.handlers):
-        stdout_handler = logging.StreamHandler()
-        stdout_handler.setFormatter(fmt)
-        logger.addHandler(stdout_handler)
+    if options.log_to_stderr or (options.log_to_stderr is None and not general_logger.handlers):
+        stderr_handler = logging.StreamHandler()
+        stderr_handler.setFormatter(general_formatter)
+        general_logger.addHandler(stderr_handler)
+
+        stderr_handler = logging.StreamHandler()
+        stderr_handler.setFormatter(access_formatter)
+        access_logger.addHandler(FingersCrossedHandler(target=stderr_handler))
+
         if cocainelogger:
-            cocainelogger.addHandler(stdout_handler)
+            cocainelogger.addHandler(stderr_handler)
 
 
 TcpEndpoint = collections.namedtuple('TcpEndpoint', ["host", "port"])
@@ -753,6 +807,10 @@ class Endpoints(object):
         return len(self.tcp) > 0
 
 
+DEFAULT_GENERAL_LOGFORMAT = "[%(asctime)s.%(msecs)d]\t[%(filename).5s:%(lineno)d]\t%(levelname)s\t%(message)s"
+DEFAULT_ACCESS_LOGFORMAT = "[%(asctime)s.%(msecs)d]\t[%(filename).5s:%(lineno)d]\t%(levelname)s\t%(trace_id)s\t%(message)s"
+
+
 def main():
     from tornado import options
 
@@ -785,8 +843,10 @@ def main():
     opts.define("log_file_prefix", type=str, default=None, metavar="PATH",
                 help=("Path prefix for log file"))
     opts.define("datefmt", type=str, default="%z %d/%b/%Y:%H:%M:%S", help="datefmt")
-    opts.define("logfmt", type=str, help="logfmt",
-                default="[%(asctime)s.%(msecs)d]\t[%(module).10s:%(filename).5s:%(lineno)d]\t%(levelname)s\t%(message)s")
+    opts.define("generallogfmt", type=str, help="log format of general logging system",
+                default=DEFAULT_GENERAL_LOGFORMAT)
+    opts.define("accesslogfmt", type=str, help="log format of access logging system",
+                default=DEFAULT_ACCESS_LOGFORMAT)
     opts.define("logframework", type=bool, default=False,
                 help="enable logging various framework messages")
 
@@ -800,7 +860,7 @@ def main():
     opts.parse_command_line()
     enable_logging(opts)
 
-    logger = logging.getLogger("cocaine.proxy")
+    logger = logging.getLogger("cocaine.proxy.general")
 
     use_reuseport = False
 
