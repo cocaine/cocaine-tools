@@ -20,6 +20,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+from __future__ import print_function
+
 try:
     import httplib
 except ImportError:
@@ -56,6 +58,11 @@ from cocaine.exceptions import ServiceError
 from cocaine.exceptions import DisconnectionError
 from cocaine.services import EmptyResponse
 from cocaine.detail.trace import Trace
+
+try:
+    from cocaine.tools.version import __version__ as tools_version
+except ImportError:
+    tools_version = "<undefinded>"
 
 
 URL_REGEX = re.compile(r"/([^/]*)/([^/?]*)(.*)")
@@ -811,11 +818,16 @@ DEFAULT_GENERAL_LOGFORMAT = "[%(asctime)s.%(msecs)d]\t[%(filename).5s:%(lineno)d
 DEFAULT_ACCESS_LOGFORMAT = "[%(asctime)s.%(msecs)d]\t[%(filename).5s:%(lineno)d]\t%(levelname)s\t%(trace_id)s\t%(message)s"
 
 
+def show_version(dummy):
+    print("cocaine tools & proxy: %s" % tools_version)
+    sys.exit(0)
+
+
 def main():
     from tornado import options
 
     opts = options.OptionParser()
-
+    opts.define("version", type=bool, help="show version and exit", callback=show_version)
     opts.define("locators", default=["localhost:10053"],
                 type=str, multiple=True, help="comma-separated endpoints of locators")
     opts.define("cache", default=DEFAULT_SERVICE_CACHE_COUNT,
