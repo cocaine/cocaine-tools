@@ -19,4 +19,4 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-__version__ = "0.12.5.8"
+__version__ = "0.12.6.0"

@@ -1,3 +1,12 @@
+cocaine-tools (0.12.6.0) unstable; urgency=low
+
+  * [Proxy] Add version flag
+  * [Proxy] Optimistic lazy logging system for requests
+  * [Tools] Add version flag
+  * [Tools] Handle BrokenPipe during printing a results
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 29 Oct 2015 13:38:07 +0300
+
 cocaine-tools (0.12.5.8) unstable; urgency=low
 
   * [Tools] CleanRange: remove crashlogs by dates
