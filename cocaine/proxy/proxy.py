@@ -769,17 +769,18 @@ def enable_logging(options):
     if options.log_to_stderr or (options.log_to_stderr is None and not general_logger.handlers):
         stderr_handler = logging.StreamHandler()
         stderr_handler.setFormatter(general_formatter)
+
         general_logger.addHandler(stderr_handler)
+        if cocainelogger:
+            cocainelogger.addHandler(stderr_handler)
 
         stderr_handler = logging.StreamHandler()
         stderr_handler.setFormatter(access_formatter)
+
         if options.fingerscrossed:
             access_logger.addHandler(FingersCrossedHandler(target=stderr_handler))
         else:
             access_logger.addHandler(stderr_handler)
-
-        if cocainelogger:
-            cocainelogger.addHandler(stderr_handler)
 
 
 TcpEndpoint = collections.namedtuple('TcpEndpoint', ["host", "port"])
