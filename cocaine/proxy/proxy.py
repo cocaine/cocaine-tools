@@ -754,7 +754,10 @@ def enable_logging(options):
             filename=options.log_file_prefix,
         )
         handler.setFormatter(access_formatter)
-        access_logger.addHandler(FingersCrossedHandler(handler))
+        if options.fingerscrossed:
+            access_logger.addHandler(FingersCrossedHandler(handler))
+        else:
+            access_logger.addHandler(handler)
 
         if cocainelogger:
             cocainehandler = logging.handlers.WatchedFileHandler(
@@ -770,7 +773,10 @@ def enable_logging(options):
 
         stderr_handler = logging.StreamHandler()
         stderr_handler.setFormatter(access_formatter)
-        access_logger.addHandler(FingersCrossedHandler(target=stderr_handler))
+        if options.fingerscrossed:
+            access_logger.addHandler(FingersCrossedHandler(target=stderr_handler))
+        else:
+            access_logger.addHandler(stderr_handler)
 
         if cocainelogger:
             cocainelogger.addHandler(stderr_handler)
@@ -861,6 +867,8 @@ def main():
                 default=DEFAULT_ACCESS_LOGFORMAT)
     opts.define("logframework", type=bool, default=False,
                 help="enable logging various framework messages")
+    opts.define("fingerscrossed", type=bool, default=True,
+                help="enable lazy logging")
 
     # util server
     opts.define("utilport", default=8081, type=int, help="listening port number for an util server")
