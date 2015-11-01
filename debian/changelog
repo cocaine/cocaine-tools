@@ -1,3 +1,10 @@
+cocaine-tools (0.12.6.1) unstable; urgency=low
+
+  * [Proxy] Make lazy logging optional
+  * [Proxy] Bugfix: set proper handler for framework logs
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Sun, 01 Nov 2015 18:47:35 +0300
+
 cocaine-tools (0.12.6.0) unstable; urgency=low
 
   * [Proxy] Add version flag
