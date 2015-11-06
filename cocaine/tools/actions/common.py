@@ -85,7 +85,7 @@ class Cluster(object):
             try:
                 host = socket.gethostbyaddr(addr)[0]
                 converted_result[uuid] = [host, port]
-            except socket.gaierror:
+            except (socket.gaierror, IOError):
                 converted_result[uuid] = [addr, port]
 
         raise gen.Return(converted_result)
