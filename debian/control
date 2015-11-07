@@ -10,16 +10,16 @@ Build-Depends: debhelper (>= 8.0.0),
 Standards-Version: 3.9.3
 Vcs-Git: git://github.com/cocaine/cocaine-framework-python.git
 Vcs-Browser: https://github.com/cocaine/cocaine-framework-python
-XS-Python-Version: >= 2.6
+XS-Python-Version: >= 2.7
 
 Package: cocaine-v12-tools
 Architecture: any
 Depends: ${misc:Depends},
  cocaine-v12-framework-python (>= 0.12.4.2),
  python-opster (>= 4.0),
- python-tornado (>= 4.2),
- python (>= 2.6),
-XB-Python-Version: >= 2.6
+ python-tornado (>= 4.3),
+ python (>= 2.7),
+XB-Python-Version: >= 2.7
 Conflicts: cocaine-tools
 Provides: cocaine-tools
 Replaces: cocaine-tools
@@ -31,9 +31,9 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, adduser,
  cocaine-v12-framework-python (>=0.12.4.2),
  cocaine-v12-tools (=${source:Version}),
- python-tornado (>= 4.2),
- python (>= 2.6),
-XB-Python-Version: >= 2.6
+ python-tornado (>= 4.3),
+ python (>= 2.7),
+XB-Python-Version: >= 2.7
 Conflicts: cocaine-tornado-proxy
 Provides: cocaine-tornado-proxy
 Replaces: cocaine-tornado-proxy

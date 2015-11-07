@@ -34,7 +34,6 @@ import hashlib
 import json
 import logging
 import os
-import platform
 import random
 import re
 import socket
@@ -45,12 +44,11 @@ import msgpack
 import tornado
 from tornado import gen
 from tornado import httputil
+from tornado import process
+from tornado import web
 from tornado.httpserver import HTTPServer
 from tornado.iostream import StreamClosedError
-from tornado.platform.auto import set_close_exec
-from tornado.util import errno_from_exception
-from tornado import web
-from tornado import process
+from tornado.netutil import bind_sockets, bind_unix_socket
 
 from cocaine.services import Service
 from cocaine.services import Locator
@@ -91,89 +89,8 @@ def proxy_error_headers():
     })
 
 
-def bind_sockets_with_reuseport(port, address=None, family=socket.AF_UNSPEC,
-                                backlog=_DEFAULT_BACKLOG, flags=None):
-    # it's just a plain copy from tornado, but it sets SO_REUSEPORT
-    sockets = []
-    if address == "":
-        address = None
-    if not socket.has_ipv6 and family == socket.AF_UNSPEC:
-        # Python can be compiled with --disable-ipv6, which causes
-        # operations on AF_INET6 sockets to fail, but does not
-        # automatically exclude those results from getaddrinfo
-        # results.
-        # http://bugs.python.org/issue16208
-        family = socket.AF_INET
-    if flags is None:
-        flags = socket.AI_PASSIVE
-    bound_port = None
-    for res in set(socket.getaddrinfo(address, port, family, socket.SOCK_STREAM,
-                                      0, flags)):
-        af, socktype, proto, canonname, sockaddr = res
-        if (sys.platform == 'darwin' and address == 'localhost' and
-                af == socket.AF_INET6 and sockaddr[3] != 0):
-            # Mac OS X includes a link-local address fe80::1%lo0 in the
-            # getaddrinfo results for 'localhost'.  However, the firewall
-            # doesn't understand that this is a local address and will
-            # prompt for access (often repeatedly, due to an apparent
-            # bug in its ability to remember granting access to an
-            # application). Skip these addresses.
-            continue
-        try:
-            sock = socket.socket(af, socktype, proto)
-        except socket.error as e:
-            if errno_from_exception(e) == errno.EAFNOSUPPORT:
-                continue
-            raise
-        set_close_exec(sock.fileno())
-        if os.name != 'nt':
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-            # I assume that MacOS has a new version of Python
-            if hasattr(socket, "SO_REUSEPORT"):
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-            else:
-                if sys.platform.startswith('darwin'):
-                    raise SystemError("Update your python version")
-                # <socket.h> #define SO_REUSEPORT  15
-                sock.setsockopt(socket.SOL_SOCKET, 15, 1)
-
-        if af == socket.AF_INET6:
-            # On linux, ipv6 sockets accept ipv4 too by default,
-            # but this makes it impossible to bind to both
-            # 0.0.0.0 in ipv4 and :: in ipv6.  On other systems,
-            # separate sockets *must* be used to listen for both ipv4
-            # and ipv6.  For consistency, always disable ipv4 on our
-            # ipv6 sockets and use a separate ipv4 socket when needed.
-            #
-            # Python 2.x on windows doesn't have IPPROTO_IPV6.
-            if hasattr(socket, "IPPROTO_IPV6"):
-                sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
-
-        # automatic port allocation with port=None
-        # should bind on the same port on IPv4 and IPv6
-        host, requested_port = sockaddr[:2]
-        if requested_port == 0 and bound_port is not None:
-            sockaddr = tuple([host, bound_port] + list(sockaddr[2:]))
-
-        sock.setblocking(0)
-        sock.bind(sockaddr)
-        bound_port = sock.getsockname()[1]
-        sock.listen(backlog)
-        sockets.append(sock)
-    return sockets
-
-
 def support_reuseport():
-    # I hope that Mac OS X has a new python > 2.7.3
-    if hasattr(socket, "SO_REUSEPORT"):
-        return True
-
-    if (sys.platform.startswith("linux") and
-       map(int, platform.release().split('.')[:2]) >= [3, 9]):
-        return True
-
-    return False
+    return hasattr(socket, "SO_REUSEPORT")
 
 
 class ContextAdapter(logging.LoggerAdapter):
@@ -561,7 +478,7 @@ class CocaineProxy(object):
                 request.logger.debug("%s: code and headers have been received (attempt %d)",
                                      app.id, attempts)
                 code, raw_headers = msgpack.unpackb(code_and_headers)
-                headers = tornado.httputil.HTTPHeaders(raw_headers)
+                headers = httputil.HTTPHeaders(raw_headers)
                 while True:
                     body = yield channel.rx.get(timeout=timeout)
                     if isinstance(body, EmptyResponse):
@@ -892,7 +809,7 @@ def main():
         logger.info("Start binding on unix sockets")
         for path in endpoints.unix:
             logger.info("Binding on %s", path)
-            sockets.append(tornado.netutil.bind_unix_socket(path, mode=0o666))
+            sockets.append(bind_unix_socket(path, mode=0o666))
 
     if opts.so_reuseport:
         if not support_reuseport():
@@ -907,12 +824,12 @@ def main():
         for endpoint in endpoints.tcp:
             logger.info("Binding on %s:%d", endpoint.host, endpoint.port)
             # We have to bind before fork to distribute sockets to our forks
-            socks = tornado.netutil.bind_sockets(endpoint.port, address=endpoint.host)
+            socks = bind_sockets(endpoint.port, address=endpoint.host)
             logger.info("Listening %s", ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in socks))
             sockets.extend(socks)
 
     if opts.enableutil:
-        utilsockets = tornado.netutil.bind_sockets(opts.utilport, address=opts.utiladdress)
+        utilsockets = bind_sockets(opts.utilport, address=opts.utiladdress)
         logger.info("Util server is listening on %s",
                     ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in utilsockets))
 
@@ -925,7 +842,7 @@ def main():
             for endpoint in endpoints.tcp:
                 logger.info("Binding on %s:%d", endpoint.host, endpoint.port)
                 # We have to bind before fork to distribute sockets to our forks
-                socks = bind_sockets_with_reuseport(endpoint.port, address=endpoint.host)
+                socks = bind_sockets(endpoint.port, address=endpoint.host, reuse_port=True)
                 logger.info("Listening %s",
                             ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in socks))
                 sockets.extend(socks)
