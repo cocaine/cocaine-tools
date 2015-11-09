@@ -210,6 +210,7 @@ def fill_response_in(request, code, status, message, headers=None):
         headers.add("Content-Length", content_length)
 
     headers.add("X-Powered-By", "Cocaine")
+    headers["X-XSS-Protection"] = "1; mode=block"
     request.logger.debug("Content-Length: %s", headers["Content-Length"])
 
     request.connection.write_headers(
