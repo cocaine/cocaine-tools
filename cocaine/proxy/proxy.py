@@ -386,24 +386,6 @@ class CocaineProxy(object):
                         fill_response_in(request, httplib.SERVICE_UNAVAILABLE,
                                          httplib.responses[httplib.SERVICE_UNAVAILABLE],
                                          "locator is unavailable", proxy_error_headers())
-                elif request.path == '/__info':
-                    # ToDo: may we should remove keys with len == 0 values from cache
-                    # to avoid memory consumption for strings and the dict
-                    body = json.dumps({
-                        'services': {
-                            'cache': dict(((k, len(v)) for k, v in self.cache.items())),
-                        },
-                        'requests': {
-                            'inprogress': self.requests_in_progress,
-                            'total': self.requests_total,
-                        },
-                        'errors': {
-                            'disconnections': self.requests_disconnections,
-                        }
-                    }, sort_keys=True)
-                    headers = httputil.HTTPHeaders({"Content-Type": "application/json"})
-                    fill_response_in(request, httplib.OK, httplib.responses[httplib.OK],
-                                     body, headers)
                 else:
                     fill_response_in(request, httplib.NOT_FOUND,
                                      httplib.responses[httplib.NOT_FOUND],
@@ -447,6 +429,15 @@ class CocaineProxy(object):
                              "UID %s: %s" % (request.traceid, str(err)), proxy_error_headers())
 
         request.logger.info("exit from process")
+
+    def info(self):
+        return {'services': {
+                'cache': dict(((k, len(v)) for k, v in self.cache.items())),
+                },
+                'requests': {'inprogress': self.requests_in_progress,
+                             'total': self.requests_total},
+                'errors': {'disconnections': self.requests_disconnections},
+                }
 
     @gen.coroutine
     def process(self, request, name, app, event, data):
@@ -628,12 +619,19 @@ class LogLevel(web.RequestHandler):  # pylint: disable=W0223
         self.write("level %s has been set" % logging.getLevelName(lvl))
 
 
+class InfoHandler(web.RequestHandler):
+    def get(self):
+        info = self.application.proxy.info()
+        self.write(info)
+
+
 class UtilServer(web.Application):  # pylint: disable=W0223
     def __init__(self, proxy):
         self.proxy = proxy
         self.logger = logging.getLogger("proxy.utilserver")
         handlers = [
             (r"/ping", PingHandler),
+            (r"/info", InfoHandler),
             (r"/logger", LogLevel),
         ]
         super(UtilServer, self).__init__(handlers=handlers)
