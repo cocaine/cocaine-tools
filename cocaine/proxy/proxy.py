@@ -31,7 +31,6 @@ import collections
 import errno
 import functools
 import hashlib
-import json
 import logging
 import os
 import random
