@@ -1,3 +1,10 @@
+cocaine-tools (0.12.6.3) unstable; urgency=low
+
+  * [Proxy] Do not send body in case of HEAD
+  * [Proxy] Decrease log level of some messages related to groups update
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 19 Nov 2015 12:06:26 +0300
+
 cocaine-tools (0.12.6.2-1) unstable; urgency=low
 
   * [Proxy] Change default config
