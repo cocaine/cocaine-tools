@@ -306,7 +306,7 @@ class CocaineProxy(object):
                     new = yield channel.rx.get()
                     if isinstance(new, EmptyResponse):
                         # it means that the cocaine has been stopped
-                        self.logger.info("locator sends close")
+                        self.logger.error("locator sends close")
                         break
                     updates = scan_for_updates(current, new)
                     # replace current
@@ -322,12 +322,12 @@ class CocaineProxy(object):
                         # if we have not created an instance of
                         # the group it is absent in cache
                         if group not in self.cache:
-                            self.logger.info("nothing to update in group %s", group)
+                            self.logger.debug("nothing to update in group %s", group)
                             continue
 
                         for app in self.cache[group]:
-                            self.logger.info("%d: move %s to the inactive queue to refresh"
-                                             " routing group", app.id, app.name)
+                            self.logger.debug("%d: move %s to the inactive queue to refresh"
+                                              " routing group", app.id, app.name)
                             self.migrate_from_cache_to_inactive(app, group)
             except Exception as err:
                 timeout = min(timeout << 1, maximum_timeout)
