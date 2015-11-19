@@ -212,6 +212,9 @@ def fill_response_in(request, code, status, message, headers=None):
     headers["X-XSS-Protection"] = "1; mode=block"
     request.logger.debug("Content-Length: %s", headers["Content-Length"])
 
+    if request.method == "HEAD":
+        message = None
+
     request.connection.write_headers(
         # start_line
         httputil.ResponseStartLine(request.version, code, status),
