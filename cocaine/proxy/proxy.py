@@ -436,9 +436,7 @@ class CocaineProxy(object):
         request.logger.info("exit from process")
 
     def info(self):
-        return {'services': {
-                'cache': dict(((k, len(v)) for k, v in self.cache.items())),
-                },
+        return {'services': {'cache': dict(((k, len(v)) for k, v in self.cache.items()))},
                 'requests': {'inprogress': self.requests_in_progress,
                              'total': self.requests_total},
                 'errors': {'disconnections': self.requests_disconnections},
