@@ -1,3 +1,9 @@
+cocaine-tools (0.12.6.4) unstable; urgency=low
+
+  * [Proxy] Add X-Request-Id header to replies
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Wed, 02 Dec 2015 12:47:14 +0300
+
 cocaine-tools (0.12.6.3) unstable; urgency=low
 
   * [Proxy] Do not send body in case of HEAD
