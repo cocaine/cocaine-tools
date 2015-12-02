@@ -212,6 +212,9 @@ def fill_response_in(request, code, status, message, headers=None):
     headers["X-XSS-Protection"] = "1; mode=block"
     request.logger.debug("Content-Length: %s", headers["Content-Length"])
 
+    if getattr(request, "traceid", None) is not None:
+        headers.add("X-Request-Id", request.traceid)
+
     if request.method == "HEAD":
         message = None
 
