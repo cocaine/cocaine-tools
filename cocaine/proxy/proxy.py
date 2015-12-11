@@ -28,6 +28,7 @@ except ImportError:
     import http.client as httplib  # pylint: disable=F0401
 
 import collections
+import datetime
 import errno
 import functools
 import hashlib
@@ -274,6 +275,8 @@ class CocaineProxy(object):
         # it's initialized after start
         # to avoid an io_loop creation before fork
         self.locator = Locator(endpoints=self.locator_endpoints)
+        # it's used to reply on `ping` method
+        self.locator_status = False
 
         # active applications
         self.cache = collections.defaultdict(list)
@@ -295,6 +298,24 @@ class CocaineProxy(object):
         # post the watcher for routing groups
         self.io_loop.add_future(self.on_routing_groups_update(),
                                 lambda x: self.logger.error("the updater must not exit"))
+        # run infinity check locator health status
+        self.locator_health_check()
+
+    @gen.coroutine
+    def locator_health_check(self, period=5):
+        wait_timeot = datetime.timedelta(seconds=period)
+        while True:
+            try:
+                self.logger.debug("check health status of locator via cluster method")
+                channel = yield gen.with_timeout(wait_timeot, self.locator.cluster())
+                cluster = yield gen.with_timeout(wait_timeot, channel.rx.get())
+                self.locator_status = True
+                self.logger.debug("dumped cluster %s", cluster)
+                yield gen.sleep(period)
+            except Exception as err:
+                self.logger.error("health status check failed: %s", err)
+                self.locator_status = False
+                yield gen.sleep(1)
 
     @gen.coroutine
     def on_routing_groups_update(self):
@@ -383,14 +404,12 @@ class CocaineProxy(object):
             match = URL_REGEX.match(request.uri)
             if match is None:
                 if request.path == "/ping":
-                    try:
-                        yield self.locator.connect()
+                    if self.locator_status:
                         fill_response_in(request, httplib.OK, "OK", "OK")
-                    except Exception as err:
-                        request.logger.error("unable to conenct to the locator: %s", err)
+                    else:
                         fill_response_in(request, httplib.SERVICE_UNAVAILABLE,
                                          httplib.responses[httplib.SERVICE_UNAVAILABLE],
-                                         "locator is unavailable", proxy_error_headers())
+                                         "Failed", proxy_error_headers())
                 else:
                     fill_response_in(request, httplib.NOT_FOUND,
                                      httplib.responses[httplib.NOT_FOUND],
