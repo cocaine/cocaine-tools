@@ -1,3 +1,9 @@
+cocaine-tools (0.12.6.5) unstable; urgency=low
+
+  * [Proxy] Add Locator health check via cluster method
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Fri, 11 Dec 2015 17:10:01 +0300
+
 cocaine-tools (0.12.6.4) unstable; urgency=low
 
   * [Proxy] Add X-Request-Id header to replies
