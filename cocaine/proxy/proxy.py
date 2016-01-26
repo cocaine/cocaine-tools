@@ -353,7 +353,7 @@ class CocaineProxy(object):
                             continue
 
                         for app in self.cache[group]:
-                            self.logger.debug("%d: move %s to the inactive queue to refresh"
+                            self.logger.debug("%s: move %s to the inactive queue to refresh"
                                               " routing group", app.id, app.name)
                             self.migrate_from_cache_to_inactive(app, group)
             except Exception as err:
@@ -369,7 +369,7 @@ class CocaineProxy(object):
         try:
             self.cache[name].remove(app)
         except ValueError as err:
-            self.logger.error("broken cache: %s", err)
+            self.logger.error("broken cache. name: %s, error: %s", name, err)
         except KeyError as err:
             self.logger.error("broken cache: no such key %s", err)
 
