@@ -255,6 +255,18 @@ def scan_for_updates(current, new):
     return updated
 
 
+def drop_app_from_cache(cache, app, name):
+    # cache is defaultdict(list), so we can NOT rely on KeyError
+    apps = cache.get(name)
+    if apps is not None and app in apps:
+        # remove app from cache
+        apps.remove(app)
+        # if there is no such apps in cache - remove key from dict
+        # to avoid memory leak
+        if len(apps) == 0:
+            cache.pop(name)
+
+
 class CocaineProxy(object):
     def __init__(self, locators=("localhost:10053",),
                  cache=DEFAULT_SERVICE_CACHE_COUNT,
@@ -367,14 +379,15 @@ class CocaineProxy(object):
 
     def migrate_from_cache_to_inactive(self, app, name):
         try:
-            self.cache[name].remove(app)
-        except ValueError as err:
-            self.logger.error("broken cache. name: %s, error: %s", name, err)
-        except KeyError as err:
-            self.logger.error("broken cache: no such key %s", err)
+            drop_app_from_cache(self.cache, app, name)
+        except Exception as err:
+            self.logger.error("app %s %s: drop cache error %s", app, name, err)
 
+        # dispose service after 3 x timeouts
+        # assume that all requests will be finished
         self.io_loop.call_later(self.get_timeout(name) * 3,
                                 functools.partial(self.dispose, app, name))
+        self.logger.info("app %s %s is scheduled to dispose", app, name)
 
     def move_to_inactive(self, app, name):
         def wrapper():
@@ -596,8 +609,7 @@ class CocaineProxy(object):
                 self.io_loop.call_later(timeout, self.move_to_inactive(app, name))
             except Exception as err:
                 logger.error("%s: unable to connect to `%s`: %s", app.id, name, err)
-                if app in self.cache[name]:
-                    self.cache[name].remove(app)
+                drop_app_from_cache(self.cache, app, name)
                 raise gen.Return()
             else:
                 raise gen.Return(app)
