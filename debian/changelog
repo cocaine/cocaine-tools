@@ -1,3 +1,10 @@
+cocaine-tools (0.12.6.6) unstable; urgency=low
+
+  * [Proxy] Fix log message args when DEBUG is on
+  * [Proxy] Clean cache key if the cache list is empty
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Wed, 27 Jan 2016 16:48:16 +0300
+
 cocaine-tools (0.12.6.5) unstable; urgency=low
 
   * [Proxy] Add Locator health check via cluster method
