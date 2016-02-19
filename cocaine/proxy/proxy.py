@@ -649,7 +649,8 @@ class LogLevel(web.RequestHandler):  # pylint: disable=W0223
             self.write("No such level %s" % lvlname)
             return
 
-        logging.getLogger().setLevel(lvl)
+        for name in ("cocaine.proxy.general", "cocaine.proxy.access", "cocaine.baseservice"):
+            logging.getLogger(name).setLevel(lvl)
         self.write("level %s has been set" % logging.getLevelName(lvl))
 
 
