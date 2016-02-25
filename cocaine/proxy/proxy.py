@@ -202,6 +202,7 @@ def pack_httprequest(request):
     return d
 
 
+@gen.coroutine
 def fill_response_in(request, code, status, message, headers=None):
     headers = headers or httputil.HTTPHeaders()
     if "Content-Length" not in headers:
@@ -219,7 +220,7 @@ def fill_response_in(request, code, status, message, headers=None):
     if request.method == "HEAD":
         message = None
 
-    request.connection.write_headers(
+    yield request.connection.write_headers(
         # start_line
         httputil.ResponseStartLine(request.version, code, status),
         # headers
