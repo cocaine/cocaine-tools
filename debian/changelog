@@ -1,3 +1,9 @@
+cocaine-tools (0.12.7.1) unstable; urgency=low
+
+  * [Proxy] Do not wait for writing a response to a client
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 25 Feb 2016 18:51:47 +0300
+
 cocaine-tools (0.12.7.0) unstable; urgency=low
 
   * [Proxy] Fixed size pool
