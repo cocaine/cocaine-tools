@@ -202,6 +202,7 @@ def pack_httprequest(request):
     return d
 
 
+@gen.coroutine
 def fill_response_in(request, code, status, message, headers=None):
     headers = headers or httputil.HTTPHeaders()
     if "Content-Length" not in headers:
@@ -219,7 +220,7 @@ def fill_response_in(request, code, status, message, headers=None):
     if request.method == "HEAD":
         message = None
 
-    request.connection.write_headers(
+    yield request.connection.write_headers(
         # start_line
         httputil.ResponseStartLine(request.version, code, status),
         # headers
@@ -390,15 +391,32 @@ class CocaineProxy(object):
         self.logger.info("app %s %s is scheduled to dispose", app, name)
 
     def move_to_inactive(self, app, name):
+        @gen.coroutine
         def wrapper():
             active_apps = len(self.cache[name])
-            if active_apps < self.service_cache_count:
-                self.io_loop.call_later(self.get_timeout(name), self.move_to_inactive(app, name))
-                return
-
-            self.logger.info("%s: move %s %s to an inactive queue (active %d)",
+            self.logger.info("%s: preparing to moving %s %s to an inactive queue (active %d)",
                              app.id, app.name, "{0}:{1}".format(*app.address), active_apps)
-            self.migrate_from_cache_to_inactive(app, name)
+
+            try:
+                new_app = Service(name, locator=self.locator, timeout=RESOLVE_TIMEOUT)
+                self.logger.info("%s: creating an instance of %s", new_app.id, name)
+                yield new_app.connect()
+                self.logger.info("%s: connect to an app %s endpoint %s ",
+                                 new_app.id, new_app.name, "{0}:{1}".format(*new_app.address))
+                timeout = (1 + random.random()) * self.refresh_period
+                self.io_loop.call_later(timeout, self.move_to_inactive(new_app, name))
+                # add to cache only after successfully connected
+                self.cache[name].append(new_app)
+            except Exception as err:
+                self.logger.error("%s: unable to connect to `%s`: %s", new_app.id, name, err)
+                # schedule later
+                self.io_loop.call_later(self.get_timeout(name), self.move_to_inactive(app, name))
+            else:
+                self.logger.info("%s: move %s %s to an inactive queue",
+                                 app.id, app.name, "{0}:{1}".format(*app.address))
+                # current active app will be dropped here
+                self.migrate_from_cache_to_inactive(app, name)
+
         return wrapper
 
     def dispose(self, app, name):
