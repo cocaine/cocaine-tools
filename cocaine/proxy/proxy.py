@@ -793,6 +793,11 @@ DEFAULT_GENERAL_LOGFORMAT = "[%(asctime)s.%(msecs)d]\t[%(filename).5s:%(lineno)d
 DEFAULT_ACCESS_LOGFORMAT = "[%(asctime)s.%(msecs)d]\t[%(filename).5s:%(lineno)d]\t%(levelname)s\t%(trace_id)s\t%(message)s"
 
 
+def enable_gc_stats():
+    import gc
+    gc.set_debug(gc.DEBUG_STATS)
+
+
 def show_version(dummy):
     print("cocaine tools & proxy: %s" % tools_version)
     sys.exit(0)
@@ -818,6 +823,7 @@ def main():
     opts.define("forcegen_request_header", default=False, type=bool,
                 help="enable force generation of the request header")
     opts.define("sticky_header", default="X-Cocaine-Sticky", type=str, help="sticky header name")
+    opts.define("gcstats", default=False, type=bool, help="print garbage collector stats to stderr")
 
     # various logging options
     opts.define("logging", default="info",
@@ -887,6 +893,9 @@ def main():
     try:
         if opts.count != 1:
             process.fork_processes(opts.count)
+
+        if opts.gcstats:
+            enable_gc_stats()
 
         if use_reuseport and endpoints.has_tcp:
             logger.info("Start binding on tcp sockets")
