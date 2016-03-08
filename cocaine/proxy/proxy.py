@@ -68,6 +68,7 @@ URL_REGEX = re.compile(r"/([^/]*)/([^/?]*)(.*)")
 DEFAULT_SERVICE_CACHE_COUNT = 5
 DEFAULT_REFRESH_PERIOD = 120
 DEFAULT_TIMEOUT = 30
+DEFAULT_TRACING_CHANCE = 5.  # %
 
 _DEFAULT_BACKLOG = 128
 
@@ -278,6 +279,9 @@ class CocaineProxy(object):
                  cache=DEFAULT_SERVICE_CACHE_COUNT,
                  request_id_header="", sticky_header="X-Cocaine-Sticky",
                  forcegen_request_header=False,
+                 default_tracing_chance=DEFAULT_TRACING_CHANCE,
+                 configuration_service="unicorn",
+                 tracing_conf_path="/zipkin_sampling",
                  ioloop=None, **config):
         # stats
         self.requests_in_progress = 0
@@ -306,6 +310,16 @@ class CocaineProxy(object):
                          ','.join("%s:%d" % (h, p) for h, p in self.locator_endpoints))
 
         self.sticky_header = sticky_header
+
+        self.logger.info("conf path in `%s` configuration service: %s",
+                         configuration_service, tracing_conf_path)
+        self.unicorn = Service(configuration_service, locator=self.locator)
+        self.sampled_apps = {}
+        self.default_tracing_chance = default_tracing_chance
+        self.tracing_conf_path = tracing_conf_path
+
+        self.io_loop.add_future(self.on_sampling_updates(),
+                                lambda x: self.logger.error("the sample updater must not exit"))
 
         if request_id_header:
             self.get_request_id = functools.partial(get_request_id, request_id_header,
@@ -377,6 +391,58 @@ class CocaineProxy(object):
             except Exception as err:
                 timeout = min(timeout << 1, maximum_timeout)
                 self.logger.error("error occured while watching for group updates %s. Sleep %d",
+                                  err, timeout)
+                yield gen.sleep(timeout)
+
+    @gen.coroutine
+    def watch_app(self, name, path):
+        version = 0
+        self.sampled_apps[name] = self.default_tracing_chance
+        try:
+            self.logger.info("start watching for sampling updates of %s", name)
+            watch_channel = yield self.unicorn.subscribe(path, version)
+            while True:
+                value, version = yield watch_channel.rx.get()
+                self.logger.info("got sampling updates for %s: version %d value %.2f", name, version, value)
+                try:
+                    weight = float(value)
+                    self.sampled_apps[name] = weight
+                except ValueError as err:
+                    self.logger.error("sample value %s for %s can NOT be converted: %s. Use %f",
+                                      value, name, err, self.default_tracing_chance)
+                    self.sampled_apps[name] = self.default_tracing_chance
+        except ServiceError as err:
+            # verify that the err is `zookeeper: no node [-101]``
+            if err.code != -101:
+                self.logger.error("watching of `%s` raised an unexpected service error (cat. %d): %s", name, err.category, err)
+        except Exception as err:
+            self.logger.error("watching of %s error: %s", name, err)
+        finally:
+            self.logger.info("stop watching for sampling updates of %s", name)
+            self.sampled_apps.pop(name, None)
+            try:
+                watch_channel.close()
+            except Exception:
+                pass
+
+    @gen.coroutine
+    def on_sampling_updates(self):
+        maximum_timeout = 32  # sec
+        timeout = 1  # sec
+        listing_version = 0
+
+        while True:
+            try:
+                listing_channel = yield self.unicorn.children_subscribe(self.tracing_conf_path, listing_version)
+                while True:
+                    listing_version, apps = yield listing_channel.rx.get()
+                    self.logger.info("on_sampling_updates: version %d value %s", listing_version, apps)
+                    for app in (i for i in apps if i not in self.sampled_apps):
+                        self.watch_app(app, self.tracing_conf_path + "/" + app)
+            except Exception as err:
+                timeout = min(timeout << 1, maximum_timeout)
+                listing_version = 0
+                self.logger.error("error occured while subscribing for sampling updates %s. Sleep %d",
                                   err, timeout)
                 yield gen.sleep(timeout)
 
@@ -465,6 +531,15 @@ class CocaineProxy(object):
             request.uri = other
             request.path, _, _ = other.partition("?")
 
+        if getattr(request, "traceid", None) is not None:
+            tracing_chance = self.sampled_apps.get(name, self.default_tracing_chance)
+            rolled_dice = random.uniform(0, 100)
+            request.logger.debug("tracing_chance %f, rolled dice %f", tracing_chance, rolled_dice)
+            if tracing_chance < rolled_dice:
+                request.logger.info('stop tracing the request')
+                request.logger = NULLLOGGER
+                request.traceid = None
+
         if self.sticky_header not in request.headers:
             app = yield self.get_service(name, request)
         else:
@@ -493,7 +568,7 @@ class CocaineProxy(object):
                 'requests': {'inprogress': self.requests_in_progress,
                              'total': self.requests_total},
                 'errors': {'disconnections': self.requests_disconnections},
-                }
+                'sampling': self.sampled_apps}
 
     @gen.coroutine
     def process(self, request, name, app, event, data):
@@ -719,7 +794,7 @@ class LogLevel(web.RequestHandler):  # pylint: disable=W0223
         self.write("level %s has been set" % logging.getLevelName(lvl))
 
 
-class InfoHandler(web.RequestHandler):
+class InfoHandler(web.RequestHandler):  # pylint: disable=W0223
     def get(self):
         info = self.application.proxy.info()
         self.write(info)
@@ -873,6 +948,14 @@ def main():
     opts.define("sticky_header", default="X-Cocaine-Sticky", type=str, help="sticky header name")
     opts.define("gcstats", default=False, type=bool, help="print garbage collector stats to stderr")
 
+    # tracing options
+    opts.define("tracing_chance", default=DEFAULT_TRACING_CHANCE,
+                type=float, help="default chance for an app to be traced")
+    opts.define("configuration_service", default="unicorn",
+                type=str, help="name of configuration service")
+    opts.define("tracing_conf_path", default="/zipkin_sampling",
+                type=str, help="path to the configuration nodes in the configuration service")
+
     # various logging options
     opts.define("logging", default="info",
                 help=("Set the Python log level. If 'none', tornado won't touch the "
@@ -958,7 +1041,8 @@ def main():
         proxy = CocaineProxy(locators=opts.locators, cache=opts.cache,
                              request_id_header=opts.request_header,
                              sticky_header=opts.sticky_header,
-                             forcegen_request_header=opts.forcegen_request_header)
+                             forcegen_request_header=opts.forcegen_request_header,
+                             default_tracing_chance=opts.tracing_chance)
         server = HTTPServer(proxy)
         server.add_sockets(sockets)
 
