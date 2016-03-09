@@ -134,6 +134,7 @@ class dispatcher(object):
 profileDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 runlistDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 crashlogDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
+tracingDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 
 
 @d.command(name='locate', usage='[--name=NAME]')
@@ -832,8 +833,38 @@ def group_edit(options,
         'name': name,
     })
 
+
+@tracingDispatcher.command(name='store', usage='-n NAME -v VALUE')
+def tracing_store(options,
+                  name=('n', '', 'node name'),
+                  value=('v', '', 'valuer')):
+    options.executor.executeAction('tracing:store', **{
+        'configuration_service': options.getService('unicorn'),
+        'name': name,
+        'value': value,
+    })
+
+
+@tracingDispatcher.command(name='remove', usage='-n NAME')
+def tracing_remove(options,
+                   name=('n', '', 'node name')):
+    options.executor.executeAction('tracing:remove', **{
+        'configuration_service': options.getService('unicorn'),
+        'name': name,
+    })
+
+
+@tracingDispatcher.command(name='view', usage='-n NAME')
+def tracing_view(options,
+                 name=('n', '', 'node name')):
+    options.executor.executeAction('tracing:view', **{
+        'configuration_service': options.getService('unicorn'),
+        'name': name,
+    })
+
 d.nest('app', appDispatcher, 'application commands')
 d.nest('profile', profileDispatcher, 'profile commands')
 d.nest('runlist', runlistDispatcher, 'runlist commands')
 d.nest('crashlog', crashlogDispatcher, 'crashlog commands')
 d.nest('group', dispatcher.group, 'routing group commands')
+d.nest('tracing', tracingDispatcher, 'tracing configuration commands')

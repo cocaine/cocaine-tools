@@ -421,7 +421,7 @@ class CocaineProxy(object):
             self.logger.info("stop watching for sampling updates of %s", name)
             self.sampled_apps.pop(name, None)
             try:
-                watch_channel.close()
+                watch_channel.tx.close()
             except Exception:
                 pass
 

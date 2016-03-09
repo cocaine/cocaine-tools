@@ -29,7 +29,7 @@ from tornado.ioloop import IOLoop
 from cocaine.exceptions import ChokeEvent, CocaineError
 from cocaine.decorators import coroutine
 from cocaine.tools import log, interactive
-from cocaine.tools.actions import common, app, profile, runlist, crashlog, group
+from cocaine.tools.actions import common, app, profile, runlist, crashlog, group, tracing
 from cocaine.tools.error import ToolsError
 
 
@@ -175,6 +175,10 @@ NG_ACTIONS = {
     'crashlog:removeall': ToolHandler(crashlog.RemoveAll),
     'crashlog:clean': ToolHandler(crashlog.Clean),
     'crashlog:cleanwhen': ToolHandler(crashlog.CleanRange),
+
+    'tracing:view': JsonToolHandler(tracing.TracingConfigView),
+    'tracing:store': ToolHandler(tracing.TracingConfigStore),
+    'tracing:remove': ToolHandler(tracing.TracingConfigRemove),
 }
 
 
