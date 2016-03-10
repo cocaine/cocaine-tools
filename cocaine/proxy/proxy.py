@@ -82,6 +82,8 @@ ESYSTEMCATEGORY = 255
 # but nginx proxy_next_upstream does NOT support custom codes
 NO_SUCH_APP = httplib.SERVICE_UNAVAILABLE
 
+X_COCAINE_HTTP_PROTO_VERSION = "X-Cocaine-HTTP-Proto-Version"
+
 
 def proxy_error_headers():
     return httputil.HTTPHeaders({
@@ -523,9 +525,22 @@ class CocaineProxy(object):
                                      app.id, attempts)
                 code, raw_headers = msgpack.unpackb(code_and_headers)
                 headers = httputil.HTTPHeaders(raw_headers)
+
+                cocaine_http_proto_version = headers.get(X_COCAINE_HTTP_PROTO_VERSION)
+                if cocaine_http_proto_version is None or cocaine_http_proto_version == "1.0":
+                    cocaine_http_proto_version = "1.0"
+
+                    def stop_condition(body):
+                        return isinstance(body, EmptyResponse)
+                elif cocaine_http_proto_version == "1.1":
+                    def stop_condition(body):
+                        return isinstance(body, EmptyResponse) or len(body) == 0
+                else:
+                    raise Exception("unsupported X-Cocaine-HTTP-Proto-Version: %s" % cocaine_http_proto_version)
+
                 while True:
                     body = yield channel.rx.get(timeout=timeout)
-                    if isinstance(body, EmptyResponse):
+                    if stop_condition(body):
                         request.logger.info("%s: body finished (attempt %d)", app.id, attempts)
                         break
 
