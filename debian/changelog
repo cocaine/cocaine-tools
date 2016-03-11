@@ -1,3 +1,10 @@
+cocaine-tools (0.12.8.0) unstable; urgency=low
+
+  * [Proxy] Optional gcstats printing
+  * [Proxy] Extended HTTP reply protocol
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Fri, 11 Mar 2016 14:40:54 +0300
+
 cocaine-tools (0.12.7.1) unstable; urgency=low
 
   * [Proxy] Do not wait for writing a response to a client
