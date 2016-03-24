@@ -1,3 +1,9 @@
+cocaine-tools (0.12.8.1) unstable; urgency=low
+
+  * [Proxy] Log app.id, event, app.name
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 24 Mar 2016 16:40:23 +0300
+
 cocaine-tools (0.12.8.0) unstable; urgency=low
 
   * [Proxy] Optional gcstats printing
