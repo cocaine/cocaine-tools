@@ -475,8 +475,6 @@ class CocaineProxy(object):
             return
 
         try:
-            request.logger.debug("%s: processing request app: `%s`, event `%s`",
-                                 app.id, app.name, event)
             yield self.process(request, name, app, event, pack_httprequest(request))
         except Exception as err:
             request.logger.error("error during processing request %s", err)
@@ -495,7 +493,8 @@ class CocaineProxy(object):
 
     @gen.coroutine
     def process(self, request, name, app, event, data):
-        request.logger.info("start processing request after %.3f ms", request.request_time() * 1000)
+        request.logger.info("start processing event `%s` for an app `%s` (appid: %s) after %.3f ms",
+                            event, app.name, app.id, request.request_time() * 1000)
         timeout = self.get_timeout(name)
         # allow to reconnect this amount of times.
         attempts = 2  # make it configurable
