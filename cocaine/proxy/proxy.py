@@ -74,8 +74,12 @@ _DEFAULT_BACKLOG = 128
 # sec Time to wait for the response chunk from locator
 RESOLVE_TIMEOUT = 5
 
-# cocaine system category, I hope it will never be changed
-ESYSTEMCATEGORY = 255
+# cocaine system category, I hope it will never change
+SYSTEMCATEGORY = (0xff, 0xc)
+EAPPSTOPPED = errno.EPIPE
+
+OVERSEERCATEGORY = (0xff, 0x52ff)
+EQUEUEISFULL = 1
 
 # no such application
 # we are mature enough to have our own status code
@@ -597,12 +601,42 @@ class CocaineProxy(object):
             except ServiceError as err:
                 # if the application has been restarted, we get broken pipe code
                 # and system category
-                if err.code == errno.EPIPE and err.category == ESYSTEMCATEGORY:
+                if err.category in SYSTEMCATEGORY and err.code == EAPPSTOPPED:
                     request.logger.error("%s: the application has been restarted", app.id)
                     app.disconnect()
                     continue
 
-                request.logger.error("%s: %s", app.id, err)
+                elif err.category in OVERSEERCATEGORY and err.code == EQUEUEISFULL:
+                    request.logger.error("%s: queue is full. Pick another application instance", app.id)
+                    cache_size = len(self.cache[app.name])
+                    if cache_size < self.spool_size:
+                        request.logger.info("spool is not full. Create a new application instance")
+                        app = yield self.get_service(app.name, request)
+                    elif cache_size == 1:
+                        # NOTE: if we have spool_size 1, the same app will be picked
+                        # Probably we can create a new one and mark the old one inactive
+                        request.logger.warning("spool size is limited by 1, cannot pick a new instance of th app. Use the old one")
+                        # pass
+                    else:
+                        request.logger.info("pick a random instance of the application")
+                        try:
+                            index = self.cache[app.name].index(app)
+                            request.logger.info("the app is located in cache at pos %d", index)
+                            if cache_size == 2:  # shortcut
+                                picked = (index + 1) % 2
+                            else:
+                                picked = index
+                                while picked == index:
+                                    picked = random.randint(0, cache_size - 1)
+
+                            request.logger.info("an instance at pos %d has been picked", index)
+                            app = self.cache[app.name][picked]
+                        except ValueError:
+                            app = random.choice(self.cache[app.name])
+
+                    continue
+
+                request.logger.error("%s: service error: [%d, %d] %s", app.id, err.category, err.code, err.reason)
                 message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                  httplib.responses[httplib.INTERNAL_SERVER_ERROR],
