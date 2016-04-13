@@ -1,3 +1,9 @@
+cocaine-tools (0.12.8.2) unstable; urgency=low
+
+  * [Proxy] Retry on queue_is_full
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Wed, 13 Apr 2016 14:10:03 +0300
+
 cocaine-tools (0.12.8.1) unstable; urgency=low
 
   * [Proxy] Log app.id, event, app.name
