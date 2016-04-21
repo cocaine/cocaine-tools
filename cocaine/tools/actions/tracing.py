@@ -23,6 +23,7 @@ import os
 
 from tornado import gen
 
+from cocaine.exceptions import ServiceError
 from cocaine.tools.error import ToolsError
 
 
@@ -72,7 +73,7 @@ class TracingConfigView(TracingConfigurator):
     @gen.coroutine
     def specific(self, name):
         channel = yield self.configuration_service.get(os.path.join(self.path, name))
-        version, value = yield channel.rx.get()
+        value, version = yield channel.rx.get()
         raise gen.Return({"version": version, "value": value})
 
 
@@ -92,9 +93,10 @@ class TracingConfigStore(TracingConfigurator):
     @gen.coroutine
     def execute(self):
         abs_node_path = os.path.join(self.path, self.name)
-        channel = yield self.configuration_service.create(abs_node_path, self.value)
-        created = yield channel.rx.get()
-        if not created:
+        try:
+            channel = yield self.configuration_service.create(abs_node_path, self.value)
+            yield channel.rx.get()
+        except ServiceError:
             try:
                 version, _ = yield (yield self.configuration_service.get(abs_node_path)).rx.get()
                 saved, _ = yield (yield self.configuration_service.put(abs_node_path, self.value, version))
