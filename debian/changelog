@@ -1,3 +1,9 @@
+cocaine-tools (0.12.10.0) unstable; urgency=low
+
+  * [Tools] Fix for 0.12.6 framework
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 24 May 2016 13:17:57 +0300
+
 cocaine-tools (0.12.9.1) unstable; urgency=low
 
   * [Tools] Tracing: fix unpacking value
