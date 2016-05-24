@@ -15,7 +15,7 @@ XS-Python-Version: >= 2.7
 Package: cocaine-v12-tools
 Architecture: any
 Depends: ${misc:Depends},
- cocaine-v12-framework-python (>= 0.12.4.2),
+ cocaine-v12-framework-python (>= 0.12.6.0),
  python-opster (>= 4.0),
  python-tornado (>= 4.3),
  python (>= 2.7),
@@ -29,7 +29,7 @@ Description: Cocaine - Toolset
 Package: cocaine-v12-tornado-proxy
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, adduser,
- cocaine-v12-framework-python (>=0.12.4.2),
+ cocaine-v12-framework-python (>=0.12.6.0),
  cocaine-v12-tools (=${source:Version}),
  python-tornado (>= 4.3),
  python (>= 2.7),
