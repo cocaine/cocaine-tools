@@ -30,7 +30,7 @@ import msgpack
 from tornado import gen
 
 from cocaine.decorators import coroutine
-from cocaine.exceptions import LocatorResolveError
+# from cocaine.exceptions import LocatorResolveError
 from cocaine.exceptions import ServiceError
 from cocaine.tools import actions, log
 from cocaine.tools.actions import common, readArchive, CocaineConfigReader, docker
@@ -134,7 +134,7 @@ class Remove(actions.Storage):
                 channel = yield self.storage.remove('apps', self.name)
                 yield channel.rx.get()
             except ServiceError:
-                log.info('Unable to delete an application source from storage. ',
+                log.info('Unable to delete an application source from storage. '
                          'It\'s okay, if the application is a Docker image')
 
         raise gen.Return("Removed successfully")
@@ -225,7 +225,7 @@ class Check(common.Node):
             channel = yield self.node.info(self.name)
             info = yield channel.rx.get()
             log.info(info['state'])
-        except (LocatorResolveError, ServiceError):
+        except ServiceError:
             raise ToolsError('stopped')
         raise gen.Return(info)
 
@@ -285,7 +285,7 @@ class DockerUpload(actions.Storage):
                 raise ToolsError('pushing failed with error code {0} {1}'.format(response.code,
                                                                                  response.body))
         except Exception as err:
-            log.error("Error occurred. %s Erase manifest" % err)
+            log.error("Error occurred. %s Erase manifest", err)
             channel = yield self.storage.remove('manifests', self.name)
             yield channel.rx.get()
             raise err
