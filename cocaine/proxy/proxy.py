@@ -282,6 +282,7 @@ class CocaineProxy(object):
                  default_tracing_chance=DEFAULT_TRACING_CHANCE,
                  configuration_service="unicorn",
                  tracing_conf_path="/zipkin_sampling",
+                 timeouts_conf_path="/proxy_apps_timeouts",
                  ioloop=None, **config):
         # stats
         self.requests_in_progress = 0
@@ -292,7 +293,6 @@ class CocaineProxy(object):
         self.service_cache_count = cache
         self.spool_size = int(self.service_cache_count * 1.5)
         self.refresh_period = config.get("refresh_timeout", DEFAULT_REFRESH_PERIOD)
-        self.timeouts = config.get("timeouts", {})
         self.locator_endpoints = [parse_locators_endpoints(i) for i in locators]
         # it's initialized after start
         # to avoid an io_loop creation before fork
@@ -320,6 +320,11 @@ class CocaineProxy(object):
 
         self.io_loop.add_future(self.on_sampling_updates(),
                                 lambda x: self.logger.error("the sample updater must not exit"))
+
+        self.timeouts_conf_path = timeouts_conf_path
+        self.timeouts = {}
+        self.io_loop.add_future(self.on_timeouts_updates(),
+                                lambda x: self.logger.error("the timeouts updater must not exit"))
 
         if request_id_header:
             self.get_request_id = functools.partial(get_request_id, request_id_header,
@@ -446,8 +451,63 @@ class CocaineProxy(object):
                                   err, timeout)
                 yield gen.sleep(timeout)
 
-    def get_timeout(self, name):
-        return self.timeouts.get(name, DEFAULT_TIMEOUT)
+    @gen.coroutine
+    def watch_app_timeouts(self, name, path):
+        version = 0
+        self.timeouts[name] = {}
+        try:
+            self.logger.info("start watching for timeouts updates of %s", name)
+            watch_channel = yield self.unicorn.subscribe(path, version)
+            while True:
+                value, version = yield watch_channel.rx.get()
+                self.logger.info("got timeouts updates for %s: version %d value %s", name, version, value)
+                if isinstance(value, dict):
+                    self.timeouts[name] = value
+                else:
+                    self.logger.error("timeout value %s for %s is not dict", value, name)
+                    self.timeouts[name] = {}
+        except ServiceError as err:
+            # verify that the err is `zookeeper: no node [-101]``
+            if err.code != -101:
+                self.logger.error("watching of `%s` raised an unexpected service error (cat. %d): %s", name, err.category, err)
+        except Exception as err:
+            self.logger.error("watching of %s error: %s", name, err)
+        finally:
+            self.logger.info("stop watching for timeouts updates of %s", name)
+            self.timeouts.pop(name, None)
+            try:
+                watch_channel.tx.close()
+            except Exception:
+                pass
+
+    @gen.coroutine
+    def on_timeouts_updates(self):
+        maximum_timeout = 32  # sec
+        timeout = 1  # sec
+        listing_version = 0
+
+        while True:
+            try:
+                listing_channel = yield self.unicorn.children_subscribe(self.timeouts_conf_path, listing_version)
+                while True:
+                    listing_version, apps = yield listing_channel.rx.get()
+                    self.logger.info("on_timeouts_updates: version %d value %s", listing_version, apps)
+                    for app in (i for i in apps if i not in self.timeouts):
+                        self.watch_app_timeouts(app, self.timeouts_conf_path + "/" + app)
+            except Exception as err:
+                timeout = min(timeout << 1, maximum_timeout)
+                listing_version = 0
+                self.logger.error("error occured while subscribing for sampling updates %s. Sleep %d",
+                                  err, timeout)
+                yield gen.sleep(timeout)
+
+    def get_timeout(self, name, event=None):
+        if name in self.timeouts:
+            if event is not None:
+                return self.timeouts[name].get(event, DEFAULT_TIMEOUT)
+            return DEFAULT_TIMEOUT if len(self.timeouts) == 0 else max(self.timeouts[name])
+
+        return DEFAULT_TIMEOUT
 
     def migrate_from_cache_to_inactive(self, app, name):
         try:
@@ -574,7 +634,7 @@ class CocaineProxy(object):
     def process(self, request, name, app, event, data):
         request.logger.info("start processing event `%s` for an app `%s` (appid: %s) after %.3f ms",
                             event, app.name, app.id, request.request_time() * 1000)
-        timeout = self.get_timeout(name)
+        timeout = self.get_timeout(name, event)
         # allow to reconnect this amount of times.
         attempts = 2  # make it configurable
 
