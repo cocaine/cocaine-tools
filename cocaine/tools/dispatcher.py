@@ -135,6 +135,7 @@ profileDispatcher = Dispatcher(globaloptions=Global.options, middleware=middlewa
 runlistDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 crashlogDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 tracingDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
+timeoutsDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 
 
 @d.command(name='locate', usage='[--name=NAME]')
@@ -862,9 +863,51 @@ def tracing_view(options,
         'name': name,
     })
 
+
+@timeoutsDispatcher.command(name='store', usage='-n NAME -v VALUE')
+def timeouts_store(options,
+                   name=('n', '', 'app name'),
+                   event=('e', '', 'event name'),
+                   value=('v', '', 'value')):
+    options.executor.executeAction('timeouts:store', **{
+        'configuration_service': options.getService('unicorn'),
+        'name': name,
+        'value': value,
+        'event': event,
+    })
+
+
+@timeoutsDispatcher.command(name='remove', usage='-n NAME -e EVENT')
+def timeouts_remove(options,
+                    name=('n', '', 'app name'),
+                    event=('e', '', 'event name')):
+    options.executor.executeAction('timeouts:remove', **{
+        'configuration_service': options.getService('unicorn'),
+        'name': name,
+        'event': event,
+    })
+
+
+@timeoutsDispatcher.command(name='view', usage='-n NAME')
+def timeouts_view(options,
+                  name=('n', '', 'app name')):
+    options.executor.executeAction('timeouts:view', **{
+        'configuration_service': options.getService('unicorn'),
+        'name': name,
+    })
+
+@timeoutsDispatcher.command(name='drop', usage='-n NAME')
+def timeouts_drop(options,
+                  name=('n', '', 'app name')):
+    options.executor.executeAction('timeouts:drop', **{
+        'configuration_service': options.getService('unicorn'),
+        'name': name,
+    })
+
 d.nest('app', appDispatcher, 'application commands')
 d.nest('profile', profileDispatcher, 'profile commands')
 d.nest('runlist', runlistDispatcher, 'runlist commands')
 d.nest('crashlog', crashlogDispatcher, 'crashlog commands')
 d.nest('group', dispatcher.group, 'routing group commands')
 d.nest('tracing', tracingDispatcher, 'tracing configuration commands')
+d.nest('timeouts', timeoutsDispatcher, 'apps timeouts configuration commands')
