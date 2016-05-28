@@ -501,11 +501,10 @@ class CocaineProxy(object):
                                   err, timeout)
                 yield gen.sleep(timeout)
 
-    def get_timeout(self, name, event=None):
+    def get_timeout(self, name, event=''):
         if name in self.timeouts:
-            if event is not None:
-                return self.timeouts[name].get(event, DEFAULT_TIMEOUT)
-            return DEFAULT_TIMEOUT if len(self.timeouts) == 0 else max(self.timeouts[name])
+            tmts = self.timeouts[name]
+            return tmts.get(event) or tmts.get('', DEFAULT_TIMEOUT)
 
         return DEFAULT_TIMEOUT
 
@@ -632,9 +631,9 @@ class CocaineProxy(object):
 
     @gen.coroutine
     def process(self, request, name, app, event, data):
-        request.logger.info("start processing event `%s` for an app `%s` (appid: %s) after %.3f ms",
-                            event, app.name, app.id, request.request_time() * 1000)
         timeout = self.get_timeout(name, event)
+        request.logger.info("start processing event `%s` for an app `%s` (appid: %s) after %.3f ms with timeout %f",
+                            event, app.name, app.id, request.request_time() * 1000, timeout)
         # allow to reconnect this amount of times.
         attempts = 2  # make it configurable
 

@@ -868,7 +868,7 @@ def tracing_view(options,
 def timeouts_store(options,
                    name=('n', '', 'app name'),
                    event=('e', '', 'event name'),
-                   value=('v', '', 'value')):
+                   value=('v', 30.0, 'value')):
     options.executor.executeAction('timeouts:store', **{
         'configuration_service': options.getService('unicorn'),
         'name': name,
