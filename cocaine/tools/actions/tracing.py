@@ -98,8 +98,8 @@ class TracingConfigStore(TracingConfigurator):
             yield channel.rx.get()
         except ServiceError:
             try:
-                version, _ = yield (yield self.configuration_service.get(abs_node_path)).rx.get()
-                saved, _ = yield (yield self.configuration_service.put(abs_node_path, self.value, version))
+                _, version = yield (yield self.configuration_service.get(abs_node_path)).rx.get()
+                saved, _ = yield (yield self.configuration_service.put(abs_node_path, self.value, version)).rx.get()
                 if not saved:
                     raise ToolsError("the value was not stored to %s" % (abs_node_path))
             except Exception as err:
