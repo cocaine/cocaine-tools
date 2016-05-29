@@ -1,4 +1,4 @@
-#
+
 # Copyright (c) 2013+ Anton Tyurin <noxiouz@yandex.ru>
 # Copyright (c) 2013+ Evgeny Safronov <division494@gmail.com>
 # Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
@@ -27,8 +27,8 @@ from cocaine.exceptions import ServiceError
 from cocaine.tools.error import ToolsError
 
 
-class TracingConfigurator(object):
-    def __init__(self, configuration_service, path="/zipkin_sampling"):
+class TimeoutsConfigurator(object):
+    def __init__(self, configuration_service, path="/proxy_apps_timeouts"):
         self.configuration_service = configuration_service
         self.path = path
 
@@ -37,9 +37,9 @@ class TracingConfigurator(object):
         raise NotImplementedError
 
 
-class TracingConfigRemove(TracingConfigurator):
-    def __init__(self, name, configuration_service, path="/zipkin_sampling"):
-        super(TracingConfigRemove, self).__init__(configuration_service, path)
+class TimeoutsConfigDrop(TimeoutsConfigurator):
+    def __init__(self, configuration_service, name, path="/proxy_apps_timeouts"):
+        super(TimeoutsConfigDrop, self).__init__(configuration_service, path)
         self.name = name
 
     @gen.coroutine
@@ -50,9 +50,30 @@ class TracingConfigRemove(TracingConfigurator):
             raise ToolsError("the value at %s was not removed" % (abs_node_path))
 
 
-class TracingConfigView(TracingConfigurator):
-    def __init__(self, configuration_service, path="/zipkin_sampling", name=None):
-        super(TracingConfigView, self).__init__(configuration_service, path)
+class TimeoutsConfigRemove(TimeoutsConfigurator):
+    def __init__(self, configuration_service, name, event='', path="/proxy_apps_timeouts"):
+        super(TimeoutsConfigRemove, self).__init__(configuration_service, path)
+        self.name = name
+        self.event = event
+
+    @gen.coroutine
+    def execute(self):
+        abs_node_path = os.path.join(self.path, self.name)
+        try:
+            actual, version = yield (yield self.configuration_service.get(abs_node_path)).rx.get()
+            if actual is None or self.event not in actual:
+                return
+            actual.pop(self.event)
+            saved, _ = yield (yield self.configuration_service.put(abs_node_path, actual, version)).rx.get()
+            if not saved:
+                raise ToolsError("the value was not stored to %s" % (abs_node_path))
+        except Exception as err:
+            raise ToolsError("unable to store value at %s: %s" % (abs_node_path, err))
+
+
+class TimeoutsConfigView(TimeoutsConfigurator):
+    def __init__(self, configuration_service, path="/proxy_apps_timeouts", name=None):
+        super(TimeoutsConfigView, self).__init__(configuration_service, path)
         self.name = name
 
     @gen.coroutine
@@ -77,30 +98,29 @@ class TracingConfigView(TracingConfigurator):
         raise gen.Return({"version": version, "value": value})
 
 
-def convert_tracing_config_value(value):
-    try:
-        return float(value)
-    except ValueError as err:
-        raise ToolsError("value %s must be convertable to float: %s" % (value, err))
-
-
-class TracingConfigStore(TracingConfigurator):
-    def __init__(self, name, value, configuration_service, path="/zipkin_sampling"):
-        super(TracingConfigStore, self).__init__(configuration_service, path)
+class TimeoutsConfigStore(TimeoutsConfigurator):
+    def __init__(self, configuration_service, name, value, event='', path="/proxy_apps_timeouts"):
+        super(TimeoutsConfigStore, self).__init__(configuration_service, path)
         self.name = name
-        self.value = convert_tracing_config_value(value)
+        self.value = value
+        self.event = event
 
     @gen.coroutine
     def execute(self):
         abs_node_path = os.path.join(self.path, self.name)
         try:
-            channel = yield self.configuration_service.create(abs_node_path, self.value)
+            val = {self.event: self.value}
+            channel = yield self.configuration_service.create(abs_node_path, val)
             yield channel.rx.get()
+            raise gen.Return(val)
         except ServiceError:
             try:
-                _, version = yield (yield self.configuration_service.get(abs_node_path)).rx.get()
-                saved, _ = yield (yield self.configuration_service.put(abs_node_path, self.value, version)).rx.get()
+                actual, version = yield (yield self.configuration_service.get(abs_node_path)).rx.get()
+                actual[self.event] = self.value
+                saved, _ = yield (yield self.configuration_service.put(abs_node_path, actual, version)).rx.get()
                 if not saved:
                     raise ToolsError("the value was not stored to %s" % (abs_node_path))
             except Exception as err:
                 raise ToolsError("unable to store value at %s: %s" % (abs_node_path, err))
+            else:
+                raise gen.Return(actual)
