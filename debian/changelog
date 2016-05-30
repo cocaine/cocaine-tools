@@ -1,3 +1,9 @@
+cocaine-tools (0.12.10.1) unstable; urgency=low
+
+  * [Proxy] Supoort configurable timeouts
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Mon, 30 May 2016 12:05:30 +0300
+
 cocaine-tools (0.12.10.0) unstable; urgency=low
 
   * [Tools] Fix for 0.12.6 framework
