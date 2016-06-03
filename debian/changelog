@@ -1,3 +1,9 @@
+cocaine-tools (0.12.10.3) unstable; urgency=low
+
+  * [Proxy] Fix IOLoop "fork error"
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Fri, 03 Jun 2016 20:38:56 +0300
+
 cocaine-tools (0.12.10.2) unstable; urgency=low
 
   * [Proxy] Supoort logging to cocaine
