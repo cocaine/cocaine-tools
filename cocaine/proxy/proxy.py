@@ -50,6 +50,8 @@ from tornado.httpserver import HTTPServer
 from tornado.iostream import StreamClosedError
 from tornado.netutil import bind_sockets, bind_unix_socket
 
+from cocaine.logger import CocaineHandler
+from cocaine.logger import Logger
 from cocaine.services import Service
 from cocaine.services import Locator
 from cocaine.exceptions import ServiceError
@@ -876,6 +878,14 @@ class UtilServer(web.Application):  # pylint: disable=W0223
                          handler._request_summary(), request_time)
 
 
+def enable_cocaine_logging(opts):
+    try:
+        from cocaine.logger import LoggerWithExtraInRecord
+        logging.setLoggerClass(LoggerWithExtraInRecord)
+    except ImportError:
+        print("current version of python framework does not provide LoggerWithExtraInRecord")
+
+
 def enable_logging(options):
     if options.logging is None or options.logging.lower() == "none":
         return
@@ -892,6 +902,18 @@ def enable_logging(options):
     if options.logframework:
         cocainelogger = logging.getLogger("cocaine.baseservice")
         cocainelogger.setLevel(getattr(logging, options.logging.upper()))
+
+    if options.cocaine_logging:
+        Logger().target = "tornado-proxy"
+        handler = CocaineHandler()
+        general_logger.addHandler(handler)
+        if cocainelogger:
+            cocainelogger.addHandler(handler)
+
+        if options.fingerscrossed:
+            access_logger.addHandler(FingersCrossedHandler(handler))
+        else:
+            access_logger.addHandler(handler)
 
     if options.log_file_prefix:
         handler = logging.handlers.WatchedFileHandler(
@@ -1016,6 +1038,7 @@ def main():
                 type=str, help="path to the configuration nodes in the configuration service")
 
     # various logging options
+    opts.define("cocaine_logging", default=False, type=bool, help="log to cocaine")
     opts.define("logging", default="info",
                 help=("Set the Python log level. If 'none', tornado won't touch the "
                       "logging configuration."), metavar="debug|info|warning|error|none")
@@ -1043,6 +1066,8 @@ def main():
     opts.define("so_reuseport", default=True, type=bool, help="use SO_REUSEPORT option")
 
     opts.parse_command_line()
+    if opts.cocaine_logging:
+        enable_cocaine_logging(opts)
     enable_logging(opts)
 
     logger = logging.getLogger("cocaine.proxy.general")
