@@ -50,6 +50,12 @@ from tornado.httpserver import HTTPServer
 from tornado.iostream import StreamClosedError
 from tornado.netutil import bind_sockets, bind_unix_socket
 
+try:
+    from cocaine.logger import LoggerWithExtraInRecord
+    logging.setLoggerClass(LoggerWithExtraInRecord)
+except ImportError:
+    print("current version of python framework does not provide LoggerWithExtraInRecord")
+
 from cocaine.logger import CocaineHandler
 from cocaine.logger import Logger
 from cocaine.services import Service
@@ -878,14 +884,6 @@ class UtilServer(web.Application):  # pylint: disable=W0223
                          handler._request_summary(), request_time)
 
 
-def enable_cocaine_logging(opts):
-    try:
-        from cocaine.logger import LoggerWithExtraInRecord
-        logging.setLoggerClass(LoggerWithExtraInRecord)
-    except ImportError:
-        print("current version of python framework does not provide LoggerWithExtraInRecord")
-
-
 def enable_logging(options):
     if options.logging is None or options.logging.lower() == "none":
         return
@@ -1065,61 +1063,40 @@ def main():
 
     opts.define("so_reuseport", default=True, type=bool, help="use SO_REUSEPORT option")
 
-    opts.parse_command_line()
-    if opts.cocaine_logging:
-        enable_cocaine_logging(opts)
-    enable_logging(opts)
-
-    logger = logging.getLogger("cocaine.proxy.general")
-
     use_reuseport = False
-
     endpoints = Endpoints(opts.endpoints)
     sockets = []
 
     if endpoints.has_unix:
-        logger.info("Start binding on unix sockets")
         for path in endpoints.unix:
-            logger.info("Binding on %s", path)
             sockets.append(bind_unix_socket(path, mode=0o666))
 
     if opts.so_reuseport:
-        if not support_reuseport():
-            logger.warning("Your system doesn't support SO_REUSEPORT."
-                           " Bind and fork mechanism will be used")
-        else:
-            logger.info("SO_REUSEPORT will be used")
-            use_reuseport = True
+        use_reuseport = support_reuseport()
 
     if not use_reuseport and endpoints.has_tcp:
-        logger.info("Start binding on tcp sockets")
         for endpoint in endpoints.tcp:
-            logger.info("Binding on %s:%d", endpoint.host, endpoint.port)
             # We have to bind before fork to distribute sockets to our forks
             socks = bind_sockets(endpoint.port, address=endpoint.host)
-            logger.info("Listening %s", ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in socks))
             sockets.extend(socks)
 
     if opts.enableutil:
         utilsockets = bind_sockets(opts.utilport, address=opts.utiladdress)
-        logger.info("Util server is listening on %s",
-                    ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in utilsockets))
 
     try:
         if opts.count != 1:
             process.fork_processes(opts.count)
 
+        opts.parse_command_line()
+        enable_logging(opts)
+
         if opts.gcstats:
             enable_gc_stats()
 
         if use_reuseport and endpoints.has_tcp:
-            logger.info("Start binding on tcp sockets")
             for endpoint in endpoints.tcp:
-                logger.info("Binding on %s:%d", endpoint.host, endpoint.port)
                 # We have to bind before fork to distribute sockets to our forks
                 socks = bind_sockets(endpoint.port, address=endpoint.host, reuse_port=True)
-                logger.info("Listening %s",
-                            ' '.join(str("%s:%s" % s.getsockname()[:2]) for s in socks))
                 sockets.extend(socks)
 
         proxy = CocaineProxy(locators=opts.locators, cache=opts.cache,
