@@ -971,7 +971,6 @@ def main():
     opts.define("config", help="path to configuration file", type=str,
                 callback=lambda path: opts.parse_config_file(path, final=False))
     opts.define("count", default=1, type=int, help="count of tornado processes")
-    opts.define("port", default=8080, type=int, help="listening port number")
     opts.define("endpoints", default=["tcp://localhost:8080"], type=str, multiple=True,
                 help="Specify endpoints to bind on: prefix unix:// or tcp:// should be used")
     opts.define("request_header", default="X-Request-Id", type=str,
