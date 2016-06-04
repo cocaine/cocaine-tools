@@ -936,14 +936,6 @@ class Endpoints(object):
             else:
                 raise ValueError("Endpoint has to begin either unix:// or tcp:// %s" % i)
 
-    @property
-    def has_unix(self):
-        return len(self.unix) > 0
-
-    @property
-    def has_tcp(self):
-        return len(self.tcp) > 0
-
 
 DEFAULT_GENERAL_LOGFORMAT = "[%(asctime)s.%(msecs)d]\t[%(filename).5s:%(lineno)d]\t%(levelname)s\t%(message)s"
 DEFAULT_ACCESS_LOGFORMAT = "[%(asctime)s.%(msecs)d]\t[%(filename).5s:%(lineno)d]\t%(levelname)s\t%(trace_id)s\t%(message)s"
@@ -1011,18 +1003,16 @@ def main():
     opts.define("utilport", default=8081, type=int, help="listening port number for an util server")
     opts.define("utiladdress", default="127.0.0.1", type=str, help="address for an util server")
     opts.define("enableutil", default=False, type=bool, help="enable util server")
-
     opts.parse_command_line()
 
     use_reuseport = support_reuseport()
     endpoints = Endpoints(opts.endpoints)
     sockets = []
 
-    if endpoints.has_unix:
-        for path in endpoints.unix:
-            sockets.append(bind_unix_socket(path, mode=0o666))
+    for path in endpoints.unix:
+        sockets.append(bind_unix_socket(path, mode=0o666))
 
-    if not use_reuseport and endpoints.has_tcp:
+    if not use_reuseport:
         for endpoint in endpoints.tcp:
             # We have to bind before fork to distribute sockets to our forks
             socks = bind_sockets(endpoint.port, address=endpoint.host)
@@ -1040,7 +1030,7 @@ def main():
         if opts.gcstats:
             enable_gc_stats()
 
-        if use_reuseport and endpoints.has_tcp:
+        if use_reuseport:
             for endpoint in endpoints.tcp:
                 # We have to bind before fork to distribute sockets to our forks
                 socks = bind_sockets(endpoint.port, address=endpoint.host, reuse_port=True)
