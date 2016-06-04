@@ -131,41 +131,6 @@ class NullLogger(object):
 NULLLOGGER = NullLogger()
 
 
-class FingersCrossedItem(object):
-    def __init__(self):
-        self.triggered = False
-        self.records = list()
-
-    def append(self, record):
-        self.triggered |= record.levelno >= logging.ERROR
-        self.records.append(record)
-
-
-class FingersCrossedHandler(logging.Handler):
-    cache = dict()
-
-    def __init__(self, target, level=logging.NOTSET):
-        super(FingersCrossedHandler, self).__init__(level=logging.NOTSET)
-        self.target = target
-
-    def emit(self, record):
-        trace_id = getattr(record, "trace_id", None)
-        if trace_id is None:
-            return
-
-        fitem = FingersCrossedHandler.cache.setdefault(trace_id, FingersCrossedItem())
-        fitem.append(record)
-        if fitem.triggered:
-            for rec in fitem.records:
-                self.target.handle(rec)
-            fitem.records = fitem.records[:0]
-
-    @classmethod
-    def purge(cls, trace_id):
-        if trace_id:
-            cls.cache.pop(trace_id, None)
-
-
 def generate_request_id(request):
     data = "%d:%f" % (id(request), time.time())
     return hashlib.md5(data).hexdigest()
@@ -206,7 +171,6 @@ def context(func):
             yield func(self, request)
         finally:
             self.requests_in_progress -= 1
-            FingersCrossedHandler.purge(traceid)
     return wrapper
 
 
@@ -908,10 +872,7 @@ def enable_logging(options):
         if cocainelogger:
             cocainelogger.addHandler(handler)
 
-        if options.fingerscrossed:
-            access_logger.addHandler(FingersCrossedHandler(handler))
-        else:
-            access_logger.addHandler(handler)
+        access_logger.addHandler(handler)
 
     if options.log_file_prefix:
         handler = logging.handlers.WatchedFileHandler(
@@ -924,10 +885,7 @@ def enable_logging(options):
             filename=options.log_file_prefix,
         )
         handler.setFormatter(access_formatter)
-        if options.fingerscrossed:
-            access_logger.addHandler(FingersCrossedHandler(handler))
-        else:
-            access_logger.addHandler(handler)
+        access_logger.addHandler(handler)
 
         if cocainelogger:
             cocainehandler = logging.handlers.WatchedFileHandler(
@@ -946,11 +904,7 @@ def enable_logging(options):
 
         stderr_handler = logging.StreamHandler()
         stderr_handler.setFormatter(access_formatter)
-
-        if options.fingerscrossed:
-            access_logger.addHandler(FingersCrossedHandler(target=stderr_handler))
-        else:
-            access_logger.addHandler(stderr_handler)
+        access_logger.addHandler(stderr_handler)
 
 
 TcpEndpoint = collections.namedtuple('TcpEndpoint', ["host", "port"])
@@ -1053,8 +1007,6 @@ def main():
                 default=DEFAULT_ACCESS_LOGFORMAT)
     opts.define("logframework", type=bool, default=False,
                 help="enable logging various framework messages")
-    opts.define("fingerscrossed", type=bool, default=True,
-                help="enable lazy logging")
 
     # util server
     opts.define("utilport", default=8081, type=int, help="listening port number for an util server")
