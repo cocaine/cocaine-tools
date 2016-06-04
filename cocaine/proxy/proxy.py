@@ -1013,18 +1013,13 @@ def main():
     opts.define("utiladdress", default="127.0.0.1", type=str, help="address for an util server")
     opts.define("enableutil", default=False, type=bool, help="enable util server")
 
-    opts.define("so_reuseport", default=True, type=bool, help="use SO_REUSEPORT option")
-
-    use_reuseport = False
+    use_reuseport = support_reuseport()
     endpoints = Endpoints(opts.endpoints)
     sockets = []
 
     if endpoints.has_unix:
         for path in endpoints.unix:
             sockets.append(bind_unix_socket(path, mode=0o666))
-
-    if opts.so_reuseport:
-        use_reuseport = support_reuseport()
 
     if not use_reuseport and endpoints.has_tcp:
         for endpoint in endpoints.tcp:
