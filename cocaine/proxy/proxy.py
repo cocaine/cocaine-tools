@@ -1012,6 +1012,8 @@ def main():
     opts.define("utiladdress", default="127.0.0.1", type=str, help="address for an util server")
     opts.define("enableutil", default=False, type=bool, help="enable util server")
 
+    opts.parse_command_line()
+
     use_reuseport = support_reuseport()
     endpoints = Endpoints(opts.endpoints)
     sockets = []
@@ -1033,7 +1035,6 @@ def main():
         if opts.count != 1:
             process.fork_processes(opts.count)
 
-        opts.parse_command_line()
         enable_logging(opts)
 
         if opts.gcstats:
