@@ -177,8 +177,8 @@ def context(func):
 def pack_httprequest(request):
     headers = [(item.key, item.value) for item in request.cookies.itervalues()]
     headers.extend(request.headers.items())
-    d = request.method, request.uri, request.version.split("/")[1], headers, request.body
-    return d
+    packed = request.method, request.uri, request.version.split("/")[1], headers, request.body
+    return packed
 
 
 def fill_response_in(request, code, status, message, headers=None):
@@ -229,7 +229,7 @@ def scan_for_updates(current, new):
     # add removed groups and new groups to updated
     # mark routing group as updated if its current ring is not
     # the same as new
-    updated = filter(lambda k: new[k] != current.pop(k, None), new.keys())
+    updated = [k for k, v in new.iteritems() if v != current.pop(k, None)]
     updated.extend(current.keys())
     return updated
 
