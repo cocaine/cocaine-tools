@@ -131,41 +131,6 @@ class NullLogger(object):
 NULLLOGGER = NullLogger()
 
 
-class FingersCrossedItem(object):
-    def __init__(self):
-        self.triggered = False
-        self.records = list()
-
-    def append(self, record):
-        self.triggered |= record.levelno >= logging.ERROR
-        self.records.append(record)
-
-
-class FingersCrossedHandler(logging.Handler):
-    cache = dict()
-
-    def __init__(self, target, level=logging.NOTSET):
-        super(FingersCrossedHandler, self).__init__(level=logging.NOTSET)
-        self.target = target
-
-    def emit(self, record):
-        trace_id = getattr(record, "trace_id", None)
-        if trace_id is None:
-            return
-
-        fitem = FingersCrossedHandler.cache.setdefault(trace_id, FingersCrossedItem())
-        fitem.append(record)
-        if fitem.triggered:
-            for rec in fitem.records:
-                self.target.handle(rec)
-            fitem.records = fitem.records[:0]
-
-    @classmethod
-    def purge(cls, trace_id):
-        if trace_id:
-            cls.cache.pop(trace_id, None)
-
-
 def generate_request_id(request):
     data = "%d:%f" % (id(request), time.time())
     return hashlib.md5(data).hexdigest()
@@ -206,15 +171,14 @@ def context(func):
             yield func(self, request)
         finally:
             self.requests_in_progress -= 1
-            FingersCrossedHandler.purge(traceid)
     return wrapper
 
 
 def pack_httprequest(request):
     headers = [(item.key, item.value) for item in request.cookies.itervalues()]
     headers.extend(request.headers.items())
-    d = request.method, request.uri, request.version.split("/")[1], headers, request.body
-    return d
+    packed = request.method, request.uri, request.version.split("/")[1], headers, request.body
+    return packed
 
 
 def fill_response_in(request, code, status, message, headers=None):
@@ -265,7 +229,7 @@ def scan_for_updates(current, new):
     # add removed groups and new groups to updated
     # mark routing group as updated if its current ring is not
     # the same as new
-    updated = filter(lambda k: new[k] != current.pop(k, None), new.keys())
+    updated = [k for k, v in new.iteritems() if v != current.pop(k, None)]
     updated.extend(current.keys())
     return updated
 
@@ -901,17 +865,14 @@ def enable_logging(options):
         cocainelogger = logging.getLogger("cocaine.baseservice")
         cocainelogger.setLevel(getattr(logging, options.logging.upper()))
 
-    if options.cocaine_logging:
+    if options.log_to_cocaine:
         Logger().target = "tornado-proxy"
         handler = CocaineHandler()
         general_logger.addHandler(handler)
         if cocainelogger:
             cocainelogger.addHandler(handler)
 
-        if options.fingerscrossed:
-            access_logger.addHandler(FingersCrossedHandler(handler))
-        else:
-            access_logger.addHandler(handler)
+        access_logger.addHandler(handler)
 
     if options.log_file_prefix:
         handler = logging.handlers.WatchedFileHandler(
@@ -924,10 +885,7 @@ def enable_logging(options):
             filename=options.log_file_prefix,
         )
         handler.setFormatter(access_formatter)
-        if options.fingerscrossed:
-            access_logger.addHandler(FingersCrossedHandler(handler))
-        else:
-            access_logger.addHandler(handler)
+        access_logger.addHandler(handler)
 
         if cocainelogger:
             cocainehandler = logging.handlers.WatchedFileHandler(
@@ -946,11 +904,7 @@ def enable_logging(options):
 
         stderr_handler = logging.StreamHandler()
         stderr_handler.setFormatter(access_formatter)
-
-        if options.fingerscrossed:
-            access_logger.addHandler(FingersCrossedHandler(target=stderr_handler))
-        else:
-            access_logger.addHandler(stderr_handler)
+        access_logger.addHandler(stderr_handler)
 
 
 TcpEndpoint = collections.namedtuple('TcpEndpoint', ["host", "port"])
@@ -982,14 +936,6 @@ class Endpoints(object):
             else:
                 raise ValueError("Endpoint has to begin either unix:// or tcp:// %s" % i)
 
-    @property
-    def has_unix(self):
-        return len(self.unix) > 0
-
-    @property
-    def has_tcp(self):
-        return len(self.tcp) > 0
-
 
 DEFAULT_GENERAL_LOGFORMAT = "[%(asctime)s.%(msecs)d]\t[%(filename).5s:%(lineno)d]\t%(levelname)s\t%(message)s"
 DEFAULT_ACCESS_LOGFORMAT = "[%(asctime)s.%(msecs)d]\t[%(filename).5s:%(lineno)d]\t%(levelname)s\t%(trace_id)s\t%(message)s"
@@ -1017,7 +963,6 @@ def main():
     opts.define("config", help="path to configuration file", type=str,
                 callback=lambda path: opts.parse_config_file(path, final=False))
     opts.define("count", default=1, type=int, help="count of tornado processes")
-    opts.define("port", default=8080, type=int, help="listening port number")
     opts.define("endpoints", default=["tcp://localhost:8080"], type=str, multiple=True,
                 help="Specify endpoints to bind on: prefix unix:// or tcp:// should be used")
     opts.define("request_header", default="X-Request-Id", type=str,
@@ -1036,10 +981,10 @@ def main():
                 type=str, help="path to the configuration nodes in the configuration service")
 
     # various logging options
-    opts.define("cocaine_logging", default=False, type=bool, help="log to cocaine")
     opts.define("logging", default="info",
                 help=("Set the Python log level. If 'none', tornado won't touch the "
                       "logging configuration."), metavar="debug|info|warning|error|none")
+    opts.define("log_to_cocaine", default=False, type=bool, help="log to cocaine")
     opts.define("log_to_stderr", type=bool, default=None,
                 help=("Send log output to stderr. "
                       "By default use stderr if --log_file_prefix is not set and "
@@ -1053,28 +998,21 @@ def main():
                 default=DEFAULT_ACCESS_LOGFORMAT)
     opts.define("logframework", type=bool, default=False,
                 help="enable logging various framework messages")
-    opts.define("fingerscrossed", type=bool, default=True,
-                help="enable lazy logging")
 
     # util server
     opts.define("utilport", default=8081, type=int, help="listening port number for an util server")
     opts.define("utiladdress", default="127.0.0.1", type=str, help="address for an util server")
     opts.define("enableutil", default=False, type=bool, help="enable util server")
+    opts.parse_command_line()
 
-    opts.define("so_reuseport", default=True, type=bool, help="use SO_REUSEPORT option")
-
-    use_reuseport = False
+    use_reuseport = support_reuseport()
     endpoints = Endpoints(opts.endpoints)
     sockets = []
 
-    if endpoints.has_unix:
-        for path in endpoints.unix:
-            sockets.append(bind_unix_socket(path, mode=0o666))
+    for path in endpoints.unix:
+        sockets.append(bind_unix_socket(path, mode=0o666))
 
-    if opts.so_reuseport:
-        use_reuseport = support_reuseport()
-
-    if not use_reuseport and endpoints.has_tcp:
+    if not use_reuseport:
         for endpoint in endpoints.tcp:
             # We have to bind before fork to distribute sockets to our forks
             socks = bind_sockets(endpoint.port, address=endpoint.host)
@@ -1087,13 +1025,12 @@ def main():
         if opts.count != 1:
             process.fork_processes(opts.count)
 
-        opts.parse_command_line()
         enable_logging(opts)
 
         if opts.gcstats:
             enable_gc_stats()
 
-        if use_reuseport and endpoints.has_tcp:
+        if use_reuseport:
             for endpoint in endpoints.tcp:
                 # We have to bind before fork to distribute sockets to our forks
                 socks = bind_sockets(endpoint.port, address=endpoint.host, reuse_port=True)
