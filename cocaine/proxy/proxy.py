@@ -865,7 +865,7 @@ def enable_logging(options):
         cocainelogger = logging.getLogger("cocaine.baseservice")
         cocainelogger.setLevel(getattr(logging, options.logging.upper()))
 
-    if options.cocaine_logging:
+    if options.log_to_cocaine:
         Logger().target = "tornado-proxy"
         handler = CocaineHandler()
         general_logger.addHandler(handler)
@@ -981,10 +981,10 @@ def main():
                 type=str, help="path to the configuration nodes in the configuration service")
 
     # various logging options
-    opts.define("cocaine_logging", default=False, type=bool, help="log to cocaine")
     opts.define("logging", default="info",
                 help=("Set the Python log level. If 'none', tornado won't touch the "
                       "logging configuration."), metavar="debug|info|warning|error|none")
+    opts.define("log_to_cocaine", default=False, type=bool, help="log to cocaine")
     opts.define("log_to_stderr", type=bool, default=None,
                 help=("Send log output to stderr. "
                       "By default use stderr if --log_file_prefix is not set and "
