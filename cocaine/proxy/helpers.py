@@ -1,9 +1,16 @@
 import collections
+import json
 
 from tornado import httputil
 
 
 TcpEndpoint = collections.namedtuple('TcpEndpoint', ["host", "port"])
+
+
+def load_srw_config(path):
+    with open(path, mode='r') as f:
+        config = json.load(f)
+    return config
 
 
 class Endpoints(object):

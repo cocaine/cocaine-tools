@@ -48,6 +48,7 @@ from tornado import process
 from tornado.httpserver import HTTPServer
 from tornado.iostream import StreamClosedError
 from tornado.netutil import bind_sockets, bind_unix_socket
+from tornado.util import import_object
 
 try:
     from cocaine.logger import LoggerWithExtraInRecord
@@ -66,11 +67,16 @@ from cocaine.detail.trace import Trace
 
 from cocaine.proxy.helpers import Endpoints
 from cocaine.proxy.helpers import fill_response_in
+from cocaine.proxy.helpers import load_srw_config
 from cocaine.proxy.helpers import pack_httprequest
 from cocaine.proxy.helpers import parse_locators_endpoints
 from cocaine.proxy.logutils import ContextAdapter
 from cocaine.proxy.logutils import NULLLOGGER
+from cocaine.proxy.srw import ISRWExec
+from cocaine.proxy.srw import SRWNoSuchApplication
+from cocaine.proxy.srw import SRWApplicationError
 from cocaine.proxy.utilserver import UtilServer
+
 
 try:
     from cocaine.tools.version import __version__ as tools_version
@@ -179,6 +185,13 @@ def drop_app_from_cache(cache, app, name):
             cache.pop(name)
 
 
+def load_plugin(name, config):
+    klass = import_object(name)
+    if not issubclass(klass, ISRWExec):
+        raise Exception("%s is not a subclass of %s" % (klass.__name__, ISRWExec.__name__))
+    return klass(config)
+
+
 class CocaineProxy(object):
     def __init__(self, locators=("localhost:10053",),
                  cache=DEFAULT_SERVICE_CACHE_COUNT,
@@ -188,6 +201,7 @@ class CocaineProxy(object):
                  configuration_service="unicorn",
                  tracing_conf_path="/zipkin_sampling",
                  timeouts_conf_path="/proxy_apps_timeouts",
+                 srw_config=None,
                  ioloop=None, **config):
         # stats
         self.requests_in_progress = 0
@@ -215,6 +229,13 @@ class CocaineProxy(object):
                          ','.join("%s:%d" % (h, p) for h, p in self.locator_endpoints))
 
         self.sticky_header = sticky_header
+
+        self.srw_plugins = []
+        if srw_config:
+            for config in srw_config:
+                name, cfg = config["type"], config["args"]
+                self.logger.info("initialize SRW plugin %s", name)
+                self.srw_plugins.append(load_plugin(name, cfg))
 
         self.logger.info("conf path in `%s` configuration service: %s",
                          configuration_service, tracing_conf_path)
@@ -494,6 +515,29 @@ class CocaineProxy(object):
                 other = "/" + other
             request.uri = other
             request.path, _, _ = other.partition("?")
+
+        for plugin in self.srw_plugins:
+            if plugin.match(request):
+                request.logger.info('processed by %s SRW plugin', plugin.name())
+                try:
+                    timeout = self.get_timeout(name, event)
+                    yield plugin.process(request, name, event, timeout)
+                except SRWNoSuchApplication:
+                    message = "current application %s is unavailable" % name
+                    fill_response_in(request, NO_SUCH_APP, "No Such Application",
+                                     message, proxy_error_headers())
+                except SRWApplicationError:
+                    message = "application error"
+                    fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
+                                     httplib.responses[httplib.INTERNAL_SERVER_ERROR],
+                                     message, proxy_error_headers())
+                except Exception as err:
+                    request.logger.error('SRW plugin %s returned error: %s', plugin.name(), err)
+                    message = "unknown error"
+                    fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
+                                     httplib.responses[httplib.INTERNAL_SERVER_ERROR],
+                                     message, proxy_error_headers())
+                return
 
         if getattr(request, "traceid", None) is not None:
             tracing_chance = self.sampled_apps.get(name, self.default_tracing_chance)
@@ -828,6 +872,7 @@ def main():
                 help="enable force generation of the request header")
     opts.define("sticky_header", default="X-Cocaine-Sticky", type=str, help="sticky header name")
     opts.define("gcstats", default=False, type=bool, help="print garbage collector stats to stderr")
+    opts.define("srwconfig", default="", type=str, help="path to srwconfig")
 
     # tracing options
     opts.define("tracing_chance", default=DEFAULT_TRACING_CHANCE,
@@ -861,6 +906,14 @@ def main():
     opts.define("utiladdress", default="127.0.0.1", type=str, help="address for an util server")
     opts.define("enableutil", default=False, type=bool, help="enable util server")
     opts.parse_command_line()
+
+    srw_config = None
+    if opts.srwconfig:
+        try:
+            srw_config = load_srw_config(opts.srwconfig)
+        except Exception as err:
+            print("unable to load SRW config: %s" % err)
+            exit(1)
 
     use_reuseport = hasattr(socket, "SO_REUSEPORT")
     endpoints = Endpoints(opts.endpoints)
@@ -897,7 +950,8 @@ def main():
                              request_id_header=opts.request_header,
                              sticky_header=opts.sticky_header,
                              forcegen_request_header=opts.forcegen_request_header,
-                             default_tracing_chance=opts.tracing_chance)
+                             default_tracing_chance=opts.tracing_chance,
+                             srw_config=srw_config)
         server = HTTPServer(proxy)
         server.add_sockets(sockets)
 
