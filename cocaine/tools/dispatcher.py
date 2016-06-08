@@ -214,6 +214,15 @@ def info(options,
     })
 
 
+@d.command(name='metrics', usage='')
+def metrics(options):
+    """Show services metrics
+    """
+    options.executor.executeAction('metrics', **{
+        'runtime': options.getService('runtime'),
+    })
+
+
 @appDispatcher.command(name='list')
 def app_list(options):
     """Show installed applications list."""
