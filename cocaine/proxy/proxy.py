@@ -510,9 +510,31 @@ class CocaineProxy(object):
                 fill_response_in(request, 400, 'Bad JSON-RPC request', json.dumps(body), headers)
                 return
             else:
-                # TODO: Check that protocol is primitive.
                 try:
                     service = yield self.get_service(service_name, request)
+                    methods = (data[0] for (id, data) in service.api.iteritems())
+                    if service_method not in methods:
+                        headers = httputil.HTTPHeaders({
+                            'Content-Type': 'application/json-rpc'
+                        })
+                        body = {
+                            'code': -32601,
+                            'message': 'Method not found.',
+                        }
+                        fill_response_in(request, 400, 'Bad JSON-RPC request', json.dumps(body), headers)
+                        return
+                    named_api = dict((name, [name, tx, rx]) for (id, (name, tx, rx)) in service.api.iteritems() )
+                    name, txtree, rxtree = named_api[service_method]
+                    if rxtree != {0: ['value', {}], 1: ['error', {}]}:
+                        headers = httputil.HTTPHeaders({
+                            'Content-Type': 'application/json-rpc'
+                        })
+                        body = {
+                            'code': -32000,
+                            'message': 'Protocol is not primitive.',
+                        }
+                        fill_response_in(request, 400, 'Bad JSON-RPC request', json.dumps(body), headers)
+                        return
                     channel = yield getattr(service, service_method)(*args)
                     result = yield channel.rx.get()
                 except Exception as err:
