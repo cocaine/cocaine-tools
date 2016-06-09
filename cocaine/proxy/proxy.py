@@ -482,6 +482,61 @@ class CocaineProxy(object):
     @context
     @gen.coroutine
     def __call__(self, request):
+        import json
+        if len(request.body) > 0:
+            try:
+                jsonrpc = json.loads(request.body)
+                if set(('jsonrpc', 'method', 'params', 'id')) <= set(jsonrpc.keys()):
+                    service_name, service_method = jsonrpc['method'].split('.', 2)
+                    args = jsonrpc['params']
+                else:
+                    headers = httputil.HTTPHeaders({
+                        'Content-Type': 'application/json-rpc'
+                    })
+                    body = {
+                        'code': -32600,
+                        'message': 'The JSON sent is not a valid Request object.',
+                    }
+                    fill_response_in(request, 400, 'Bad JSON-RPC request', json.dumps(body), headers)
+                    return
+            except ValueError:
+                headers = httputil.HTTPHeaders({
+                    'Content-Type': 'application/json-rpc'
+                })
+                body = {
+                    'code': -32700,
+                    'message': 'Parse error	Invalid JSON was received by the server.',
+                }
+                fill_response_in(request, 400, 'Bad JSON-RPC request', json.dumps(body), headers)
+                return
+            else:
+                # TODO: Check that protocol is primitive.
+                try:
+                    service = yield self.get_service(service_name, request)
+                    channel = yield getattr(service, service_method)(*args)
+                    result = yield channel.rx.get()
+                except Exception as err:
+                    headers = httputil.HTTPHeaders({
+                        'Content-Type': 'application/json-rpc'
+                    })
+                    body = {
+                        'jsonrpc': '2.0',
+                        'error': err,
+                        'id': jsonrpc['id'],
+                    }
+                    fill_response_in(request, 500, 'Internal Server Error', json.dumps(body), headers)
+                else:
+                    headers = httputil.HTTPHeaders({
+                        'Content-Type': 'application/json-rpc'
+                    })
+                    body = {
+                        'jsonrpc': '2.0',
+                        'result': result,
+                        'id': jsonrpc['id'],
+                    }
+                    fill_response_in(request, 200, 'OK', json.dumps(body), headers)
+                    return
+
         if "X-Cocaine-Service" in request.headers and "X-Cocaine-Event" in request.headers:
             request.logger.debug('dispatch by headers')
             name = request.headers['X-Cocaine-Service']
