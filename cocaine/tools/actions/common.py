@@ -130,6 +130,17 @@ class Routing(object):
         raise gen.Return(groups)
 
 
+class RuntimeMetrics(object):
+    def __init__(self, runtime):
+        self._runtime = runtime
+
+    @coroutine
+    def execute(self):
+        channel = yield self._runtime.metrics()
+        result = yield channel.rx.get()
+        raise gen.Return(result)
+
+
 class NodeInfo(Node):
     def __init__(self, node, locator,
                  name=None, flags=0x1,
