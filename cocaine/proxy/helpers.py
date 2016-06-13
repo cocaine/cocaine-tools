@@ -1,5 +1,8 @@
 import collections
+import hashlib
 import json
+from operator import xor
+import struct
 
 from tornado import httputil
 
@@ -97,3 +100,10 @@ def upper_bound(l, value):
         else:
             hi = mid
     return lo
+
+
+def header_to_seed(value):
+    m = hashlib.new("md5")
+    m.update(value)
+    # 4 bytes XOR
+    return reduce(xor, struct.unpack("@IIII", m.digest()), 0)

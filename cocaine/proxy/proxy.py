@@ -70,6 +70,7 @@ from cocaine.proxy.helpers import fill_response_in
 from cocaine.proxy.helpers import load_srw_config
 from cocaine.proxy.helpers import pack_httprequest
 from cocaine.proxy.helpers import parse_locators_endpoints
+from cocaine.proxy.helpers import header_to_seed
 from cocaine.proxy.helpers import upper_bound
 from cocaine.proxy.logutils import ContextAdapter
 from cocaine.proxy.logutils import NULLLOGGER
@@ -568,12 +569,13 @@ class CocaineProxy(object):
                 request.logger = NULLLOGGER
                 request.traceid = None
 
-        if self.sticky_header not in request.headers:
-            app = yield self.get_service(name, request)
-        else:
+        if self.sticky_header in request.headers:
             seed = request.headers.get(self.sticky_header)
-            request.logger.info('sticky_header has been found: %s', seed)
-            app = yield self.get_service_with_seed(name, seed, request)
+            seed_value = header_to_seed(seed)
+            request.logger.info('sticky_header has been found: name %s, value %s, seed %d', name, seed, seed_value)
+            name = self.resolve_group_to_version(name, seed_value)
+
+        app = yield self.get_service(name, request)
 
         if app is None:
             message = "current application %s is unavailable" % name
@@ -785,19 +787,6 @@ class CocaineProxy(object):
         # get an instance from cache
         chosen = random.choice(self.cache[name])
         raise gen.Return(chosen)
-
-    @gen.coroutine
-    def get_service_with_seed(self, name, seed, request):
-        logger = request.logger
-        app = Service(name, seed=seed, locator=self.locator)
-        try:
-            logger.info("%s: creating an instance of %s, seed %s", app.id, name, seed)
-            yield app.connect(request.traceid)
-        except Exception as err:
-            logger.error("%s: unable to connect to `%s`: %s", app.id, name, err)
-            raise gen.Return()
-
-        raise gen.Return(app)
 
 
 def enable_logging(options):
