@@ -75,9 +75,9 @@ from cocaine.proxy.helpers import ProxyInvalidRequest
 from cocaine.proxy.helpers import upper_bound
 from cocaine.proxy.logutils import ContextAdapter
 from cocaine.proxy.logutils import NULLLOGGER
-from cocaine.proxy.srw import ISRWExec
-from cocaine.proxy.srw import SRWNoSuchApplication
-from cocaine.proxy.srw import SRWApplicationError
+from cocaine.proxy.plugin import IPlugin
+from cocaine.proxy.plugin import PluginNoSuchApplication
+from cocaine.proxy.plugin import PluginApplicationError
 from cocaine.proxy.utilserver import UtilServer
 
 
@@ -186,11 +186,11 @@ def drop_app_from_cache(cache, app, name):
             cache.pop(name)
 
 
-def load_plugin(name, config):
+def load_plugin(name, proxy, config):
     klass = import_object(name)
-    if not issubclass(klass, ISRWExec):
-        raise Exception("%s is not a subclass of %s" % (klass.__name__, ISRWExec.__name__))
-    return klass(config)
+    if not issubclass(klass, IPlugin):
+        raise Exception("%s is not a subclass of %s" % (klass.__name__, IPlugin.__name__))
+    return klass(proxy, config)
 
 
 class CocaineProxy(object):
@@ -237,8 +237,8 @@ class CocaineProxy(object):
         if srw_config:
             for config in srw_config:
                 name, cfg = config["type"], config["args"]
-                self.logger.info("initialize SRW plugin %s", name)
-                self.plugins.append(load_plugin(name, cfg))
+                self.logger.info("initialize plugin %s", name)
+                self.plugins.append(load_plugin(name, self, cfg))
 
         self.logger.info("conf path in `%s` configuration service: %s",
                          configuration_service, tracing_conf_path)
@@ -516,10 +516,10 @@ class CocaineProxy(object):
                 request.logger.info('processed by %s plugin', plugin.name())
                 try:
                     yield plugin.process(request)
-                except SRWNoSuchApplication as err:
+                except PluginNoSuchApplication as err:
                     fill_response_in(request, NO_SUCH_APP, "No such application",
                                      str(err), proxy_error_headers())
-                except SRWApplicationError:
+                except PluginApplicationError:
                     message = "application error"
                     fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                      httplib.responses[httplib.INTERNAL_SERVER_ERROR],
@@ -531,7 +531,7 @@ class CocaineProxy(object):
                         fill_response_in(request, httplib.NOT_FOUND, httplib.responses[httplib.NOT_FOUND],
                                          "Invalid url", proxy_error_headers())
                 except Exception as err:
-                    request.logger.error('SRW plugin %s returned error: %s', plugin.name(), err)
+                    request.logger.error('plugin %s returned error: %s', plugin.name(), err)
                     message = "unknown error"
                     fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                      httplib.responses[httplib.INTERNAL_SERVER_ERROR],

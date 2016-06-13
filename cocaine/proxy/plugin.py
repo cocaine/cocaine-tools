@@ -1,30 +1,30 @@
 from tornado import gen
 
 
-class SRWException(Exception):
+class PluginException(Exception):
     pass
 
 
-class SRWConfigurationError(SRWException):
+class PluginConfigurationError(PluginException):
     def __init__(self, name, message):
-        super(SRWConfigurationError, self).__init__("configuration error for %s: %s" % (name, message))
+        super(PluginConfigurationError, self).__init__("configuration error for %s: %s" % (name, message))
         self.name = name
         self.message = message
 
 
-class SRWNoSuchApplication(SRWException):
+class PluginNoSuchApplication(PluginException):
     pass
 
 
-class SRWApplicationError(SRWException):
+class PluginApplicationError(PluginException):
     def __init__(self, category, code, message):
-        super(SRWApplicationError, self).__init__("[%d %d] %s" % (category, code, message))
+        super(PluginApplicationError, self).__init__("[%d %d] %s" % (category, code, message))
         self.category = category
         self.code = code
         self.message = message
 
 
-class ISRWExec(object):
+class IPlugin(object):
     @staticmethod
     def name():
         raise NotImplementedError()
