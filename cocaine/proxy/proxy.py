@@ -70,6 +70,7 @@ from cocaine.proxy.helpers import fill_response_in
 from cocaine.proxy.helpers import load_srw_config
 from cocaine.proxy.helpers import pack_httprequest
 from cocaine.proxy.helpers import parse_locators_endpoints
+from cocaine.proxy.helpers import upper_bound
 from cocaine.proxy.logutils import ContextAdapter
 from cocaine.proxy.logutils import NULLLOGGER
 from cocaine.proxy.srw import ISRWExec
@@ -221,6 +222,8 @@ class CocaineProxy(object):
 
         # active applications
         self.cache = collections.defaultdict(list)
+        # routing groups from Locator service
+        self.current_rg = {}
 
         self.logger = logging.getLogger("cocaine.proxy.general")
         self.access_log = logging.getLogger("cocaine.proxy.access")
@@ -287,7 +290,7 @@ class CocaineProxy(object):
         maximum_timeout = 32  # sec
         timeout = 1  # sec
         while True:
-            current = {}
+            self.current_rg = {}
             try:
                 self.logger.info("subscribe to updates with id %s", uid)
                 channel = yield self.locator.routing(uid, True)
@@ -298,9 +301,9 @@ class CocaineProxy(object):
                         # it means that the cocaine has been stopped
                         self.logger.error("locator sends close")
                         break
-                    updates = scan_for_updates(current, new)
+                    updates = scan_for_updates(self.current_rg, new)
                     # replace current
-                    current = new
+                    self.current_rg = new
                     if len(updates) == 0:
                         self.logger.info("locator sends an update message, "
                                          "but no updates have been found")
@@ -478,6 +481,23 @@ class CocaineProxy(object):
     def dispose(self, app, name):
         self.logger.info("dispose service %s %s", name, app.id)
         app.disconnect()
+
+    def resolve_group_to_version(self, name, value=None):
+        """ Pick a version from a routing group using a random or provided value
+            A routing group looks like (weight, version):
+            {"APP": [[29431330, 'A'], [82426238, 'B'], [101760716, 'C'], [118725487, 'D'], [122951927, 'E']]}
+        """
+        if name not in self.current_rg:
+            return name
+
+        routing_group = self.current_rg[name]
+        if len(routing_group) == 0:
+            self.logger.warning("empty rounting group %s", name)
+            return name
+
+        value = value or random.randint(0, 1 << 32)
+        index = upper_bound(routing_group, value)
+        return routing_group[index + 1 if index < len(routing_group) else 0][1]
 
     @context
     @gen.coroutine

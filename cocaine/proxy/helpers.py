@@ -85,3 +85,15 @@ def parse_locators_endpoints(endpoint):
             pass
 
     raise Exception("invalid endpoint: %s" % endpoint)
+
+
+def upper_bound(l, value):
+    lo = 0
+    hi = len(l)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if l[mid][0] < value:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo

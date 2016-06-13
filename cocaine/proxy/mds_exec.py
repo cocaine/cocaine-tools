@@ -26,7 +26,8 @@ MDS_STID_REGEX = re.compile(r".+:\d+\.E\d+:.+")
 
 
 class MDSExec(ISRWExec):
-    def __init__(self, config):
+    def __init__(self, proxy, config):
+        super(MDSExec, self).__init__(proxy)
         try:
             self.srw_host = config["srw_host"]
             self.filter_mds_stid = config.get("filter_stid", True)
@@ -45,6 +46,9 @@ class MDSExec(ISRWExec):
 
     @gen.coroutine
     def process(self, request, name, event, timeout):
+        # as MDS proxy bypasses the mechanism of routing groups
+        # the proxy is responsible to provide this feature
+        name = self.proxy.resolve_group_to_version(name)
         headers = request.headers
         namespace = headers["X-Srw-Namespace"]
         key = headers["X-Srw-Key"]
