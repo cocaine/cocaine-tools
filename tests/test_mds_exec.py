@@ -70,8 +70,8 @@ class TestMDSExec(AsyncHTTPTestCase):
             self.assertEqual(uri, "/blabla")
             self.assertEqual(version, "1.1")
             self.assertEqual(body, "body")
-            self.assertEqual(len(headers), 4)
-            self.assertEqual(request.query_arguments["timeout"], ["100"])
+            self.assertEqual(len(headers), 6)  # 4 + 2
+            self.assertEqual(request.query_arguments["timeout"], ["30"])
             request.connection.write_headers(httputil.ResponseStartLine("HTTP/1.1", 200, "OK"),
                                              httputil.HTTPHeaders(), chunk=msgpack.packb((202, [("A", "B")])))
             request.connection.write("CHUNK1")
@@ -105,6 +105,8 @@ class TestMDSExec(AsyncHTTPTestCase):
         conn = _FakeConnection()
         req = HTTPServerRequest(method="PUT", uri="/blabla",
                                 version="HTTP/1.1", headers={
+                                    "X-Cocaine-Service": "application",
+                                    "X-Cocaine-Event": "event",
                                     "X-Srw-Key": "320.namespace:301123837.E150591:1046883323",
                                     "X-Srw-Namespace": "namespace",
                                     "X-Srw-Key-Type": "mds",
@@ -113,7 +115,7 @@ class TestMDSExec(AsyncHTTPTestCase):
                                 connection=conn,
                                 body="body", host="localhost")
         req.logger = NULLLOGGER
-        yield mdsplugin.process(req, "application", "event", 100)
+        yield mdsplugin.process(req)
         self.assertEqual(conn.start_line.code, 202)
         self.assertEqual(conn.start_line.version, "HTTP/1.1")
         self.assertEqual(len(conn.chunks), 1)

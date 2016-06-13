@@ -13,6 +13,7 @@ from tornado.httpclient import AsyncHTTPClient
 from tornado.httpclient import HTTPError
 from tornado.httpclient import HTTPRequest
 
+from cocaine.proxy.helpers import extract_app_and_event
 from cocaine.proxy.helpers import fill_response_in
 from cocaine.proxy.helpers import pack_httprequest
 
@@ -45,7 +46,9 @@ class MDSExec(ISRWExec):
         return False
 
     @gen.coroutine
-    def process(self, request, name, event, timeout):
+    def process(self, request):
+        name, event = extract_app_and_event(request)
+        timeout = self.proxy.get_timeout(name, event)
         # as MDS proxy bypasses the mechanism of routing groups
         # the proxy is responsible to provide this feature
         name = self.proxy.resolve_group_to_version(name)

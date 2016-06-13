@@ -36,5 +36,5 @@ class ISRWExec(object):
         raise NotImplementedError()
 
     @gen.coroutine
-    def process(self, request, name, event, timeout):
+    def process(self, request):
         raise NotImplementedError()
