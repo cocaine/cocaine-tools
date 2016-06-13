@@ -25,6 +25,7 @@ from tornado.httpclient import HTTPRequest
 from tornado.testing import AsyncHTTPTestCase
 from tornado.testing import gen_test
 
+from cocaine.proxy.proxy import CocaineProxy
 from cocaine.proxy.logutils import NULLLOGGER
 from cocaine.proxy.mds_exec import MDS_STID_REGEX
 from cocaine.proxy.mds_exec import MDSExec
@@ -81,7 +82,7 @@ class TestMDSExec(AsyncHTTPTestCase):
         return handler
 
     def test_mds_match(self):
-        mdsplugin = MDSExec({"srw_host": ""})
+        mdsplugin = MDSExec(CocaineProxy(), {"srw_host": ""})
 
         request = HTTPRequest("/", headers={
             "X-Srw-Key": "320.yadisk:301123837.E150591:1046883",
@@ -100,7 +101,7 @@ class TestMDSExec(AsyncHTTPTestCase):
 
     @gen_test
     def test_mds_process(self):
-        mdsplugin = MDSExec({"srw_host": "http://localhost:%d" % self.get_http_port()})
+        mdsplugin = MDSExec(CocaineProxy(), {"srw_host": "http://localhost:%d" % self.get_http_port()})
         conn = _FakeConnection()
         req = HTTPServerRequest(method="PUT", uri="/blabla",
                                 version="HTTP/1.1", headers={

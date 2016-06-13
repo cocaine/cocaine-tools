@@ -70,6 +70,8 @@ from cocaine.proxy.helpers import fill_response_in
 from cocaine.proxy.helpers import load_srw_config
 from cocaine.proxy.helpers import pack_httprequest
 from cocaine.proxy.helpers import parse_locators_endpoints
+from cocaine.proxy.helpers import header_to_seed
+from cocaine.proxy.helpers import upper_bound
 from cocaine.proxy.logutils import ContextAdapter
 from cocaine.proxy.logutils import NULLLOGGER
 from cocaine.proxy.srw import ISRWExec
@@ -221,6 +223,8 @@ class CocaineProxy(object):
 
         # active applications
         self.cache = collections.defaultdict(list)
+        # routing groups from Locator service
+        self.current_rg = {}
 
         self.logger = logging.getLogger("cocaine.proxy.general")
         self.access_log = logging.getLogger("cocaine.proxy.access")
@@ -287,7 +291,7 @@ class CocaineProxy(object):
         maximum_timeout = 32  # sec
         timeout = 1  # sec
         while True:
-            current = {}
+            self.current_rg = {}
             try:
                 self.logger.info("subscribe to updates with id %s", uid)
                 channel = yield self.locator.routing(uid, True)
@@ -298,9 +302,9 @@ class CocaineProxy(object):
                         # it means that the cocaine has been stopped
                         self.logger.error("locator sends close")
                         break
-                    updates = scan_for_updates(current, new)
+                    updates = scan_for_updates(self.current_rg, new)
                     # replace current
-                    current = new
+                    self.current_rg = new
                     if len(updates) == 0:
                         self.logger.info("locator sends an update message, "
                                          "but no updates have been found")
@@ -479,6 +483,23 @@ class CocaineProxy(object):
         self.logger.info("dispose service %s %s", name, app.id)
         app.disconnect()
 
+    def resolve_group_to_version(self, name, value=None):
+        """ Pick a version from a routing group using a random or provided value
+            A routing group looks like (weight, version):
+            {"APP": [[29431330, 'A'], [82426238, 'B'], [101760716, 'C'], [118725487, 'D'], [122951927, 'E']]}
+        """
+        if name not in self.current_rg:
+            return name
+
+        routing_group = self.current_rg[name]
+        if len(routing_group) == 0:
+            self.logger.warning("empty rounting group %s", name)
+            return name
+
+        value = value or random.randint(0, 1 << 32)
+        index = upper_bound(routing_group, value)
+        return routing_group[index + 1 if index < len(routing_group) else 0][1]
+
     @context
     @gen.coroutine
     def __call__(self, request):
@@ -548,12 +569,13 @@ class CocaineProxy(object):
                 request.logger = NULLLOGGER
                 request.traceid = None
 
-        if self.sticky_header not in request.headers:
-            app = yield self.get_service(name, request)
-        else:
+        if self.sticky_header in request.headers:
             seed = request.headers.get(self.sticky_header)
-            request.logger.info('sticky_header has been found: %s', seed)
-            app = yield self.get_service_with_seed(name, seed, request)
+            seed_value = header_to_seed(seed)
+            request.logger.info('sticky_header has been found: name %s, value %s, seed %d', name, seed, seed_value)
+            name = self.resolve_group_to_version(name, seed_value)
+
+        app = yield self.get_service(name, request)
 
         if app is None:
             message = "current application %s is unavailable" % name
@@ -765,19 +787,6 @@ class CocaineProxy(object):
         # get an instance from cache
         chosen = random.choice(self.cache[name])
         raise gen.Return(chosen)
-
-    @gen.coroutine
-    def get_service_with_seed(self, name, seed, request):
-        logger = request.logger
-        app = Service(name, seed=seed, locator=self.locator)
-        try:
-            logger.info("%s: creating an instance of %s, seed %s", app.id, name, seed)
-            yield app.connect(request.traceid)
-        except Exception as err:
-            logger.error("%s: unable to connect to `%s`: %s", app.id, name, err)
-            raise gen.Return()
-
-        raise gen.Return(app)
 
 
 def enable_logging(options):

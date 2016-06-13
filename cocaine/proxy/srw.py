@@ -29,6 +29,9 @@ class ISRWExec(object):
     def name():
         raise NotImplementedError()
 
+    def __init__(self, proxy):
+        self.proxy = proxy
+
     def match(self, request):
         raise NotImplementedError()
 

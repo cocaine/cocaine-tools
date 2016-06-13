@@ -21,6 +21,7 @@
 from tornado.httputil import HTTPServerRequest
 from tornado.httputil import HTTPHeaders
 
+from cocaine.proxy.helpers import upper_bound
 from cocaine.proxy.proxy import pack_httprequest
 from cocaine.proxy.proxy import scan_for_updates
 
@@ -54,3 +55,11 @@ def test_scan_for_updates():
     new = {"A": 2, "B": 2, "D": 0}
     updated = scan_for_updates(current, new)
     assert set(updated) == set(("A", "C", "D"))
+
+
+def test_upper_bound():
+    l = [[29431330, 'A'], [82426238, 'B'], [101760716, 'C'], [118725487, 'D'], [122951927, 'E']]
+    assert upper_bound(l, 10) == 0
+    assert upper_bound(l, l[0][0] + 10) == 1
+    assert upper_bound(l, l[3][0] + 10) == 4
+    assert upper_bound(l, l[4][0] + 10) == 5

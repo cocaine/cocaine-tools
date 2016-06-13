@@ -1,5 +1,8 @@
 import collections
+import hashlib
 import json
+from operator import xor
+import struct
 
 from tornado import httputil
 
@@ -85,3 +88,22 @@ def parse_locators_endpoints(endpoint):
             pass
 
     raise Exception("invalid endpoint: %s" % endpoint)
+
+
+def upper_bound(l, value):
+    lo = 0
+    hi = len(l)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if l[mid][0] < value:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo
+
+
+def header_to_seed(value):
+    m = hashlib.new("md5")
+    m.update(value)
+    # 4 bytes XOR
+    return reduce(xor, struct.unpack("@IIII", m.digest()), 0)
