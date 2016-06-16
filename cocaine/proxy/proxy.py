@@ -203,6 +203,7 @@ class CocaineProxy(object):
                  tracing_conf_path="/zipkin_sampling",
                  timeouts_conf_path="/proxy_apps_timeouts",
                  srw_config=None,
+                 allow_json_rpc=True,
                  ioloop=None, **config):
         # stats
         self.requests_in_progress = 0
@@ -239,6 +240,9 @@ class CocaineProxy(object):
                 name, cfg = config["type"], config["args"]
                 self.logger.info("initialize plugin %s", name)
                 self.plugins.append(load_plugin(name, self, cfg))
+
+        if allow_json_rpc:
+            self.plugins.append(load_plugin('cocaine.proxy.jsonrpc.JSONRPC', self, {}))
 
         self.logger.info("conf path in `%s` configuration service: %s",
                          configuration_service, tracing_conf_path)
@@ -870,6 +874,7 @@ def main():
     opts.define("sticky_header", default="X-Cocaine-Sticky", type=str, help="sticky header name")
     opts.define("gcstats", default=False, type=bool, help="print garbage collector stats to stderr")
     opts.define("srwconfig", default="", type=str, help="path to srwconfig")
+    opts.define("allow_json_rpc", default=True, type=bool, help="allow JSON RPC module")
 
     # tracing options
     opts.define("tracing_chance", default=DEFAULT_TRACING_CHANCE,
@@ -948,7 +953,8 @@ def main():
                              sticky_header=opts.sticky_header,
                              forcegen_request_header=opts.forcegen_request_header,
                              default_tracing_chance=opts.tracing_chance,
-                             srw_config=srw_config)
+                             srw_config=srw_config,
+                             allow_json_rpc=opts.allow_json_rpc)
         server = HTTPServer(proxy)
         server.add_sockets(sockets)
 
