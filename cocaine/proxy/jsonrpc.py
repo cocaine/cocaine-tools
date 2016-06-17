@@ -57,13 +57,12 @@ class JSONRPC(IPlugin):
             JSONRPC._send_500_error(request, payload, err)
             return
 
-        methods = (data[0] for (_, data) in service.api.iteritems())
-        if method not in methods:
+        api = dict((data[0], data) for data in service.api.itervalues())
+        if method not in api.keys():
             JSONRPC._send_400_error(request, -32601, 'Method not found.')
             return
 
-        named_api = dict((name, [name, tx, rx]) for (_, (name, tx, rx)) in service.api.iteritems())
-        _, tx_tree, rx_tree = named_api[method]
+        name, tx_tree, rx_tree = api[method]
 
         try:
             for match, handle in self._protocols:
@@ -90,7 +89,7 @@ class JSONRPC(IPlugin):
     @gen.coroutine
     def _handle_mute(self, service, method, args, _):
         yield getattr(service, method)(*args)
-        raise gen.Return(None)
+        return
 
     @gen.coroutine
     def _handle_primitive(self, service, method, args, _):
