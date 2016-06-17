@@ -35,7 +35,6 @@ import hashlib
 import logging
 import os
 import random
-import re
 import socket
 import sys
 import time
@@ -66,17 +65,19 @@ from cocaine.services import EmptyResponse
 from cocaine.detail.trace import Trace
 
 from cocaine.proxy.helpers import Endpoints
+from cocaine.proxy.helpers import extract_app_and_event
 from cocaine.proxy.helpers import fill_response_in
+from cocaine.proxy.helpers import header_to_seed
 from cocaine.proxy.helpers import load_srw_config
 from cocaine.proxy.helpers import pack_httprequest
 from cocaine.proxy.helpers import parse_locators_endpoints
-from cocaine.proxy.helpers import header_to_seed
+from cocaine.proxy.helpers import ProxyInvalidRequest
 from cocaine.proxy.helpers import upper_bound
 from cocaine.proxy.logutils import ContextAdapter
 from cocaine.proxy.logutils import NULLLOGGER
-from cocaine.proxy.srw import ISRWExec
-from cocaine.proxy.srw import SRWNoSuchApplication
-from cocaine.proxy.srw import SRWApplicationError
+from cocaine.proxy.plugin import IPlugin
+from cocaine.proxy.plugin import PluginNoSuchApplication
+from cocaine.proxy.plugin import PluginApplicationError
 from cocaine.proxy.utilserver import UtilServer
 
 
@@ -85,8 +86,6 @@ try:
 except ImportError:
     tools_version = "<undefinded>"
 
-
-URL_REGEX = re.compile(r"/([^/]*)/([^/?]*)(.*)")
 
 DEFAULT_SERVICE_CACHE_COUNT = 5
 DEFAULT_REFRESH_PERIOD = 120
@@ -187,11 +186,11 @@ def drop_app_from_cache(cache, app, name):
             cache.pop(name)
 
 
-def load_plugin(name, config):
+def load_plugin(name, proxy, config):
     klass = import_object(name)
-    if not issubclass(klass, ISRWExec):
-        raise Exception("%s is not a subclass of %s" % (klass.__name__, ISRWExec.__name__))
-    return klass(config)
+    if not issubclass(klass, IPlugin):
+        raise Exception("%s is not a subclass of %s" % (klass.__name__, IPlugin.__name__))
+    return klass(proxy, config)
 
 
 class CocaineProxy(object):
@@ -204,6 +203,7 @@ class CocaineProxy(object):
                  tracing_conf_path="/zipkin_sampling",
                  timeouts_conf_path="/proxy_apps_timeouts",
                  srw_config=None,
+                 allow_json_rpc=True,
                  ioloop=None, **config):
         # stats
         self.requests_in_progress = 0
@@ -234,12 +234,15 @@ class CocaineProxy(object):
 
         self.sticky_header = sticky_header
 
-        self.srw_plugins = []
+        self.plugins = []
         if srw_config:
             for config in srw_config:
                 name, cfg = config["type"], config["args"]
-                self.logger.info("initialize SRW plugin %s", name)
-                self.srw_plugins.append(load_plugin(name, cfg))
+                self.logger.info("initialize plugin %s", name)
+                self.plugins.append(load_plugin(name, self, cfg))
+
+        if allow_json_rpc:
+            self.plugins.append(load_plugin('cocaine.proxy.jsonrpc.JSONRPC', self, {}))
 
         self.logger.info("conf path in `%s` configuration service: %s",
                          configuration_service, tracing_conf_path)
@@ -500,65 +503,54 @@ class CocaineProxy(object):
         index = upper_bound(routing_group, value)
         return routing_group[index + 1 if index < len(routing_group) else 0][1]
 
+    def ping(self, request):
+        if self.locator_status:
+            fill_response_in(request, httplib.OK, "OK", "OK")
+            return
+
+        fill_response_in(request, httplib.SERVICE_UNAVAILABLE,
+                         httplib.responses[httplib.SERVICE_UNAVAILABLE],
+                         "Failed", proxy_error_headers())
+
     @context
     @gen.coroutine
     def __call__(self, request):
-        if "X-Cocaine-Service" in request.headers and "X-Cocaine-Event" in request.headers:
-            request.logger.debug('dispatch by headers')
-            name = request.headers['X-Cocaine-Service']
-            event = request.headers['X-Cocaine-Event']
-        else:
-            request.logger.debug('dispatch by uri')
-            match = URL_REGEX.match(request.uri)
-            if match is None:
-                if request.path == "/ping":
-                    if self.locator_status:
-                        fill_response_in(request, httplib.OK, "OK", "OK")
-                    else:
-                        fill_response_in(request, httplib.SERVICE_UNAVAILABLE,
-                                         httplib.responses[httplib.SERVICE_UNAVAILABLE],
-                                         "Failed", proxy_error_headers())
-                else:
-                    fill_response_in(request, httplib.NOT_FOUND,
-                                     httplib.responses[httplib.NOT_FOUND],
-                                     "Invalid url", proxy_error_headers())
-                return
-
-            name, event, other = match.groups()
-            if name == '' or event == '':
-                fill_response_in(request, httplib.BAD_REQUEST,
-                                 httplib.responses[httplib.BAD_REQUEST],
-                                 "Proxy invalid request", proxy_error_headers())
-                return
-
-            # Drop from query appname and event's name
-            if not other.startswith('/'):
-                other = "/" + other
-            request.uri = other
-            request.path, _, _ = other.partition("?")
-
-        for plugin in self.srw_plugins:
+        for plugin in self.plugins:
             if plugin.match(request):
-                request.logger.info('processed by %s SRW plugin', plugin.name())
+                request.logger.info('processed by %s plugin', plugin.name())
                 try:
-                    timeout = self.get_timeout(name, event)
-                    yield plugin.process(request, name, event, timeout)
-                except SRWNoSuchApplication:
-                    message = "current application %s is unavailable" % name
-                    fill_response_in(request, NO_SUCH_APP, "No Such Application",
-                                     message, proxy_error_headers())
-                except SRWApplicationError:
+                    yield plugin.process(request)
+                except PluginNoSuchApplication as err:
+                    fill_response_in(request, NO_SUCH_APP, "No such application",
+                                     str(err), proxy_error_headers())
+                except PluginApplicationError:
                     message = "application error"
                     fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                      httplib.responses[httplib.INTERNAL_SERVER_ERROR],
                                      message, proxy_error_headers())
+                except ProxyInvalidRequest:
+                    if request.path == "/ping":
+                        self.ping(request)
+                    else:
+                        fill_response_in(request, httplib.NOT_FOUND, httplib.responses[httplib.NOT_FOUND],
+                                         "Invalid url", proxy_error_headers())
                 except Exception as err:
-                    request.logger.error('SRW plugin %s returned error: %s', plugin.name(), err)
+                    request.logger.error('plugin %s returned error: %s', plugin.name(), err)
                     message = "unknown error"
                     fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                      httplib.responses[httplib.INTERNAL_SERVER_ERROR],
                                      message, proxy_error_headers())
                 return
+
+        try:
+            name, event = extract_app_and_event(request)
+        except ProxyInvalidRequest:
+            if request.path == "/ping":
+                self.ping(request)
+            else:
+                fill_response_in(request, httplib.NOT_FOUND, httplib.responses[httplib.NOT_FOUND],
+                                 "Invalid url", proxy_error_headers())
+            return
 
         if getattr(request, "traceid", None) is not None:
             tracing_chance = self.sampled_apps.get(name, self.default_tracing_chance)
@@ -882,6 +874,7 @@ def main():
     opts.define("sticky_header", default="X-Cocaine-Sticky", type=str, help="sticky header name")
     opts.define("gcstats", default=False, type=bool, help="print garbage collector stats to stderr")
     opts.define("srwconfig", default="", type=str, help="path to srwconfig")
+    opts.define("allow_json_rpc", default=True, type=bool, help="allow JSON RPC module")
 
     # tracing options
     opts.define("tracing_chance", default=DEFAULT_TRACING_CHANCE,
@@ -960,7 +953,8 @@ def main():
                              sticky_header=opts.sticky_header,
                              forcegen_request_header=opts.forcegen_request_header,
                              default_tracing_chance=opts.tracing_chance,
-                             srw_config=srw_config)
+                             srw_config=srw_config,
+                             allow_json_rpc=opts.allow_json_rpc)
         server = HTTPServer(proxy)
         server.add_sockets(sockets)
 

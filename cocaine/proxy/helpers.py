@@ -2,12 +2,19 @@ import collections
 import hashlib
 import json
 from operator import xor
+import re
 import struct
 
 from tornado import httputil
 
 
+URL_REGEX = re.compile(r"/([^/]*)/([^/?]*)(.*)")
+
 TcpEndpoint = collections.namedtuple('TcpEndpoint', ["host", "port"])
+
+
+class ProxyInvalidRequest(Exception):
+    pass
 
 
 def load_srw_config(path):
@@ -77,6 +84,37 @@ def pack_httprequest(request):
     headers.extend(request.headers.items())
     packed = request.method, request.uri, request.version.split("/")[1], headers, request.body
     return packed
+
+
+def extract_app_and_event(request):
+    if "X-Cocaine-Service" in request.headers and "X-Cocaine-Event" in request.headers:
+        request.logger.debug('dispatch by headers')
+        name = request.headers['X-Cocaine-Service']
+        event = request.headers['X-Cocaine-Event']
+        if name == '' or event == '':
+            raise ProxyInvalidRequest("Invalid request: empty dispatch headers")
+        return name, event
+
+    # it's better to drop this way of dispatch
+    # to prevent modification of request.path
+    request.logger.debug('dispatch by uri')
+    match = URL_REGEX.match(request.uri)
+    if match is None:
+        raise ProxyInvalidRequest("Invalid request")
+
+    name, event, other = match.groups()
+    if name == '' or event == '':
+        raise ProxyInvalidRequest("Invalid request")
+
+    # Drop from query appname and event's name
+    if not other.startswith('/'):
+        other = "/" + other
+    request.uri = other
+    request.path, _, _ = other.partition("?")
+    # one more call of extract_app_and_event will not modify request.path
+    request.headers['X-Cocaine-Service'] = name
+    request.headers['X-Cocaine-Event'] = event
+    return name, event
 
 
 def parse_locators_endpoints(endpoint):

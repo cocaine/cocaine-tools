@@ -13,19 +13,20 @@ from tornado.httpclient import AsyncHTTPClient
 from tornado.httpclient import HTTPError
 from tornado.httpclient import HTTPRequest
 
+from cocaine.proxy.helpers import extract_app_and_event
 from cocaine.proxy.helpers import fill_response_in
 from cocaine.proxy.helpers import pack_httprequest
 
-from cocaine.proxy.srw import ISRWExec
-from cocaine.proxy.srw import SRWApplicationError
-from cocaine.proxy.srw import SRWConfigurationError
-from cocaine.proxy.srw import SRWNoSuchApplication
+from cocaine.proxy.plugin import IPlugin
+from cocaine.proxy.plugin import PluginApplicationError
+from cocaine.proxy.plugin import PluginConfigurationError
+from cocaine.proxy.plugin import PluginNoSuchApplication
 
 
 MDS_STID_REGEX = re.compile(r".+:\d+\.E\d+:.+")
 
 
-class MDSExec(ISRWExec):
+class MDSExec(IPlugin):
     def __init__(self, proxy, config):
         super(MDSExec, self).__init__(proxy)
         try:
@@ -33,7 +34,7 @@ class MDSExec(ISRWExec):
             self.filter_mds_stid = config.get("filter_stid", True)
             self.srw_httpclient = AsyncHTTPClient()
         except KeyError as err:
-            raise SRWConfigurationError(self.name(), "option required %s" % err)
+            raise PluginConfigurationError(self.name(), "option required %s" % err)
 
     @staticmethod
     def name():
@@ -45,7 +46,9 @@ class MDSExec(ISRWExec):
         return False
 
     @gen.coroutine
-    def process(self, request, name, event, timeout):
+    def process(self, request):
+        name, event = extract_app_and_event(request)
+        timeout = self.proxy.get_timeout(name, event)
         # as MDS proxy bypasses the mechanism of routing groups
         # the proxy is responsible to provide this feature
         name = self.proxy.resolve_group_to_version(name)
@@ -69,10 +72,10 @@ class MDSExec(ISRWExec):
                              body, reply_headers)
         except HTTPError as err:
             if err.code == 404:
-                raise SRWNoSuchApplication("worker was not found")
+                raise PluginNoSuchApplication("worker was not found")
 
             if err.code == 500:
-                raise SRWApplicationError(42, 42, "worker replied with error")
+                raise PluginApplicationError(42, 42, "worker replied with error")
 
             raise err
 

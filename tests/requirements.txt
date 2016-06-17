@@ -1,3 +1,4 @@
 nose>=1.3.3
 coverage==4.0.3
 python-coveralls
+mock==2.0.0
