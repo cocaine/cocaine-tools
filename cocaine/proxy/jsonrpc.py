@@ -113,6 +113,9 @@ class JSONRPC(IPlugin):
                     result.append(chunk)
         except ChokeEvent:
             pass
+        finally:
+            if hasattr(channel.tx, 'close'):
+                channel.tx.close()
 
         raise gen.Return(result)
 
