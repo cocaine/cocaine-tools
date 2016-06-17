@@ -58,7 +58,7 @@ class JSONRPC(IPlugin):
             return
 
         api = dict((data[0], data) for data in service.api.itervalues())
-        if method not in api.keys():
+        if method not in api:
             JSONRPC._send_400_error(request, -32601, 'Method not found.')
             return
 

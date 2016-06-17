@@ -58,4 +58,3 @@ class TestJSONRPC(AsyncTestCase):
             ResponseStartLine(version='HTTP/1.1', code=400, reason='Bad JSON-RPC request'),
             mock.ANY,
             '{"message": "The JSON sent is not a valid Request object.", "code": -32600}')
-
