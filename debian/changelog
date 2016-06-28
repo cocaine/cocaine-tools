@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.2) unstable; urgency=low
+
+  * [Proxy] Fix MDS exec URL
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 28 Jun 2016 15:39:20 +0300
+
 cocaine-tools (0.12.12.1) unstable; urgency=low
 
   * [Proxy] Add JSON-RPC
