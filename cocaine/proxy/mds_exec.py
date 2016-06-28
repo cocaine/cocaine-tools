@@ -56,7 +56,7 @@ class MDSExec(IPlugin):
         namespace = headers["X-Srw-Namespace"]
         key = headers["X-Srw-Key"]
 
-        srw_request = HTTPRequest("%s/exec-%s/%s/%s/%s?timeout=%d" % (self.srw_host, namespace, name, event, key, timeout),
+        srw_request = HTTPRequest("%s/exec-%s/%s/%s/stid/%s?timeout=%d" % (self.srw_host, namespace, name, event, key, timeout),
                                   method="POST",
                                   headers={"Authorization": request.headers.get("Authorization", "")},
                                   body=msgpack.packb(pack_httprequest(request)),
