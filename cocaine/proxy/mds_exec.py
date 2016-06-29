@@ -60,8 +60,9 @@ class MDSExec(IPlugin):
         if "Authorization" in request.headers:
             mds_request_headers["Authorization"] = request.headers["Authorization"]
 
-        if request.traceid is not None:
-            mds_request_headers["X-Request-Id"] = request.traceid
+        traceid = getattr(request, "traceid", None)
+        if traceid is not None:
+            mds_request_headers["X-Request-Id"] = traceid
 
         srw_request = HTTPRequest("%s/exec-%s/%s/%s/stid/%s?timeout=%d" % (self.srw_host, namespace, name, event, key, timeout),
                                   method="POST",
@@ -87,7 +88,7 @@ class MDSExec(IPlugin):
             if err.code == 401:
                 fill_response_in(request, err.code,
                                  httplib.responses.get(err.code, httplib.OK),
-                                 resp.body, resp.headers)
+                                 err.response.body, err.response.headers)
                 return
 
             raise err
