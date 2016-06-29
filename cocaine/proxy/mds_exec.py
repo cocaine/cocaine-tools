@@ -1,5 +1,3 @@
-import re
-
 try:
     import httplib
 except ImportError:
@@ -23,7 +21,9 @@ from cocaine.proxy.plugin import PluginConfigurationError
 from cocaine.proxy.plugin import PluginNoSuchApplication
 
 
-MDS_STID_REGEX = re.compile(r".+:\d+\.E\d+:.+")
+def is_mds_stid(stid):
+    _, _, tail = stid.split(".", 2)
+    return tail.startswith('E') and ':' in tail
 
 
 class MDSExec(IPlugin):
@@ -42,7 +42,7 @@ class MDSExec(IPlugin):
 
     def match(self, request):
         if "X-Srw-Key" in request.headers and "X-Srw-Key-Type" in request.headers and "X-Srw-Namespace" in request.headers:
-            return not self.filter_mds_stid or MDS_STID_REGEX.match(request.headers["X-Srw-Key"]) is not None
+            return not self.filter_mds_stid or is_mds_stid(request.headers["X-Srw-Key"])
         return False
 
     @gen.coroutine

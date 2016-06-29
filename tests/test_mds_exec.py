@@ -27,8 +27,8 @@ from tornado.testing import gen_test
 
 from cocaine.proxy.proxy import CocaineProxy
 from cocaine.proxy.logutils import NULLLOGGER
-from cocaine.proxy.mds_exec import MDS_STID_REGEX
 from cocaine.proxy.mds_exec import MDSExec
+from cocaine.proxy.mds_exec import is_mds_stid
 
 
 class _FakeConnection():
@@ -57,9 +57,10 @@ class _FakeConnection():
         pass
 
 
-def test_mds_stid_regex():
-    assert MDS_STID_REGEX.match("320.namespace:301123837.E150591:1046883323") is not None
-    assert MDS_STID_REGEX.match("77777.270212926.1074746148309135132") is None
+def test_is_mds_stid():
+    assert not is_mds_stid("77777.270212926.1074746148309135132")
+    assert is_mds_stid("1000017.tmp.E1572:2888034675120773296646650399583")
+    assert is_mds_stid("1000017.yadisk:4001053055.E1370:148685303346007653037969607534")
 
 
 class TestMDSExec(AsyncHTTPTestCase):
