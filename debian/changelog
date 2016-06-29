@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.5) unstable; urgency=low
+
+  * [Proxy] MDS: bugfix 401
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Wed, 29 Jun 2016 16:18:12 +0300
+
 cocaine-tools (0.12.12.4) unstable; urgency=low
 
   * [Proxy] Pass X-Request-Id
