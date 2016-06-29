@@ -56,9 +56,16 @@ class MDSExec(IPlugin):
         namespace = headers["X-Srw-Namespace"]
         key = headers["X-Srw-Key"]
 
+        mds_request_headers = httputil.HTTPHeaders()
+        if "Authorization" in request.headers:
+            mds_request_headers["Authorization"] = request.headers["Authorization"]
+
+        if request.traceid is not None:
+            mds_request_headers["X-Request-Id"] = request.traceid
+
         srw_request = HTTPRequest("%s/exec-%s/%s/%s/stid/%s?timeout=%d" % (self.srw_host, namespace, name, event, key, timeout),
                                   method="POST",
-                                  headers={"Authorization": request.headers.get("Authorization", "")},
+                                  headers=mds_request_headers,
                                   body=msgpack.packb(pack_httprequest(request)),
                                   allow_ipv6=True,
                                   request_timeout=timeout)
@@ -76,6 +83,12 @@ class MDSExec(IPlugin):
 
             if err.code == 500:
                 raise PluginApplicationError(42, 42, "worker replied with error")
+
+            if err.code == 401:
+                fill_response_in(request, err.code,
+                                 httplib.responses.get(err.code, httplib.OK),
+                                 resp.body, resp.headers)
+                return
 
             raise err
 
