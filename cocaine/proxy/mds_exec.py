@@ -77,6 +77,12 @@ class MDSExec(IPlugin):
             if err.code == 500:
                 raise PluginApplicationError(42, 42, "worker replied with error")
 
+            if err.code == 401:
+                fill_response_in(request, err.code,
+                                 httplib.responses.get(err.code, httplib.OK),
+                                 resp.body, resp.headers)
+                return
+
             raise err
 
 
