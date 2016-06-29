@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.3) unstable; urgency=low
+
+  * [Proxy] MDS is tested without regex
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Wed, 29 Jun 2016 15:40:09 +0300
+
 cocaine-tools (0.12.12.2) unstable; urgency=low
 
   * [Proxy] Fix MDS exec URL
