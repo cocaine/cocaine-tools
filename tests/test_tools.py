@@ -160,7 +160,8 @@ class TestAppActions(object):
 
     def test_app_b_start(self):
         name = "random_name"
-        io.run_sync(profile.Upload(self.storage, "random_profile", "{}").execute, timeout=2)
+        pr = json.dumps({"isolate": {"type": "legacy_process"}})
+        io.run_sync(profile.Upload(self.storage, "random_profile", pr).execute, timeout=2)
         result = io.run_sync(app.Start(self.node, name,
                              "random_profile").execute, timeout=2)
         assert "application `random_name` has been started with profile `random_profile`" == result, result
