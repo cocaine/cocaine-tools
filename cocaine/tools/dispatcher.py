@@ -136,6 +136,7 @@ runlistDispatcher = Dispatcher(globaloptions=Global.options, middleware=middlewa
 crashlogDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 tracingDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 timeoutsDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
+loggingDispatcher = Dispatcher(globaloptions=Global.options, middleware=middleware)
 
 
 @d.command(name='locate', usage='[--name=NAME]')
@@ -914,6 +915,58 @@ def timeouts_drop(options,
         'name': name,
     })
 
+
+@loggingDispatcher.command(name='list_loggers', usage='')
+def logging_list_loggers(options):
+    """List all registered logger names"""
+    options.executor.executeAction('logging:list_loggers', **{
+        'logging_service': options.getService('logging')
+    })
+
+
+@loggingDispatcher.command(name='set_filter', usage='-n LOGGER_NAME -f FILTER_DEFINITION -t TTL')
+def logging_set_filter(options,
+                       name=('n', '', 'logger name'),
+                       filter_def=('f', '', 'filter definition'),
+                       ttl=('t', '', 'ttl')):
+    """Set local filter"""
+    options.executor.executeAction('logging:set_filter', **{
+        'logging_service': options.getService('logging'),
+        'logger_name': name,
+        'filter_def': filter_def,
+        'ttl': ttl
+    })
+
+
+@loggingDispatcher.command(name='remove_filter', usage='-i FILTER_ID')
+def logging_remove_filter(options,
+                          filter_id=('i', '', 'filter id')):
+    """Remove filter by filter_id"""
+    options.executor.executeAction('logging:remove_filter', **{
+        'logging_service': options.getService('logging'),
+        'filter_id': filter_id
+    })
+
+
+@loggingDispatcher.command(name='list_filters', usage='')
+def logging_list_filters(options):
+    """List all available filters"""
+    options.executor.executeAction('logging:list_filters', **{
+        'logging_service': options.getService('logging')
+    })
+
+
+@loggingDispatcher.command(name='set_cluster_filter', usage='-n LOGGER_NAME -f FILTER_DEFINITION -t TTL')
+def logging_set_cluster_filter(options,
+                               name=('n', '', 'logger name'),
+                               filter_def=('f', '', 'filter definition')):
+    """Set cluster-wide filter"""
+    options.executor.executeAction('logging:set_cluster_filter', **{
+        'logging_service': options.getService('logging'),
+        'logger_name': name,
+        'filter_def': filter_def
+    })
+
 d.nest('app', appDispatcher, 'application commands')
 d.nest('profile', profileDispatcher, 'profile commands')
 d.nest('runlist', runlistDispatcher, 'runlist commands')
@@ -921,3 +974,4 @@ d.nest('crashlog', crashlogDispatcher, 'crashlog commands')
 d.nest('group', dispatcher.group, 'routing group commands')
 d.nest('tracing', tracingDispatcher, 'tracing configuration commands')
 d.nest('timeouts', timeoutsDispatcher, 'apps timeouts configuration commands')
+d.nest('logging', loggingDispatcher, 'logging::v2 service runtime management commands')
