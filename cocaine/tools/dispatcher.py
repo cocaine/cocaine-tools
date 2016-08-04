@@ -848,7 +848,7 @@ def group_edit(options,
 @tracingDispatcher.command(name='store', usage='-n NAME -v VALUE')
 def tracing_store(options,
                   name=('n', '', 'node name'),
-                  value=('v', '', 'valuer')):
+                  value=('v', '', 'value')):
     options.executor.executeAction('tracing:store', **{
         'configuration_service': options.getService('unicorn'),
         'name': name,
@@ -926,13 +926,13 @@ def logging_list_loggers(options):
 
 @loggingDispatcher.command(name='set_filter', usage='-n LOGGER_NAME -f FILTER_DEFINITION -t TTL')
 def logging_set_filter(options,
-                       name=('n', '', 'logger name'),
+                       logger_name=('n', '', 'logger name'),
                        filter_def=('f', '', 'filter definition'),
                        ttl=('t', '', 'ttl')):
     """Set local filter"""
     options.executor.executeAction('logging:set_filter', **{
         'logging_service': options.getService('logging'),
-        'logger_name': name,
+        'logger_name': logger_name,
         'filter_def': filter_def,
         'ttl': ttl
     })
