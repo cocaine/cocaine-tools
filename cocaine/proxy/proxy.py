@@ -576,7 +576,7 @@ class CocaineProxy(object):
             return
 
         try:
-            yield self.process(request, name, app, event, pack_httprequest(request))
+            yield self.process(request, name, app, event, pack_httprequest(request), self.reelect_app)
         except Exception as err:
             request.logger.error("error during processing request %s", err)
             fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
@@ -593,7 +593,36 @@ class CocaineProxy(object):
                 'sampling': self.sampled_apps}
 
     @gen.coroutine
-    def process(self, request, name, app, event, data):
+    def reelect_app(self, request, app):
+        cache_size = len(self.cache[app.name])
+        if cache_size < self.spool_size:
+            request.logger.info("spool is not full. Create a new application instance")
+            app = yield self.get_service(app.name, request)
+        elif cache_size == 1:
+            # NOTE: if we have spool_size 1, the same app will be picked
+            # Probably we can create a new one and mark the old one inactive
+            request.logger.warning("spool size is limited by 1, cannot pick a new instance of th app. Use the old one")
+            # pass
+        else:
+            request.logger.info("pick a random instance of the application")
+            try:
+                index = self.cache[app.name].index(app)
+                request.logger.info("the app is located in cache at pos %d", index)
+                if cache_size == 2:  # shortcut
+                    picked = (index + 1) % 2
+                else:
+                    picked = index
+                    while picked == index:
+                        picked = random.randint(0, cache_size - 1)
+
+                request.logger.info("an instance at pos %d has been picked", index)
+                app = self.cache[app.name][picked]
+            except ValueError:
+                app = random.choice(self.cache[app.name])
+        raise gen.Return(app)
+
+    @gen.coroutine
+    def process(self, request, name, app, event, data, reelect_app_fn):
         timeout = self.get_timeout(name, event)
         request.logger.info("start processing event `%s` for an app `%s` (appid: %s) after %.3f ms with timeout %f",
                             event, app.name, app.id, request.request_time() * 1000, timeout)
@@ -705,32 +734,7 @@ class CocaineProxy(object):
 
                 elif err.category in OVERSEERCATEGORY and err.code == EQUEUEISFULL:
                     request.logger.error("%s: queue is full. Pick another application instance", app.id)
-                    cache_size = len(self.cache[app.name])
-                    if cache_size < self.spool_size:
-                        request.logger.info("spool is not full. Create a new application instance")
-                        app = yield self.get_service(app.name, request)
-                    elif cache_size == 1:
-                        # NOTE: if we have spool_size 1, the same app will be picked
-                        # Probably we can create a new one and mark the old one inactive
-                        request.logger.warning("spool size is limited by 1, cannot pick a new instance of th app. Use the old one")
-                        # pass
-                    else:
-                        request.logger.info("pick a random instance of the application")
-                        try:
-                            index = self.cache[app.name].index(app)
-                            request.logger.info("the app is located in cache at pos %d", index)
-                            if cache_size == 2:  # shortcut
-                                picked = (index + 1) % 2
-                            else:
-                                picked = index
-                                while picked == index:
-                                    picked = random.randint(0, cache_size - 1)
-
-                            request.logger.info("an instance at pos %d has been picked", index)
-                            app = self.cache[app.name][picked]
-                        except ValueError:
-                            app = random.choice(self.cache[app.name])
-
+                    app = yield reelect_app_fn(request, app)
                     continue
 
                 request.logger.error("%s: service error: [%d, %d] %s", app.id, err.category, err.code, err.reason)
