@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.8) unstable; urgency=low
+
+  * [Proxy:mds] add mds_direct plugin for direct access of mds cloud
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 11 Aug 2016 21:08:29 +0300
+
 cocaine-tools (0.12.12.7) unstable; urgency=low
 
   * Non-maintainer upload.
