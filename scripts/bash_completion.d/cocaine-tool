@@ -9,15 +9,15 @@ _cocaine_tool()
 
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
-    subcommands_1="info call cluster locate app profile runlist group tracing timeouts logging crashlog help"
-    subcommands_app="start stop restart pause check list view upload remove"
-    subcommands_profile="edit list view upload remove rename"
-    subcommands_runlist="edit list view upload remove add-app rename"
-    subcommands_crashlog="edit list view remove removeall cleanrange"
-    subcommands_group="edit list view create remove refresh push pop rename"
-    subcommands_tracing="store remove view"
-    subcommands_timeouts="store remove view drop"
-    subcommands_logging="list_loggers set_filter remove_filter list_filters set_cluster_filter "
+    subcommands_1="app cluster crashlog group help info locate logging metrics profile routing runlist timeouts tracing version"
+    subcommands_app="check help import list pause remove restart start stop upload view"
+    subcommands_profile="copy edit help list remove rename upload view"
+    subcommands_runlist="add-app copy create edit help list remove remove-app rename upload view"
+    subcommands_crashlog="clean cleanrange help list remove removeall status view"
+    subcommands_group="copy create edit help list pop push refresh remove rename view"
+    subcommands_tracing="help remove store view"
+    subcommands_timeouts="drop help remove store view"
+    subcommands_logging="help list_filters list_loggers remove_filter set_cluster_filter set_filter"
 
     if [[ ${COMP_CWORD} == 1 ]] ; then
         COMPREPLY=( $(compgen -W "${subcommands_1}" -- ${cur}) )
@@ -258,7 +258,7 @@ _cocaine_tool()
         ;;
     timeouts)
         if [[ ${COMP_CWORD} == 2 ]] ; then
-            COMPREPLY=( $(compgen -W "${subcommands_timeout}" -- ${cur}) )
+            COMPREPLY=( $(compgen -W "${subcommands_timeouts}" -- ${cur}) )
             return 0
         fi
         ;;
