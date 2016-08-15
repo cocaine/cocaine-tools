@@ -73,6 +73,7 @@ class MDSDirect(IPlugin):
 
         name, event = extract_app_and_event(request)
         timeout = self.proxy.get_timeout(name, event)
+        name = self.proxy.resolve_group_to_version(name)
         srw_request = HTTPRequest(
             "%s/gate/dist-info/%s?primary-only" % (self.dist_info_endpoint, key),
             method="GET",
