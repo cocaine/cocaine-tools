@@ -90,7 +90,7 @@ class MDSDirect(IPlugin):
             shuffle(endpoints)
             request.logger.debug("connecting to application %s via %s", name, endpoints)
             app = Service(name, endpoints=endpoints, timeout=RESOLVE_TIMEOUT)
-            yield self.proxy.process(request, name, app, event, pack_httprequest(request), self.reelect_app)
+            yield self.proxy.process(request, name, app, event, pack_httprequest(request), self.reelect_app, timeout)
 
         except HTTPError as err:
             if err.code == 404:

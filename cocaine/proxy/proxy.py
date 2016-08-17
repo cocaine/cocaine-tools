@@ -622,8 +622,9 @@ class CocaineProxy(object):
         raise gen.Return(app)
 
     @gen.coroutine
-    def process(self, request, name, app, event, data, reelect_app_fn):
-        timeout = self.get_timeout(name, event)
+    def process(self, request, name, app, event, data, reelect_app_fn, timeout=None):
+        if timeout is None:
+            timeout = self.get_timeout(name, event)
         request.logger.info("start processing event `%s` for an app `%s` (appid: %s) after %.3f ms with timeout %f",
                             event, app.name, app.id, request.request_time() * 1000, timeout)
         # allow to reconnect this amount of times.
