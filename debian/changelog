@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.10) unstable; urgency=low
+
+  * [Proxy:mds_direct] Pass timout to proxy process.
+
+ -- Anton Matveenko <antmat@me.com>  Wed, 17 Aug 2016 19:01:29 +0400
+
 cocaine-tools (0.12.12.9) unstable; urgency=low
 
   * [Proxy:mds_direct] Addd RG resolving.
