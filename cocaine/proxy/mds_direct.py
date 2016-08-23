@@ -3,6 +3,7 @@ try:
 except ImportError:
     import http.client as httplib  # pylint: disable=F0401
 
+from datetime import timedelta
 from random import shuffle
 
 import msgpack
@@ -13,7 +14,9 @@ from tornado.httpclient import AsyncHTTPClient
 from tornado.httpclient import HTTPError
 from tornado.httpclient import HTTPRequest
 
-from cocaine.services import Service
+from cocaine.exceptions import ServiceError
+
+from cocaine.services import Service, Locator
 
 from cocaine.proxy.helpers import extract_app_and_event
 from cocaine.proxy.helpers import fill_response_in
@@ -24,7 +27,7 @@ from cocaine.proxy.plugin import PluginApplicationError
 from cocaine.proxy.plugin import PluginConfigurationError
 from cocaine.proxy.plugin import PluginNoSuchApplication
 
-from cocaine.proxy.proxy import RESOLVE_TIMEOUT
+from cocaine.proxy.proxy import RESOLVE_TIMEOUT, LOCATORCATEGORY, ESERVICENOTAVAILABLE
 
 
 def is_mds_stid(stid):
@@ -39,6 +42,7 @@ class MDSDirect(IPlugin):
             self.dist_info_endpoint = config["dist_info_endpoint"]
             self.locator_port = config["locator_port"]
             self.filter_mds_stid = config.get("filter_stid", True)
+            self.service_connect_timeout = timedelta(milliseconds=config.get("service_connect_timeout_ms", 1500))
             self.srw_httpclient = AsyncHTTPClient()
         except KeyError as err:
             raise PluginConfigurationError(self.name(), "option required %s" % err)
@@ -54,13 +58,32 @@ class MDSDirect(IPlugin):
 
     @gen.coroutine
     def reelect_app(self, request, app):
+        locator_endpoints = app.locator.endpoints
         app.disconnect()
-        app.locator_endpoints = app.locator_endpoints[1:] + app.locator_endpoints[:1]
-        raise gen.Return(app)
+        for _ in locator_endpoints:
+            try:
+                locator_endpoints = locator_endpoints[1:] + locator_endpoints[:1]
+                locator = Locator(endpoints=locator_endpoints)
+                request.logger.info("connecting to locator %s", locator.endpoints[0])
+                yield gen.with_timeout(self.service_connect_timeout, locator.connect())
+                request.logger.debug("connected to locator %s for %s", locator.endpoints[0], app.name)
+                app = Service(app.name, locator=locator, timeout=RESOLVE_TIMEOUT)
+                yield gen.with_timeout(self.service_connect_timeout, app.connect())
+                request.logger.debug("connected to application %s via %s", app.name, app.endpoints)
+            except gen.TimeoutError:
+                request.logger.warning("timed out while connecting to application")
+                continue
+            except ServiceError as err:
+                request.logger.warning("got error while resolving app - %s", err)
+                if err.category in LOCATORCATEGORY and err.code == ESERVICENOTAVAILABLE:
+                    continue
+                else:
+                    raise err
+            raise gen.Return(app)
+        raise PluginApplicationError(42, 42, "could not connect to application")
 
     @gen.coroutine
     def process(self, request):
-
         mds_request_headers = httputil.HTTPHeaders()
         if "Authorization" in request.headers:
             mds_request_headers["Authorization"] = request.headers["Authorization"]
@@ -88,8 +111,10 @@ class MDSDirect(IPlugin):
             lines = body.split("\n")
             endpoints = [(line.split()[0], self.locator_port) for line in lines if line]
             shuffle(endpoints)
-            request.logger.debug("connecting to application %s via %s", name, endpoints)
-            app = Service(name, endpoints=endpoints, timeout=RESOLVE_TIMEOUT)
+            locator = Locator(endpoints=endpoints)
+            app = Service(name, locator=locator, timeout=RESOLVE_TIMEOUT)
+            request.logger.info("connecting to app %s", name)
+            app = yield self.reelect_app(request, app)
             yield self.proxy.process(request, name, app, event, pack_httprequest(request), self.reelect_app, timeout)
 
         except HTTPError as err:

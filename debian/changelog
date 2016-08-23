@@ -1,3 +1,10 @@
+cocaine-tools (0.12.12.11) unstable; urgency=low
+
+  * [Proxy:mds_direct] Retry in case service unavailability
+  * [Proxy:mds_direct] Timeouts for connect
+
+ -- Anton Matveenko <antmat@me.com>  Tue, 23 Aug 2016 17:02:29 +0300
+
 cocaine-tools (0.12.12.10) unstable; urgency=low
 
   * [Proxy:mds_direct] Pass timout to proxy process.
