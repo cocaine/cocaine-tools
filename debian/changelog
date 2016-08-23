@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.12) unstable; urgency=low
+
+  * [Proxy:mds_direct] Fix: do not change iterable in loop.
+
+ -- Anton Matveenko <antmat@me.com>  Tue, 23 Aug 2016 19:33:29 +0300
+
 cocaine-tools (0.12.12.11) unstable; urgency=low
 
   * [Proxy:mds_direct] Retry in case service unavailability
