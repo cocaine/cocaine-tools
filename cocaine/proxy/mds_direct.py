@@ -58,27 +58,47 @@ class MDSDirect(IPlugin):
 
     @gen.coroutine
     def reelect_app(self, request, app):
+        """tries to connect to the same app on differnet host from dist-info"""
+
+        # store current endpoints of locator
         locator_endpoints = app.locator.endpoints
+
+        # disconnect app explicitly to break possibly existing connection
         app.disconnect()
-        for _ in locator_endpoints:
+        endpoints_size = len(locator_endpoints)
+
+        # try x times, where x is the number of different endpoints in app locator.
+        for _ in xrange(0, endpoints_size):
             try:
+                # move first endpoint to the end to start new connection from different endpoint
+                # we do this, as default logic of connection attempts in locator do not fit here
                 locator_endpoints = locator_endpoints[1:] + locator_endpoints[:1]
+
+                # always create new locator to prevent locking as we do connect with timeout
+                # however lock can be still held during TCP timeout
                 locator = Locator(endpoints=locator_endpoints)
                 request.logger.info("connecting to locator %s", locator.endpoints[0])
+
+                # first try to connect to locator only on remote host with timeout
                 yield gen.with_timeout(self.service_connect_timeout, locator.connect())
                 request.logger.debug("connected to locator %s for %s", locator.endpoints[0], app.name)
                 app = Service(app.name, locator=locator, timeout=RESOLVE_TIMEOUT)
+
+                # try to resolve and connect to application itself
                 yield gen.with_timeout(self.service_connect_timeout, app.connect())
                 request.logger.debug("connected to application %s via %s", app.name, app.endpoints)
             except gen.TimeoutError:
+                # on timeout try next endpoint first
                 request.logger.warning("timed out while connecting to application")
                 continue
             except ServiceError as err:
                 request.logger.warning("got error while resolving app - %s", err)
                 if err.category in LOCATORCATEGORY and err.code == ESERVICENOTAVAILABLE:
+                    # if the application is down - also try next endpoint
                     continue
                 else:
                     raise err
+            # return connected app
             raise gen.Return(app)
         raise PluginApplicationError(42, 42, "could not connect to application")
 
