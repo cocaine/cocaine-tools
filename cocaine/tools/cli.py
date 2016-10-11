@@ -46,7 +46,8 @@ class ToolHandler(object):
             action = self._Action(**config)
             result = yield action.execute()
             self._processResult(result)
-        except IOError:
+        except IOError as err:
+            log.error(err)
             exit(128)
         except (ChokeEvent, StopIteration):
             pass
