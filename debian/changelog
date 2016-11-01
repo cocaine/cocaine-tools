@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.13) unstable; urgency=low
+
+  * [Proxy:mds_direct] Feat: Allow native mds keys.
+
+ -- Anton Matveenko <antmat@me.com>  Mon, 31 Oct 2016 15:59:29 +0300
+
 cocaine-tools (0.12.12.12) unstable; urgency=low
 
   * [Proxy:mds_direct] Fix: do not change iterable in loop.
