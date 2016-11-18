@@ -1,3 +1,10 @@
+cocaine-tools (0.12.12.14) unstable; urgency=low
+
+  * [Proxy] Fix: error by one in RG resolve.
+  * [Proxy] Misc: log traceback in case of error.
+
+ -- Anton Matveenko <antmat@me.com>  Mon, 18 Nov 2016 14:39:29 +0300
+
 cocaine-tools (0.12.12.13) unstable; urgency=low
 
   * [Proxy:mds_direct] Feat: Allow native mds keys.
