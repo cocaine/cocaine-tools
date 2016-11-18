@@ -538,7 +538,7 @@ class CocaineProxy(object):
                         fill_response_in(request, httplib.NOT_FOUND, httplib.responses[httplib.NOT_FOUND],
                                          "Invalid url", proxy_error_headers())
                 except Exception as err:
-                    request.logger.error('plugin %s returned error: %s', plugin.name(), err)
+                    request.logger.exception('plugin %s returned error: %s', plugin.name(), err)
                     message = "unknown error"
                     fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                      httplib.responses[httplib.INTERNAL_SERVER_ERROR],
@@ -581,7 +581,7 @@ class CocaineProxy(object):
         try:
             yield self.process(request, name, app, event, pack_httprequest(request), self.reelect_app)
         except Exception as err:
-            request.logger.error("error during processing request %s", err)
+            request.logger.exception("error during processing request %s", err)
             fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                              httplib.responses[httplib.INTERNAL_SERVER_ERROR],
                              "UID %s: %s" % (request.traceid, str(err)), proxy_error_headers())
@@ -748,7 +748,7 @@ class CocaineProxy(object):
                                  message, proxy_error_headers())
 
             except Exception as err:
-                request.logger.error("%s: %s", app.id, err)
+                request.logger.exception("%s: %s", app.id, err)
                 message = "UID %s: unknown `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                  httplib.responses[httplib.INTERNAL_SERVER_ERROR],
