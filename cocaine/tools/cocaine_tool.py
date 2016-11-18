@@ -50,5 +50,6 @@ def main():
         log.error('Unknown error occurred - %s', err)
         exit(128)
 
+
 if __name__ == '__main__':
     main()

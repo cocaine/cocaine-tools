@@ -967,6 +967,7 @@ def logging_set_cluster_filter(options,
         'filter_def': filter_def
     })
 
+
 d.nest('app', appDispatcher, 'application commands')
 d.nest('profile', profileDispatcher, 'profile commands')
 d.nest('runlist', runlistDispatcher, 'runlist commands')
