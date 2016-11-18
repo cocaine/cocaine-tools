@@ -504,7 +504,7 @@ class CocaineProxy(object):
 
         value = value or random.randint(0, 1 << 32)
         index = upper_bound(routing_group, value)
-        return routing_group[index + 1 if index < len(routing_group) else 0][1]
+        return routing_group[index if index < len(routing_group) else 0][1]
 
     def ping(self, request):
         if self.locator_status:
