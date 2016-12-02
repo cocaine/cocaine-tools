@@ -131,12 +131,12 @@ class Routing(object):
 
 
 class RuntimeMetrics(object):
-    def __init__(self, runtime):
-        self._runtime = runtime
+    def __init__(self, metrics):
+        self._metrics = metrics
 
     @coroutine
     def execute(self):
-        channel = yield self._runtime.metrics()
+        channel = yield self._metrics.fetch()
         result = yield channel.rx.get()
         raise gen.Return(result)
 
