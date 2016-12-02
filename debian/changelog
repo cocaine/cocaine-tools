@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.15) unstable; urgency=low
+
+  * [Tools] Use new metrics service instead of old runtime.
+
+ -- Anton Matveenko <antmat@me.com>  Fri, 2 Dec 2016 17:44:29 +0300
+
 cocaine-tools (0.12.12.14) unstable; urgency=low
 
   * [Proxy] Fix: error by one in RG resolve.
