@@ -206,20 +206,21 @@ class Restart(common.Node):
 
 
 class Check(common.Node):
-    def __init__(self, node, storage, locator, name):
+    def __init__(self, node, name):
         super(Check, self).__init__(node)
         self.name = name
-        self.storage = storage
-        self.locator = locator
         if not self.name:
             raise ValueError('Please specify application name')
 
     @coroutine
     def execute(self):
-        log.info('Checking "%s"... ', self.name)
-        apps = yield List(self.storage).execute()
-        if self.name not in apps:
-            raise ToolsError('not available')
+        try:
+            channel = yield self.node.list()
+            apps = yield channel.rx.get()
+            if self.name not in apps:
+                raise ToolsError('not running')
+        except ServiceError:
+            raise ToolsError('not running')
 
         try:
             channel = yield self.node.info(self.name)

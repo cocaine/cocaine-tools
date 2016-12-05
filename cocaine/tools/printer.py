@@ -1,3 +1,4 @@
+# coding=utf-8
 #
 # Copyright (c) 2013+ Evgeny Safronov <division494@gmail.com>
 # Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
@@ -29,7 +30,7 @@ from cocaine.tools import log
 __author__ = 'EvgenySafronov <division494@gmail.com>'
 
 
-ENABLE_OUTPUT = False
+ENABLE_OUTPUT = True
 
 
 class Color:
@@ -43,15 +44,15 @@ class Result(object):
         self.value = ''
 
     def set(self, msg, *args):
-        self.value = ' - {0}'.format('{0}{1}{2}'.format(Color.WHITE, msg % args, Color.RESET))
+        self.value = ' - {0}'.format('{}{}{}'.format(Color.WHITE, msg % args, Color.RESET))
 
     def __str__(self):
         return str(self.value)
 
 
 def _print(status, message, color, suffix):
-    status = '{0:^6}'.format(status)
-    formatted = '[{0}{1}{2}] {3}{4}'.format(color, status, Color.RESET, message, suffix)
+    status = '{:}'.format(status)
+    formatted = '{} {} {} {}{}'.format(color, status, Color.RESET, message, suffix)
     if ENABLE_OUTPUT:
         sys.stdout.write(formatted)
         sys.stdout.flush()
@@ -64,11 +65,11 @@ def print_start(message):
 
 
 def print_success(message):
-    _print('OK', message, Color.GREEN, '\n')
+    _print('✔', message, Color.GREEN, '\n')
 
 
 def print_error(message):
-    _print('FAIL', message, Color.RED, '\n')
+    _print('✘', message, Color.RED, '\n')
 
 
 @contextlib.contextmanager
