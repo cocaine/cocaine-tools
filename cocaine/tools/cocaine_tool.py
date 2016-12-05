@@ -23,18 +23,14 @@
 import logging
 import errno
 
-from cocaine.tools import printer
-from cocaine.tools.dispatcher import d
-
-
-printer.ENABLE_OUTPUT = True
+from cocaine.tools.dispatch import cli
 
 
 __author__ = 'EvgenySafronov <division494@gmail.com>'
 
 
-__doc__ = '''Provides helpful tools for management, viewing, uploading and other actions with cocaine applications
-and services'''
+__doc__ = '''Provides helpful tools for management, viewing, uploading and other actions with
+cocaine applications and services.'''
 
 
 log = logging.getLogger('cocaine.tools')
@@ -42,12 +38,12 @@ log = logging.getLogger('cocaine.tools')
 
 def main():
     try:
-        d.dispatch()
+        cli()
     except KeyboardInterrupt:
         log.error('Terminated by user')
         exit(errno.EINTR)
     except Exception as err:
-        log.error('Unknown error occurred - %s', err)
+        log.exception('Unknown error occurred - %s', err)
         exit(128)
 
 

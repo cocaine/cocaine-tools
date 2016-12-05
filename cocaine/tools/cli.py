@@ -21,6 +21,8 @@
 
 import errno
 import json
+
+import click
 import msgpack
 import time
 
@@ -52,7 +54,7 @@ class ToolHandler(object):
         except (ChokeEvent, StopIteration):
             pass
         except (CocaineError, ToolsError) as err:
-            log.error(err)
+            click.secho(str(err).capitalize(), fg='red')
             exit(128)
         except ValueError as err:
             log.error(err)
@@ -72,7 +74,7 @@ class JsonToolHandler(ToolHandler):
 
 class PrintToolHandler(ToolHandler):
     def _processResult(self, result):
-        print(result)
+        click.echo(result.capitalize())
 
 
 class CrashlogStatusToolHandler(ToolHandler):
@@ -136,7 +138,6 @@ NG_ACTIONS = {
     'app:import-docker': ToolHandler(app.DockerImport),
     'app:upload-manual': ToolHandler(app.Upload),
     'app:start': PrintToolHandler(app.Start),
-    'app:pause': PrintToolHandler(app.Stop),
     'app:stop': PrintToolHandler(app.Stop),
     'app:restart': PrintToolHandler(app.Restart),
 
@@ -192,7 +193,6 @@ NG_ACTIONS = {
     'logging:remove_filter': JsonToolHandler(logging.LoggingConfigRemoveFilter),
     'logging:list_filters': JsonToolHandler(logging.LoggingConfigListFilters),
     'logging:set_cluster_filter': JsonToolHandler(logging.LoggingConfigSetClusterFilter),
-
 }
 
 
@@ -212,15 +212,15 @@ class Executor(object):
             return self._loop
         return self._loop
 
-    def executeAction(self, actionName, **options):
+    def execute_action(self, action_name, **options):
         """Execute action with specified options.
 
         Tries to create action from its name and invokes it.
 
-        :param actionName: action name.
+        :param action_name: action name.
         :param options: various action configuration.
         """
-        assert actionName in NG_ACTIONS, 'wrong action - {0}'.format(actionName)
+        assert action_name in NG_ACTIONS, 'wrong action - {0}'.format(action_name)
 
-        action = NG_ACTIONS[actionName]
+        action = NG_ACTIONS[action_name]
         self.loop.run_sync(lambda: action.execute(**options), timeout=self.timeout)

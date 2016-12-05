@@ -21,6 +21,8 @@
 
 import logging
 
+import plugins
+
 __author__ = 'EvgenySafronov <division494@gmail.com>'
 
 log = logging.getLogger(__name__)

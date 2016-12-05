@@ -143,7 +143,7 @@ loggingDispatcher = Dispatcher(globaloptions=Global.options, middleware=middlewa
 def locate(options,
            name=('n', '', 'service name')):
     """Show information about requested service"""
-    options.executor.executeAction('locate', **{
+    options.executor.execute_action('locate', **{
         'name': name,
         'locator': options.locator,
     })
@@ -159,7 +159,7 @@ def show_version(dummy_options):
 def routing(options,
             name=('n', '', 'group name')):
     """Show information about the requested routing group"""
-    options.executor.executeAction('routing', **{
+    options.executor.execute_action('routing', **{
         'name': name,
         'locator': options.locator,
     })
@@ -169,7 +169,7 @@ def routing(options,
 def cluster(options,
             resolve=('r', False, 'show IPs instead of hostnames')):
     """Show cluster info"""
-    options.executor.executeAction('cluster', **{
+    options.executor.execute_action('cluster', **{
         'locator': options.getService('locator'),
         # Actually we have IPs and we need not do anything
         # to resolve them to IPs.
@@ -205,7 +205,7 @@ def info(options,
     if profile:
         flags |= flag_profile
 
-    options.executor.executeAction('info', **{
+    options.executor.execute_action('info', **{
         'node': options.getService('node'),
         'locator': options.locator,
         'name': name,
@@ -222,98 +222,6 @@ def metrics(options):
     options.executor.executeAction('metrics', **{
         'metrics': options.getService('metrics'),
     })
-
-
-@appDispatcher.command(name='list')
-def app_list(options):
-    """Show installed applications list."""
-    options.executor.executeAction('app:list', **{
-        'storage': options.getService('storage')
-    })
-
-
-@appDispatcher.command(usage='--name=NAME', name='view')
-def app_view(options,
-             name=('n', '', 'application name')):
-    """Show manifest context for application.
-
-    If application is not uploaded, an error will be displayed.
-    """
-    options.executor.executeAction('app:view', **{
-        'storage': options.getService('storage'),
-        'name': name,
-    })
-
-
-@appDispatcher.command(name='upload', usage='[PATH] [--name=NAME] [--manifest=MANIFEST] [--package=PACKAGE]')
-def app_upload(options,
-               path=None,
-               name=('n', '', 'application name'),
-               manifest=('', '', 'manifest file name'),
-               package=('', '', 'path to the application archive'),
-               docker_address=('', '', 'docker address'),
-               registry=('', '', 'registry address'),
-               recipe=('', '', 'path to the recipe file'),
-               manifest_only=('', False, 'upload manifest only')):
-    """Upload application with its environment (directory) into the storage.
-
-    Application directory or its subdirectories must contain valid manifest file named `manifest.json` or `manifest`
-    otherwise you must specify it explicitly by setting `--manifest` option.
-
-    You can specify application name. By default, leaf directory name is treated as application name.
-
-    If you have already prepared application archive (*.tar.gz), you can explicitly specify path to it by setting
-    `--package` option.
-
-    You can control process of creating and uploading application by specifying `--debug=tools` option. This is helpful
-    when some errors occurred.
-    """
-    TIMEOUT_THRESHOLD = 120.0
-    if options.executor.timeout < TIMEOUT_THRESHOLD:
-        logging.getLogger('cocaine.tools').info('Setting timeout to the %fs', TIMEOUT_THRESHOLD)
-        options.executor.timeout = TIMEOUT_THRESHOLD
-    MutexRecord = collections.namedtuple('MutexRecord', 'value, name')
-    mutex = [
-        (MutexRecord(path, 'PATH'), MutexRecord(package, '--package')),
-        (MutexRecord(package, '--package'), MutexRecord(docker_address, '--docker')),
-        (MutexRecord(package, '--package'), MutexRecord(registry, '--registry')),
-    ]
-    for (f, s) in mutex:
-        if f.value and s.value:
-            print('Wrong usage: option {0} and {1} are mutual exclusive, you can only force one'.format(f.name, s.name))
-            exit(os.EX_USAGE)
-
-    if manifest_only:
-        options.executor.executeAction('app:upload-manual', **{
-            'storage': options.getService('storage'),
-            'name': name,
-            'manifest': manifest,
-            'package': None,
-            'manifest_only': manifest_only,
-        })
-    elif package:
-        options.executor.executeAction('app:upload-manual', **{
-            'storage': options.getService('storage'),
-            'name': name,
-            'manifest': manifest,
-            'package': package
-        })
-    elif docker_address:
-        options.executor.executeAction('app:upload-docker', **{
-            'storage': options.getService('storage'),
-            'path': path,
-            'name': name,
-            'manifest': manifest,
-            'address': docker_address,
-            'registry': registry
-        })
-    else:
-        options.executor.executeAction('app:upload', **{
-            'storage': options.getService('storage'),
-            'path': path,
-            'name': name,
-            'manifest': manifest
-        })
 
 
 @appDispatcher.command(name='import', usage='[PATH] [--name=NAME] [--manifest=MANIFEST] [--package=PACKAGE]')
@@ -337,7 +245,7 @@ def app_import(options,
         options.executor.timeout = timeout_threshold
 
     if container_url and docker_address:
-        options.executor.executeAction('app:import-docker', **{
+        options.executor.execute_action('app:import-docker', **{
             'storage': options.getService('storage'),
             'path': path,
             'name': name,
@@ -351,133 +259,11 @@ def app_import(options,
         exit(os.EX_USAGE)
 
 
-@appDispatcher.command(name='remove')
-def app_remove(options,
-               name=('n', '', 'application name')):
-    """Remove application from storage.
-
-    No error messages will display if specified application is not uploaded.
-    """
-    options.executor.executeAction('app:remove', **{
-        'storage': options.getService('storage'),
-        'name': name
-    })
-
-
-@appDispatcher.command(name='start')
-def app_start(options,
-              name=('n', '', 'application name'),
-              profile=('r', '', 'profile name')):
-    """Start application with specified profile.
-
-    Does nothing if application is already running.
-    """
-    options.executor.executeAction('app:start', **{
-        'node': options.getService('node'),
-        'name': name,
-        'profile': profile
-    })
-
-
-@appDispatcher.command(name='pause')
-def app_pause(options,
-              name=('n', '', 'application name')):
-    """Stop application.
-
-    This command is alias for ```cocaine-tool app stop```.
-    """
-    options.executor.executeAction('app:pause', **{
-        'node': options.getService('node'),
-        'name': name
-    })
-
-
-@appDispatcher.command(name='stop')
-def app_stop(options,
-             name=('n', '', 'application name')):
-    """Stop application."""
-    options.executor.executeAction('app:stop', **{
-        'node': options.getService('node'),
-        'name': name
-    })
-
-
-@appDispatcher.command(name='restart')
-def app_restart(options,
-                name=('n', '', 'application name'),
-                profile=('r', '', 'profile name')):
-    """Restart application.
-
-    Executes ```cocaine-tool app pause``` and ```cocaine-tool app start``` sequentially.
-
-    It can be used to quickly change application profile.
-    """
-    options.executor.executeAction('app:restart', **{
-        'node': options.getService('node'),
-        'locator': options.locator,
-        'name': name,
-        'profile': profile
-    })
-
-
-@appDispatcher.command()
-def check(options,
-          name=('n', '', 'application name')):
-    """Checks application status."""
-    options.executor.executeAction('app:check', **{
-        'node': options.getService('node'),
-        'storage': options.getService('storage'),
-        'locator': options.locator,
-        'name': name,
-    })
-
-
-@profileDispatcher.command(name='list')
-def profile_list(options):
-    """Show installed profiles."""
-    options.executor.executeAction('profile:list', **{
-        'storage': options.getService('storage')
-    })
-
-
-@profileDispatcher.command(name='view')
-def profile_view(options,
-                 name=('n', '', 'profile name')):
-    """Show profile configuration context."""
-    options.executor.executeAction('profile:view', **{
-        'storage': options.getService('storage'),
-        'name': name
-    })
-
-
-@profileDispatcher.command(name='upload')
-def profile_upload(options,
-                   name=('n', '', 'profile name'),
-                   profile=('', '', 'path to profile file')):
-    """Upload profile into the storage."""
-    options.executor.executeAction('profile:upload', **{
-        'storage': options.getService('storage'),
-        'name': name,
-        'profile': profile
-    })
-
-
-@profileDispatcher.command(name='edit')
-def profile_edit(options,
-                 name=('n', '', 'profile name')):
-    """Edit profile in interactive editor."""
-    options.executor.timeout = None
-    options.executor.executeAction('profile:edit', **{
-        'storage': options.getService('storage'),
-        'name': name,
-    })
-
-
 @profileDispatcher.command(name='remove')
 def profile_remove(options,
                    name=('n', '', 'profile name')):
     """Remove profile from the storage."""
-    options.executor.executeAction('profile:remove', **{
+    options.executor.execute_action('profile:remove', **{
         'storage': options.getService('storage'),
         'name': name
     })
@@ -488,7 +274,7 @@ def profile_copy(options,
                  name=('n', '', 'profile name'),
                  copyname=('c', '', 'new profile name')):
     """Copy a profile"""
-    options.executor.executeAction('profile:copy', **{
+    options.executor.execute_action('profile:copy', **{
         'storage': options.getService('storage'),
         'name': name,
         'copyname': copyname,
@@ -500,7 +286,7 @@ def profile_rename(options,
                    name=('n', '', 'profile name'),
                    copyname=('c', '', 'new profile name')):
     """Raname a profile"""
-    options.executor.executeAction('profile:rename', **{
+    options.executor.execute_action('profile:rename', **{
         'storage': options.getService('storage'),
         'name': name,
         'copyname': copyname,
@@ -510,7 +296,7 @@ def profile_rename(options,
 @runlistDispatcher.command(name='list')
 def runlist_list(options):
     """Show uploaded runlists."""
-    options.executor.executeAction('runlist:list', **{
+    options.executor.execute_action('runlist:list', **{
         'storage': options.getService('storage')
     })
 
@@ -519,7 +305,7 @@ def runlist_list(options):
 def runlist_view(options,
                  name=('n', '', 'name')):
     """Show configuration context for runlist."""
-    options.executor.executeAction('runlist:view', **{
+    options.executor.execute_action('runlist:view', **{
         'storage': options.getService('storage'),
         'name': name
     })
@@ -530,7 +316,7 @@ def runlist_edit(options,
                  name=('n', '', 'runlist name')):
     """Edit runlist interactively."""
     options.executor.timeout = None
-    options.executor.executeAction('runlist:edit', **{
+    options.executor.execute_action('runlist:edit', **{
         'storage': options.getService('storage'),
         'name': name
     })
@@ -541,7 +327,7 @@ def runlist_upload(options,
                    name=('n', '', 'name'),
                    runlist=('', '', 'path to the runlist configuration json file')):
     """Upload runlist with context into the storage."""
-    options.executor.executeAction('runlist:upload', **{
+    options.executor.execute_action('runlist:upload', **{
         'storage': options.getService('storage'),
         'name': name,
         'runlist': runlist
@@ -552,7 +338,7 @@ def runlist_upload(options,
 def runlist_create(options,
                    name=('n', '', 'name')):
     """Create runlist and upload it into the storage."""
-    options.executor.executeAction('runlist:create', **{
+    options.executor.execute_action('runlist:create', **{
         'storage': options.getService('storage'),
         'name': name
     })
@@ -563,7 +349,7 @@ def runlist_copy(options,
                  name=('n', '', 'name'),
                  copyname=('c', '', 'copyname')):
     """Copy runlist."""
-    options.executor.executeAction('runlist:copy', **{
+    options.executor.execute_action('runlist:copy', **{
         'storage': options.getService('storage'),
         'name': name,
         'copyname': copyname,
@@ -574,7 +360,7 @@ def runlist_copy(options,
 def runlist_remove(options,
                    name=('n', '', 'name')):
     """Remove runlist from the storage."""
-    options.executor.executeAction('runlist:remove', **{
+    options.executor.execute_action('runlist:remove', **{
         'storage': options.getService('storage'),
         'name': name
     })
@@ -585,7 +371,7 @@ def runlist_rename(options,
                    name=('n', '', 'name'),
                    copyname=('c', '', 'copyname')):
     """Rename runlist."""
-    options.executor.executeAction('runlist:rename', **{
+    options.executor.execute_action('runlist:rename', **{
         'storage': options.getService('storage'),
         'name': name,
         'copyname': copyname,
@@ -602,7 +388,7 @@ def runlist_add_app(options,
 
     Existence of application or profile is not checked.
     """
-    options.executor.executeAction('runlist:add-app', **{
+    options.executor.execute_action('runlist:add-app', **{
         'storage': options.getService('storage'),
         'name': name,
         'app': app,
@@ -617,7 +403,7 @@ def runlist_remove_app(options,
                        app=('', '', 'application name')):
     """Remove specified application from the runlist.
     """
-    options.executor.executeAction('runlist:remove-app', **{
+    options.executor.execute_action('runlist:remove-app', **{
         'storage': options.getService('storage'),
         'name': name,
         'app': app
@@ -628,7 +414,7 @@ def runlist_remove_app(options,
 def crashlog_status(options):
     """Show crashlog status.
     """
-    options.executor.executeAction('crashlog:status', **{
+    options.executor.execute_action('crashlog:status', **{
         'storage': options.getService('storage'),
     })
 
@@ -641,7 +427,7 @@ def crashlog_list(options,
 
     Prints crashlog list in timestamp - uuid format.
     """
-    options.executor.executeAction('crashlog:list', **{
+    options.executor.execute_action('crashlog:list', **{
         'storage': options.getService('storage'),
         'name': name,
         'day_string': day,
@@ -653,7 +439,7 @@ def crashlog_view(options,
                   name=('n', '', 'name'),
                   timestamp=('t', '', 'timestamp')):
     """Show crashlog for application with specified timestamp."""
-    options.executor.executeAction('crashlog:view', **{
+    options.executor.execute_action('crashlog:view', **{
         'storage': options.getService('storage'),
         'name': name,
         'timestamp': timestamp
@@ -665,7 +451,7 @@ def crashlog_remove(options,
                     name=('n', '', 'name'),
                     timestamp=('t', '', 'timestamp')):
     """Remove crashlog for application with specified timestamp from the storage."""
-    options.executor.executeAction('crashlog:remove', **{
+    options.executor.execute_action('crashlog:remove', **{
         'storage': options.getService('storage'),
         'name': name,
         'timestamp': timestamp
@@ -676,7 +462,7 @@ def crashlog_remove(options,
 def crashlog_removeall(options,
                        name=('n', '', 'name')):
     """Remove all crashlogs for application from the storage."""
-    options.executor.executeAction('crashlog:removeall', **{
+    options.executor.execute_action('crashlog:removeall', **{
         'storage': options.getService('storage'),
         'name': name,
     })
@@ -688,7 +474,7 @@ def crashlog_clean(options,
                    timestamp=('t', '', 'timestamp'),
                    size=('s', 1000, 'size')):
     """For application [NAME] leave [SIZE] crashlogs or remove all crashlogs with timestamp > [TIMESTAMP]."""
-    options.executor.executeAction('crashlog:clean', **{
+    options.executor.execute_action('crashlog:clean', **{
         'storage': options.getService('storage'),
         'name': name,
         'size': size,
@@ -705,7 +491,7 @@ def crashlog_cleanrange(options,
     Example:
         today, yesterday,
         10, 10-09, 10-09-2015"""
-    options.executor.executeAction('crashlog:cleanwhen', **{
+    options.executor.execute_action('crashlog:cleanwhen', **{
         'storage': options.getService('storage'),
         'from_day': from_day,
         'to_day': up_to_day,
@@ -716,7 +502,7 @@ def crashlog_cleanrange(options,
 def group_list(options):
     """Show routing groups.
     """
-    options.executor.executeAction('group:list', **{
+    options.executor.execute_action('group:list', **{
         'storage': options.getService('storage')
     })
 
@@ -726,7 +512,7 @@ def group_view(options,
                name=('n', '', 'group name')):
     """Show specified routing group.
     """
-    options.executor.executeAction('group:view', **{
+    options.executor.execute_action('group:view', **{
         'storage': options.getService('storage'),
         'name': name
     })
@@ -749,7 +535,7 @@ def group_create(options,
     Warning: all application weights must be positive integers,
              total weight must be positive.
     """
-    options.executor.executeAction('group:create', **{
+    options.executor.execute_action('group:create', **{
         'storage': options.getService('storage'),
         'name': name,
         'content': content
@@ -760,7 +546,7 @@ def group_create(options,
 def group_remove(options,
                  name=('n', '', 'group name')):
     """Remove routing group"""
-    options.executor.executeAction('group:remove', **{
+    options.executor.execute_action('group:remove', **{
         'storage': options.getService('storage'),
         'name': name
     })
@@ -771,7 +557,7 @@ def group_copy(options,
                name=('n', '', 'group name'),
                copyname=('c', '', 'new group name')):
     """Copy routing group."""
-    options.executor.executeAction('group:copy', **{
+    options.executor.execute_action('group:copy', **{
         'storage': options.getService('storage'),
         'name': name,
         'copyname': copyname,
@@ -783,7 +569,7 @@ def group_rename(options,
                  name=('n', '', 'group name'),
                  copyname=('c', '', 'new group name')):
     """Rename routing group."""
-    options.executor.executeAction('group:rename', **{
+    options.executor.execute_action('group:rename', **{
         'storage': options.getService('storage'),
         'name': name,
         'copyname': copyname,
@@ -797,7 +583,7 @@ def group_refresh(options,
 
     If group name is empty this command will refresh all groups.
     """
-    options.executor.executeAction('group:refresh', **{
+    options.executor.execute_action('group:refresh', **{
         'locator': options.locator,
         'storage': options.getService('storage'),
         'name': name
@@ -813,7 +599,7 @@ def group_push(options,
 
     Warning: application weight must be positive integer.
     """
-    options.executor.executeAction('group:app:add', **{
+    options.executor.execute_action('group:app:add', **{
         'storage': options.getService('storage'),
         'name': name,
         'app': app,
@@ -827,7 +613,7 @@ def group_pop(options,
               app=('', '', 'app name')):
     """Remove application from routing group.
     """
-    options.executor.executeAction('group:app:remove', **{
+    options.executor.execute_action('group:app:remove', **{
         'storage': options.getService('storage'),
         'name': name,
         'app': app
@@ -839,7 +625,7 @@ def group_edit(options,
                name=('n', '', 'group name')):
     """Edit group in an interactive editor"""
     options.executor.timeout = None
-    options.executor.executeAction('group:edit', **{
+    options.executor.execute_action('group:edit', **{
         'storage': options.getService('storage'),
         'name': name,
     })
@@ -849,7 +635,7 @@ def group_edit(options,
 def tracing_store(options,
                   name=('n', '', 'node name'),
                   value=('v', '', 'value')):
-    options.executor.executeAction('tracing:store', **{
+    options.executor.execute_action('tracing:store', **{
         'configuration_service': options.getService('unicorn'),
         'name': name,
         'value': value,
@@ -859,7 +645,7 @@ def tracing_store(options,
 @tracingDispatcher.command(name='remove', usage='-n NAME')
 def tracing_remove(options,
                    name=('n', '', 'node name')):
-    options.executor.executeAction('tracing:remove', **{
+    options.executor.execute_action('tracing:remove', **{
         'configuration_service': options.getService('unicorn'),
         'name': name,
     })
@@ -868,7 +654,7 @@ def tracing_remove(options,
 @tracingDispatcher.command(name='view', usage='-n NAME')
 def tracing_view(options,
                  name=('n', '', 'node name')):
-    options.executor.executeAction('tracing:view', **{
+    options.executor.execute_action('tracing:view', **{
         'configuration_service': options.getService('unicorn'),
         'name': name,
     })
@@ -879,7 +665,7 @@ def timeouts_store(options,
                    name=('n', '', 'app name'),
                    event=('e', '', 'event name'),
                    value=('v', 30.0, 'value')):
-    options.executor.executeAction('timeouts:store', **{
+    options.executor.execute_action('timeouts:store', **{
         'configuration_service': options.getService('unicorn'),
         'name': name,
         'value': value,
@@ -891,7 +677,7 @@ def timeouts_store(options,
 def timeouts_remove(options,
                     name=('n', '', 'app name'),
                     event=('e', '', 'event name')):
-    options.executor.executeAction('timeouts:remove', **{
+    options.executor.execute_action('timeouts:remove', **{
         'configuration_service': options.getService('unicorn'),
         'name': name,
         'event': event,
@@ -901,7 +687,7 @@ def timeouts_remove(options,
 @timeoutsDispatcher.command(name='view', usage='-n NAME')
 def timeouts_view(options,
                   name=('n', '', 'app name')):
-    options.executor.executeAction('timeouts:view', **{
+    options.executor.execute_action('timeouts:view', **{
         'configuration_service': options.getService('unicorn'),
         'name': name,
     })
@@ -910,7 +696,7 @@ def timeouts_view(options,
 @timeoutsDispatcher.command(name='drop', usage='-n NAME')
 def timeouts_drop(options,
                   name=('n', '', 'app name')):
-    options.executor.executeAction('timeouts:drop', **{
+    options.executor.execute_action('timeouts:drop', **{
         'configuration_service': options.getService('unicorn'),
         'name': name,
     })
@@ -919,7 +705,7 @@ def timeouts_drop(options,
 @loggingDispatcher.command(name='list_loggers', usage='')
 def logging_list_loggers(options):
     """List all registered logger names"""
-    options.executor.executeAction('logging:list_loggers', **{
+    options.executor.execute_action('logging:list_loggers', **{
         'logging_service': options.getService('logging')
     })
 
@@ -930,7 +716,7 @@ def logging_set_filter(options,
                        filter_def=('f', '', 'filter definition'),
                        ttl=('t', '', 'ttl')):
     """Set local filter"""
-    options.executor.executeAction('logging:set_filter', **{
+    options.executor.execute_action('logging:set_filter', **{
         'logging_service': options.getService('logging'),
         'logger_name': logger_name,
         'filter_def': filter_def,
@@ -942,7 +728,7 @@ def logging_set_filter(options,
 def logging_remove_filter(options,
                           filter_id=('i', '', 'filter id')):
     """Remove filter by filter_id"""
-    options.executor.executeAction('logging:remove_filter', **{
+    options.executor.execute_action('logging:remove_filter', **{
         'logging_service': options.getService('logging'),
         'filter_id': filter_id
     })
@@ -951,7 +737,7 @@ def logging_remove_filter(options,
 @loggingDispatcher.command(name='list_filters', usage='')
 def logging_list_filters(options):
     """List all available filters"""
-    options.executor.executeAction('logging:list_filters', **{
+    options.executor.execute_action('logging:list_filters', **{
         'logging_service': options.getService('logging')
     })
 
@@ -961,7 +747,7 @@ def logging_set_cluster_filter(options,
                                name=('n', '', 'logger name'),
                                filter_def=('f', '', 'filter definition')):
     """Set cluster-wide filter"""
-    options.executor.executeAction('logging:set_cluster_filter', **{
+    options.executor.execute_action('logging:set_cluster_filter', **{
         'logging_service': options.getService('logging'),
         'logger_name': name,
         'filter_def': filter_def
