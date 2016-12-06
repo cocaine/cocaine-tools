@@ -4,6 +4,8 @@ import socket
 from tornado import gen
 
 from cocaine.decorators import coroutine
+from cocaine.tools.error import ToolsError
+
 from . import SecurePlugin
 
 
@@ -14,7 +16,12 @@ class TVM(SecurePlugin):
     def __init__(self, repo, oauth):
         super(TVM, self).__init__(repo)
         self._oauth = oauth
-        self._ip = socket.gethostbyname('localhost')
+
+        endpoints = socket.getaddrinfo(socket.gethostname(), None)
+        if len(endpoints) == 0:
+            raise ToolsError('failed to determine local IP address')
+
+        self._ip = endpoints[0][4][0]
         self._tvm = repo.create_service('tvm')
 
     def ty(self):
