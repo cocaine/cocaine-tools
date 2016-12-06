@@ -21,7 +21,6 @@
 
 import logging
 
-import plugins
 
 __author__ = 'EvgenySafronov <division494@gmail.com>'
 
