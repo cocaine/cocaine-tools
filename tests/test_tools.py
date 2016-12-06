@@ -135,12 +135,11 @@ class TestAppActions(object):
 
     @tools.raises(ToolsError)
     def test_check_no_such_app(self):
-        io.run_sync(app.Check(self.node, self.storage,
-                              self.locator, "no_such_app_name").execute, timeout=2)
+        io.run_sync(app.Check(self.node, "no_such_app_name").execute, timeout=2)
 
     @tools.raises(ValueError)
     def test_check_no_appname(self):
-        app.Check(self.node, self.storage, self.locator, "")
+        app.Check(self.node, "")
 
     def test_app_a_upload(self):
         name = "random_name"
@@ -166,7 +165,7 @@ class TestAppActions(object):
                              "random_profile").execute, timeout=2)
         assert "application `random_name` has been started with profile `random_profile`" == result, result
 
-        result = io.run_sync(app.Check(self.node, self.storage, self.locator, name).execute, timeout=2)
+        result = io.run_sync(app.Check(self.node, name).execute, timeout=2)
         assert result['state'] == "running"
 
     def test_app_d_stop(self):
@@ -177,7 +176,7 @@ class TestAppActions(object):
     @tools.raises(ToolsError)
     def test_app_d_stop_after_check(self):
         name = "random_name"
-        io.run_sync(app.Check(self.node, self.storage, self.locator, name).execute, timeout=2)
+        io.run_sync(app.Check(self.node, name).execute, timeout=2)
 
     def test_app_c_restart(self):
         name = "random_name"
