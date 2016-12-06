@@ -18,6 +18,7 @@ from cocaine.decorators import coroutine
 from cocaine.exceptions import CocaineError
 from cocaine.services import Locator, Service
 from .plugins.secure.promiscuous import Promiscuous
+from .version import __version__
 
 
 CONFIG_GLOB = '/etc/cocaine/.cocaine/tools.yml'
@@ -277,23 +278,172 @@ def tools():
     pass
 
 
+@tools.command()
+def version():
+    """
+    Show version.
+    """
+    click.echo(__version__)
+
+
+@tools.command()
+@click.option('-n', '--name', metavar='', required=True, help='Service name.')
+@with_options
+def locate(name, **kwargs):
+    """
+    Show resolve information about specified service.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('locate', **{
+        'name': name,
+        'locator': ctx.locator,
+    })
+
+
+@tools.command()
+@click.option('-n', '--name', metavar='', required=True, help='Routing group name.')
+@with_options
+def routing(name, **kwargs):
+    """
+    Show information about the requested routing group.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('routing', **{
+        'name': name,
+        'locator': ctx.locator,
+    })
+
+
+@tools.command()
+@click.option('--resolve', metavar='', default=False, help='Show IPs instead of hostname.')
+@with_options
+def cluster(resolve, **kwargs):
+    """
+    Show cluster info.
+    """
+    # Actually we have IPs and we need not do anything to resolve them to IPs. So the default
+    # behavior fits better to this option name.
+
+    ctx = Context(**kwargs)
+    ctx.execute_action('cluster', **{
+        'locator': ctx.locator,
+        'resolve': resolve,
+    })
+
+
+@tools.command()
+@click.option('-n', '--name', metavar='', help='Application name.')
+@click.option('-m', is_flag=True, default=False, help='Expand manifest.')
+@click.option('-p', is_flag=True, default=False, help='Expand profile.')
+@click.option('-b', is_flag=True, default=False, help='Show only brief info (disables -p and -m).')
+@click.option('-w', is_flag=True, default=True, help='Do not use wildcard to match app name.')
+@with_options
+def info(name, m, p, b, w, **kwargs):
+    """
+    Show information about cocaine runtime.
+
+    Return json-like string with information about cocaine-runtime.
+
+    If the name option is not specified, shows information about all applications. Flags can be
+    specified for fine-grained control of the output verbosity.
+    """
+    m = (m << 1) & 0b010
+    p = (p << 2) & 0b100
+
+    # Brief disables all further flags.
+    if b:
+        flags = 0b000
+    else:
+        flags = m | p | 0b001
+
+    ctx = Context(**kwargs)
+    ctx.execute_action('info', **{
+        'node': ctx.repo.create_secure_service('node'),
+        'locator': ctx.locator,
+        'name': name,
+        'flags': flags,
+        'use_wildcard': w,
+        'timeout': ctx.timeout,
+    })
+
+
 @tools.group()
-def app():
+def app_group():
     """
     Application commands.
     """
     pass
 
 
-@tools.group()
-def profile():
+@tools.group(name='profile')
+def profile_group():
     """
     Profile commands.
     """
     pass
 
 
-@app.command(name='list')
+@tools.group(name='runlist')
+def runlist_group():
+    """
+    Runlist commands.
+    """
+    pass
+
+
+@tools.group(name='crashlog')
+def crashlog_group():
+    """
+    Crashlog commands.
+    """
+    pass
+
+
+@tools.group(name='group')
+def group_group():
+    """
+    Routing group commands.
+    """
+    pass
+
+
+@tools.group(name='tracing')
+def tracing_group():
+    """
+    Dynamic tracing support.
+    """
+    pass
+
+
+@tools.group(name='tracing')
+def logging_group():
+    """
+    Dynamic logging filtering support.
+    """
+    pass
+
+
+@tools.group(name='tracing')
+def timeouts_group():
+    """
+    Configurable timeout for applications support.
+    """
+    pass
+
+
+@tools.command()
+@with_options
+def metrics(**kwargs):
+    """
+    Show collected metrics.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('metrics', **{
+        'metrics': ctx.repo.create_secure_service('metrics'),
+    })
+
+
+@app_group.command(name='list')
 @with_options
 def app_list(**kwargs):
     """
@@ -305,7 +455,7 @@ def app_list(**kwargs):
     })
 
 
-@app.command(name='view')
+@app_group.command(name='view')
 @click.option('-n', '--name', metavar='', help='Application name.')
 @with_options
 def app_view(name, **kwargs):
@@ -316,12 +466,12 @@ def app_view(name, **kwargs):
     """
     ctx = Context(**kwargs)
     ctx.execute_action('app:view', **{
-        'storage': ctx.repo.create_service('storage'),
+        'storage': ctx.repo.create_secure_service('storage'),
         'name': name,
     })
 
 
-@app.command(name='upload')
+@app_group.command(name='upload')
 @click.argument('path', type=click.Path(exists=True))
 @click.option('-n', '--name', metavar='', help='Application name.')
 @click.option('--manifest', metavar='', help='Manifest file name.')
@@ -367,7 +517,7 @@ def app_upload(path, name, manifest, package, docker_address, registry, manifest
 
     if manifest_only:
         ctx.execute_action('app:upload-manual', **{
-            'storage': ctx.repo.create_service('storage'),
+            'storage': ctx.repo.create_secure_service('storage'),
             'name': name,
             'manifest': manifest,
             'package': None,
@@ -375,14 +525,14 @@ def app_upload(path, name, manifest, package, docker_address, registry, manifest
         })
     elif package:
         ctx.execute_action('app:upload-manual', **{
-            'storage': ctx.repo.create_service('storage'),
+            'storage': ctx.repo.create_secure_service('storage'),
             'name': name,
             'manifest': manifest,
             'package': package
         })
     elif docker_address:
         ctx.execute_action('app:upload-docker', **{
-            'storage': ctx.repo.create_service('storage'),
+            'storage': ctx.repo.create_secure_service('storage'),
             'path': path,
             'name': name,
             'manifest': manifest,
@@ -391,14 +541,47 @@ def app_upload(path, name, manifest, package, docker_address, registry, manifest
         })
     else:
         ctx.execute_action('app:upload', **{
-            'storage': ctx.repo.create_service('storage'),
+            'storage': ctx.repo.create_secure_service('storage'),
             'path': path,
             'name': name,
             'manifest': manifest
         })
 
 
-@app.command(name='remove')
+@app_group.command(name='import')
+@click.argument('path', type=click.Path(exists=True))
+@click.option('-n', '--name', metavar='', help='Application name.')
+@click.option('--manifest', metavar='', help='Manifest file name.')
+@click.option('--container_url', metavar='', required=True, help='Docker container url.')
+@click.option('--docker_address', metavar='', required=True, help='Docker address.')
+@click.option('--registry', metavar='', help='Docker Registry address.')
+@with_options
+def app_import(path, name, manifest, container_url, docker_address, registry, **kwargs):
+    """
+    Import application Docker container.
+    """
+    lower_limit = 120.0
+
+    ctx = Context(**kwargs)
+    if ctx.timeout < lower_limit:
+        ctx.timeout = lower_limit
+        log.info('shifted timeout to the %.2fs', ctx.timeout)
+
+    if container_url and docker_address:
+        ctx.execute_action('app:import-docker', **{
+            'storage': ctx.repo.create_secure_service('storage'),
+            'path': path,
+            'name': name,
+            'manifest': manifest,
+            'container': container_url,
+            'address': docker_address,
+            'registry': registry
+        })
+    else:
+        raise ValueError("both `container_url` and `docker_address` options must not be empty")
+
+
+@app_group.command(name='remove')
 @click.option('-n', '--name', metavar='', help='Application name.')
 @with_options
 def app_remove(name, **kwargs):
@@ -414,7 +597,7 @@ def app_remove(name, **kwargs):
     })
 
 
-@app.command(name='start')
+@app_group.command(name='start')
 @click.option('-n', '--name', metavar='', help='Application name.')
 @click.option('-r', '--profile', metavar='', help='Profile name.')
 @with_options
@@ -432,7 +615,7 @@ def app_start(name, profile, **kwargs):
     })
 
 
-@app.command(name='pause')
+@app_group.command(name='pause')
 @click.option('-n', '--name', metavar='', help='Application name.')
 @with_options
 def app_pause(name, **kwargs):
@@ -448,7 +631,7 @@ def app_pause(name, **kwargs):
     })
 
 
-@app.command(name='stop')
+@app_group.command(name='stop')
 @click.option('-n', '--name', metavar='', help='Application name.')
 @with_options
 def app_stop(name, **kwargs):
@@ -462,7 +645,7 @@ def app_stop(name, **kwargs):
     })
 
 
-@app.command(name='restart')
+@app_group.command(name='restart')
 @click.option('-n', '--name', metavar='', help='Application name.')
 @click.option('-r', '--profile', metavar='', help='Profile name.')
 @with_options
@@ -483,7 +666,7 @@ def app_restart(name, prof, **kwargs):
     })
 
 
-@app.command()
+@app_group.command()
 @click.option('-n', '--name', metavar='', help='Application name.')
 @with_options
 def check(name, **kwargs):
@@ -497,7 +680,7 @@ def check(name, **kwargs):
     })
 
 
-@profile.command(name='list')
+@profile_group.command(name='list')
 @with_options
 def profile_list(**kwargs):
     """
@@ -509,7 +692,7 @@ def profile_list(**kwargs):
     })
 
 
-@profile.command(name='view')
+@profile_group.command(name='view')
 @click.option('-n', '--name', metavar='', required=True, help='Profile name.')
 @with_options
 def profile_view(name, **kwargs):
@@ -518,12 +701,12 @@ def profile_view(name, **kwargs):
     """
     ctx = Context(**kwargs)
     ctx.execute_action('profile:view', **{
-        'storage': ctx.repo.create_service('storage'),
+        'storage': ctx.repo.create_secure_service('storage'),
         'name': name,
     })
 
 
-@profile.command(name='upload')
+@profile_group.command(name='upload')
 @click.option('-n', '--name', metavar='', required=True, help='Profile name.')
 @click.option('-r', '--profile', metavar='', required=True, help='Path to profile.')
 @with_options
@@ -533,13 +716,13 @@ def profile_upload(name, prof, **kwargs):
     """
     ctx = Context(**kwargs)
     ctx.execute_action('profile:upload', **{
-        'storage': ctx.repo.create_service('storage'),
+        'storage': ctx.repo.create_secure_service('storage'),
         'name': name,
         'profile': prof,
     })
 
 
-@profile.command(name='edit')
+@profile_group.command(name='edit')
 @click.option('-n', '--name', metavar='', required=True, help='Profile name.')
 @with_options
 def profile_edit(name, **kwargs):
@@ -549,9 +732,657 @@ def profile_edit(name, **kwargs):
     ctx = Context(**kwargs)
     ctx.timeout = None
     ctx.execute_action('profile:edit', **{
-        'storage': ctx.repo.create_service('storage'),
+        'storage': ctx.repo.create_secure_service('storage'),
         'name': name,
     })
 
+
+@profile_group.command(name='remove')
+@click.option('-n', '--name', metavar='', required=True, help='Profile name.')
+@with_options
+def profile_remove(name, **kwargs):
+    """
+    Remove profile from the storage.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('profile:remove', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@profile_group.command(name='copy')
+@click.option('-n', '--name', metavar='', required=True, help='Profile name.')
+@click.option('--copyname', metavar='', required=True, help='Profile new name.')
+@with_options
+def profile_copy(name, copyname, **kwargs):
+    """
+    Copy a profile.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('profile:copy', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'copyname': copyname,
+    })
+
+
+@profile_group.command(name='rename')
+@click.option('-n', '--name', metavar='', required=True, help='Profile name.')
+@click.option('--copyname', metavar='', required=True, help='Profile new name.')
+@with_options
+def profile_rename(name, copyname, **kwargs):
+    """
+    Rename a profile.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('profile:rename', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'copyname': copyname,
+    })
+
+
+@runlist_group.command(name='list')
+@with_options
+def runlist_list(**kwargs):
+    """
+    Show uploaded runlists.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('runlist:list', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+    })
+
+
+@runlist_group.command(name='view')
+@click.option('-n', '--name', metavar='', required=True, help='Runlist name.')
+@with_options
+def runlist_view(name, **kwargs):
+    """
+    Show configuration content for a specified runlist.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('runlist:view', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name
+    })
+
+
+@runlist_group.command(name='edit')
+@click.option('-n', '--name', metavar='', required=True, help='Runlist name.')
+@with_options
+def runlist_edit(name, **kwargs):
+    """
+    Edit specified runlist interactively using editor.
+    """
+    ctx = Context(**kwargs)
+    ctx.timeout = None
+    ctx.execute_action('runlist:edit', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name
+    })
+
+
+@runlist_group.command(name='upload')
+@click.option('-n', '--name', metavar='', required=True, help='Runlist name.')
+@click.option('--runlist', metavar='', required=True,
+              help='Either path to the runlist file or inline content')
+@with_options
+def runlist_upload(name, runlist, **kwargs):
+    """
+    Upload runlist with context into the storage.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('runlist:upload', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'runlist': runlist,
+    })
+
+
+@runlist_group.command(name='create')
+@click.option('-n', '--name', metavar='', required=True, help='Runlist name.')
+@with_options
+def runlist_create(name, **kwargs):
+    """
+    Create runlist and upload it into the storage.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('runlist:create', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@runlist_group.command(name='remove')
+@click.option('-n', '--name', metavar='', required=True, help='Runlist name.')
+@with_options
+def runlist_remove(name, **kwargs):
+    """
+    Remove runlist from the storage.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('runlist:remove', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@runlist_group.command(name='copy')
+@click.option('-n', '--name', metavar='', required=True, help='Runlist name.')
+@click.option('-c', '--copyname', metavar='', required=True, help='Cloned runlist name.')
+@with_options
+def runlist_copy(name, copyname, **kwargs):
+    """
+    Clone runlist.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('runlist:copy', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'copyname': copyname,
+    })
+
+
+@runlist_group.command(name='rename')
+@click.option('-n', '--name', metavar='', required=True, help='Runlist name.')
+@click.option('-c', '--copyname', metavar='', required=True, help='Runlist new name.')
+@with_options
+def runlist_rename(name, copyname, **kwargs):
+    """
+    Rename runlist.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('runlist:rename', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'copyname': copyname,
+    })
+
+
+@runlist_group.command(name='add-app')
+@click.option('-n', '--name', metavar='', required=True, help='Runlist name.')
+@click.option('--app', metavar='', required=True, help='Application name.')
+@click.option('--profile', metavar='', required=True, help='Suggested profile name.')
+@click.option('-f', '--force', is_flag=True, default=False, help='Create runlist if not exists.')
+@with_options
+def runlist_add_app(name, app, profile, force, **kwargs):
+    """
+    Add specified application with profile to the specified runlist.
+
+    Existence of application or profile is not checked.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('runlist:add-app', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'app': app,
+        'profile': profile,
+        'force': force
+    })
+
+
+@runlist_group.command(name='remove-app')
+@click.option('-n', '--name', metavar='', required=True, help='Runlist name.')
+@click.option('--app', metavar='', required=True, help='Application name.')
+@with_options
+def runlist_remove_app(name, app, **kwargs):
+    """
+    Remove specified application from the runlist.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('runlist:remove-app', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'app': app,
+    })
+
+
+@crashlog_group.command(name='status')
+@with_options
+def crashlog_status(**kwargs):
+    """
+    Show crashlogs status.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('crashlog:status', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+    })
+
+
+@crashlog_group.command(name='list')
+@click.option('-n', '--name', metavar='', required=True, help='Crashlog name.')
+@click.option('-d', '--day', metavar='', help='Date filter.')
+@with_options
+def crashlog_list(name, day, **kwargs):
+    """
+    Show crashlogs list for application.
+
+    Prints crashlog list in "Unix Timestamp - UUID" format.
+
+    Filtering by day accepts the following variants: today, yesterday, %d, %d-%m or %d-%m-%Y.
+    For example given today is a 06-12-2016 crashlogs for yesterday can be listed using:
+    `--day=yesterday`, `--day=5`, `--day=05-12` or `--day=05-12-2016`.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('crashlog:list', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'day_string': day,
+    })
+
+
+@crashlog_group.command(name='view')
+@click.option('-n', '--name', metavar='', required=True, help='Crashlog name.')
+@click.option('-t', '--timestamp', metavar='', help='Timestamp.')
+@with_options
+def crashlog_view(name, timestamp, **kwargs):
+    """
+    Show crashlog for application with specified timestamp.
+
+    Last crashlog for a given application will be displayed unless timestamp option is specified.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('crashlog:view', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'timestamp': timestamp,
+    })
+
+
+@crashlog_group.command(name='remove')
+@click.option('-n', '--name', metavar='', required=True, help='Crashlog name.')
+@click.option('-t', '--timestamp', metavar='', help='Timestamp.')
+@with_options
+def crashlog_remove(name, timestamp, **kwargs):
+    """
+    Remove crashlog for application with specified timestamp from the storage.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('crashlog:remove', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'timestamp': timestamp,
+    })
+
+
+@crashlog_group.command(name='removeall')
+@click.option('-n', '--name', metavar='', required=True, help='Crashlog name.')
+@with_options
+def crashlog_removeall(name, **kwargs):
+    """
+    Remove all crashlogs for application from the storage.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('crashlog:removeall', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@crashlog_group.command(name='clean')
+@click.option('-n', '--name', metavar='', required=True, help='Crashlog name.')
+@click.option('-t', '--timestamp', metavar='', help='Timestamp.')
+@click.option('-s', '--size', metavar='', default=1000, help='Number of crashlogs to leave.')
+@with_options
+def crashlog_clean(name, timestamp, size, **kwargs):
+    """
+    For application NAME leave SIZE crashlogs or remove all crashlogs with timestamp > TIMESTAMP.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('crashlog:clean', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'size': size,
+        'timestamp': timestamp,
+    })
+
+
+@crashlog_group.command(name='cleanrange')
+@click.option('--from_day', metavar='', required=True, help='From day.')
+@click.option('--up_to_day', metavar='', default='yesterday', help='Up to day.')
+@with_options
+def crashlog_cleanrange(from_day, up_to_day, **kwargs):
+    """
+    Remove all crashlogs from one date up to another.
+
+    The date can be specified as DAY-[MONTH-[YEAR]].
+
+    Example:
+        today, yesterday, 10, 10-09, 10-09-2015
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('crashlog:cleanwhen', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'from_day': from_day,
+        'to_day': up_to_day,
+    })
+
+
+@group_group.command(name='list')
+@with_options
+def group_list(**kwargs):
+    """
+    Show available routing groups.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('group:list', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+    })
+
+
+@group_group.command(name='view')
+@click.option('-n', '--name', metavar='', required=True, help='Routing group name.')
+@with_options
+def group_view(name, **kwargs):
+    """
+    Show specified routing group.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('group:view', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@group_group.command(name='create')
+@click.option('-n', '--name', metavar='', required=True, help='Routing group name.')
+@click.option('-c', '--content', metavar='', required=True, help='Routing group content.')
+@with_options
+def group_create(name, content, **kwargs):
+    """
+    Create routing group.
+
+    You can optionally specify content for created routing group. It can be either direct JSON
+    expression in single quotes, or path to the json file with settings. Settings itself must be
+    key-value list, where `key` represents application name, and `value` represents its weight.
+
+    For example:
+
+    cocaine-tool group create -n new_group -c '{
+        "app": 1,
+        "another_app": 2
+    }'.
+
+    Warning: all application weights must be positive integers, total weight must be positive.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('group:create', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'content': content,
+    })
+
+
+@group_group.command(name='remove')
+@click.option('-n', '--name', metavar='', required=True, help='Routing group name.')
+@with_options
+def group_remove(name, **kwargs):
+    """
+    Remove routing group from the storage.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('group:remove', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@group_group.command(name='copy')
+@click.option('-n', '--name', metavar='', required=True, help='Routing group name.')
+@click.option('-c', '--copyname', metavar='', required=True, help='Cloned routing group name.')
+@with_options
+def group_copy(name, copyname, **kwargs):
+    """
+    Copy routing group.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('group:copy', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'copyname': copyname,
+    })
+
+
+@group_group.command(name='rename')
+@click.option('-n', '--name', metavar='', required=True, help='Routing group name.')
+@click.option('-c', '--copyname', metavar='', required=True, help='New routing group name.')
+@with_options
+def group_rename(name, copyname, **kwargs):
+    """
+    Rename routing group.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('group:rename', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'copyname': copyname,
+    })
+
+
+@group_group.command(name='refresh')
+@click.option('-n', '--name', metavar='', help='Routing group name.')
+@with_options
+def group_refresh(name, **kwargs):
+    """
+    Refresh routing group.
+
+    If the name option is empty, this command will refresh all groups.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('group:refresh', **{
+        'locator': ctx.locator,
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@group_group.command(name='push')
+@click.option('-n', '--name', metavar='', required=True, help='Routing group name.')
+@click.option('--app', metavar='', required=True, help='Application name.')
+@click.option('-w', '--weight', metavar='', required=True, type=int, help='Application weight.')
+@with_options
+def group_push(name, app, weight, **kwargs):
+    """
+    Add application with its weight into the routing group.
+
+    Warning: application weight must be positive integer.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('group:app:add', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'app': app,
+        'weight': weight,
+    })
+
+
+@group_group.command(name='pop')
+@click.option('-n', '--name', metavar='', required=True, help='Routing group name.')
+@click.option('--app', metavar='', required=True, help='Application name.')
+@with_options
+def group_pop(name, app, **kwargs):
+    """
+    Remove application from the specified routing group.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('group:app:remove', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'app': app,
+    })
+
+
+@group_group.command(name='edit')
+@click.option('-n', '--name', metavar='', required=True, help='Routing group name.')
+@with_options
+def group_edit(name, **kwargs):
+    """
+    Edit specified routing group in an interactive editor.
+    """
+    ctx = Context(**kwargs)
+    ctx.timeout = None
+    ctx.execute_action('group:edit', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@tracing_group.command(name='store')
+@click.option('-n', '--name', metavar='', required=True, help='Unicorn node.')
+@click.option('-v', '--value', metavar='', type=float, required=True, help='Value in percents.')
+@with_options
+def tracing_store(name, value, **kwargs):
+    ctx = Context(**kwargs)
+    ctx.execute_action('tracing:store', **{
+        'configuration_service': ctx.repo.create_secure_service('unicorn'),
+        'name': name,
+        'value': value,
+    })
+
+
+@tracing_group.command(name='remove')
+@click.option('-n', '--name', metavar='', required=True, help='Unicorn node.')
+@with_options
+def tracing_remove(name, **kwargs):
+    ctx = Context(**kwargs)
+    ctx.execute_action('tracing:remove', **{
+        'configuration_service': ctx.repo.create_secure_service('unicorn'),
+        'name': name,
+    })
+
+
+@tracing_group.command(name='view')
+@click.option('-n', '--name', metavar='', required=True, help='Unicorn node.')
+@with_options
+def tracing_view(name, **kwargs):
+    ctx = Context(**kwargs)
+    ctx.execute_action('tracing:view', **{
+        'configuration_service': ctx.repo.create_secure_service('unicorn'),
+        'name': name,
+    })
+
+
+@timeouts_group.command(name='store')
+@click.option('-n', '--name', metavar='', required=True, help='Unicorn node.')
+@click.option('-e', '--event', metavar='', required=True, help='Event name.')
+@click.option('-v', '--value', metavar='', required=True, default=30.0, help='Seconds.')
+@with_options
+def timeouts_store(name, event, value, **kwargs):
+    ctx = Context(**kwargs)
+    ctx.execute_action('timeouts:store', **{
+        'configuration_service': ctx.repo.create_secure_service('unicorn'),
+        'name': name,
+        'value': value,
+        'event': event,
+    })
+
+
+@timeouts_group.command(name='remove')
+@click.option('-n', '--name', metavar='', required=True, help='Unicorn node.')
+@click.option('-e', '--event', metavar='', required=True, help='Event name.')
+@with_options
+def timeouts_remove(name, event, **kwargs):
+    ctx = Context(**kwargs)
+    ctx.execute_action('timeouts:remove', **{
+        'configuration_service': ctx.repo.create_secure_service('unicorn'),
+        'name': name,
+        'event': event,
+    })
+
+
+@timeouts_group.command(name='view')
+@click.option('-n', '--name', metavar='', required=True, help='Unicorn node.')
+@with_options
+def timeouts_view(name, **kwargs):
+    ctx = Context(**kwargs)
+    ctx.execute_action('timeouts:view', **{
+        'configuration_service': ctx.repo.create_secure_service('unicorn'),
+        'name': name,
+    })
+
+
+@timeouts_group.command(name='drop')
+@click.option('-n', '--name', metavar='', required=True, help='Unicorn node.')
+@with_options
+def timeouts_drop(name, **kwargs):
+    ctx = Context(**kwargs)
+    ctx.execute_action('timeouts:drop', **{
+        'configuration_service': ctx.repo.create_secure_service('unicorn'),
+        'name': name,
+    })
+
+
+@logging_group.command(name='list_loggers')
+@with_options
+def logging_list_loggers(**kwargs):
+    """
+    List all registered logger names.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('logging:list_loggers', **{
+        'logging_service': ctx.repo.create_secure_service('logging'),
+    })
+
+
+@logging_group.command(name='set_filter')
+@click.option('-n', '--name', metavar='', required=True, help='Logger name.')
+@click.option('--filter_def', metavar='', required=True, help='Filter definition.')
+@click.option('--ttl', metavar='', required=True, help='TTL.')
+@with_options
+def logging_set_filter(name, filter_def, ttl, **kwargs):
+    """
+    Set local filter.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('logging:set_filter', **{
+        'logging_service': ctx.repo.create_secure_service('logging'),
+        'logger_name': name,
+        'filter_def': filter_def,
+        'ttl': ttl,
+    })
+
+
+@logging_group.command(name='remove_filter')
+@click.option('-i', '--filter-id', metavar='', required=True, help='Filter id.')
+@with_options
+def logging_remove_filter(filter_id, **kwargs):
+    """
+    Remove filter by filter id.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('logging:remove_filter', **{
+        'logging_service': ctx.repo.create_secure_service('logging'),
+        'filter_id': filter_id,
+    })
+
+
+@logging_group.command(name='list_filters')
+@with_options
+def logging_list_filters(**kwargs):
+    """
+    List all available filters.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('logging:list_filters', **{
+        'logging_service': ctx.repo.create_secure_service('logging'),
+    })
+
+
+@logging_group.command(name='set_cluster_filter')
+@click.option('-n', '--name', metavar='', required=True, help='Logger name.')
+@click.option('--filter_def', metavar='', required=True, help='Filter definition.')
+@with_options
+def logging_set_cluster_filter(name, filter_def, **kwargs):
+    """
+    Set cluster-wide filter.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('logging:set_cluster_filter', **{
+        'logging_service': ctx.repo.create_secure_service('logging'),
+        'logger_name': name,
+        'filter_def': filter_def,
+    })
 
 cli = click.CommandCollection(sources=[tools])

@@ -137,8 +137,8 @@ class RuntimeMetrics(object):
     @coroutine
     def execute(self):
         channel = yield self._metrics.fetch()
-        result = yield channel.rx.get()
-        raise gen.Return(result)
+        metrics = yield channel.rx.get()
+        raise gen.Return(metrics)
 
 
 class NodeInfo(Node):

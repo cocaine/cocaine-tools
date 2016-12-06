@@ -1,5 +1,4 @@
-click
+click >= 5.0
 cocaine>=0.12.6.0,<0.13
-opster>=4.0
 tornado>=4.3,<5.0
 msgpack_python
