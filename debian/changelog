@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.16) unstable; urgency=low
+
+  * [Tools] Misprint fix ("runtime" -> "metrics").
+
+ -- Anton Matveenko <antmat@me.com>  Tue, 6 Dec 2016 15:31:29 +0300
+
 cocaine-tools (0.12.12.15) unstable; urgency=low
 
   * [Tools] Use new metrics service instead of old runtime.
