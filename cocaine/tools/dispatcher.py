@@ -220,7 +220,7 @@ def metrics(options):
     """Show services metrics
     """
     options.executor.executeAction('metrics', **{
-        'runtime': options.getService('metrics'),
+        'metrics': options.getService('metrics'),
     })
 
 
