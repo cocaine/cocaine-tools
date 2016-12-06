@@ -1,3 +1,11 @@
+cocaine-tools (0.12.12.17) UNRELEASED; urgency=low
+
+  * [Tools] Secure wrapper for services.
+  * [Tools] Plugin system for authorization.
+  * [Tools] Migrate from opster to click.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 06 Dec 2016 17:04:03 +0300
+
 cocaine-tools (0.12.12.16) unstable; urgency=low
 
   * [Tools] Misprint fix ("runtime" -> "metrics").
