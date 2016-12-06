@@ -1,5 +1,5 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print (get_python_lib())")}
-Name:		cocaine-tools	
+Name:		cocaine-tools
 Version:	0.11.5.0
 Release:	1%{?dist}
 Summary:	Cocaine - Toolset
@@ -16,7 +16,7 @@ BuildRequires:	python-setuptools
 
 Requires:	cocaine-framework-python >= 0.11.1.0
 Requires:	python-msgpack
-Requires:	python-opster >= 4.0
+Requires:	python-click >= 5.0
 Requires:   python-tornado >= 3.1
 
 %description

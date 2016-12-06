@@ -16,7 +16,7 @@ Package: cocaine-v12-tools
 Architecture: any
 Depends: ${misc:Depends},
  cocaine-v12-framework-python (>= 0.12.6.0),
- python-opster (>= 4.0),
+ python-click (>= 5.0),
  python-tornado (>= 4.3),
  python (>= 2.7),
 XB-Python-Version: >= 2.7
