@@ -33,4 +33,3 @@ class TVM(SecurePlugin):
 
     def _make_header(self, ticket):
         return '{} {}'.format(self.ty(), ticket)
-

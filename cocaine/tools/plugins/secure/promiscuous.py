@@ -15,4 +15,3 @@ class Promiscuous(SecurePlugin):
     @coroutine
     def fetch_token(self):
         raise gen.Return('')
-
