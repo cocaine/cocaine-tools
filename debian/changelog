@@ -1,4 +1,4 @@
-cocaine-tools (0.12.12.18) unstable; urgency=low
+cocaine-tools (0.12.12.18) UNRELEASED; urgency=low
 
   * [Tools] Tracing view no longer requires name option.
 
