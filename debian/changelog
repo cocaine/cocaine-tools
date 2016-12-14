@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.18) UNRELEASED; urgency=low
+
+  * [Tools] Tracing view no longer requires name option.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 14 Dec 2016 17:55:22 +0300
+
 cocaine-tools (0.12.12.17) unstable; urgency=low
 
   * [Tools] Secure wrapper for services.
