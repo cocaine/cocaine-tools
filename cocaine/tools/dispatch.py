@@ -367,7 +367,7 @@ def info(name, m, p, b, w, **kwargs):
     })
 
 
-@tools.group()
+@tools.group(name='app')
 def app_group():
     """
     Application commands.
