@@ -415,7 +415,7 @@ def tracing_group():
     pass
 
 
-@tools.group(name='tracing')
+@tools.group(name='logging')
 def logging_group():
     """
     Dynamic logging filtering support.
@@ -423,7 +423,7 @@ def logging_group():
     pass
 
 
-@tools.group(name='tracing')
+@tools.group(name='timeouts')
 def timeouts_group():
     """
     Configurable timeout for applications support.
@@ -1254,7 +1254,7 @@ def tracing_remove(name, **kwargs):
 
 
 @tracing_group.command(name='view')
-@click.option('-n', '--name', metavar='', required=True, help='Unicorn node.')
+@click.option('-n', '--name', metavar='', help='Unicorn node.')
 @with_options
 def tracing_view(name, **kwargs):
     ctx = Context(**kwargs)
