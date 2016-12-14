@@ -1,4 +1,4 @@
-cocaine-tools (0.12.12.17) UNRELEASED; urgency=low
+cocaine-tools (0.12.12.17) unstable; urgency=low
 
   * [Tools] Secure wrapper for services.
   * [Tools] Plugin system for authorization.
