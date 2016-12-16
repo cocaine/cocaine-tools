@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.19) unstable; urgency=low
+
+  * [Tools] Fixed `profile upload` and `app restart`.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 16 Dec 2016 18:02:50 +0300
+
 cocaine-tools (0.12.12.18) unstable; urgency=low
 
   * [Tools] Tracing view no longer requires name option.
