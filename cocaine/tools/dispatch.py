@@ -649,7 +649,7 @@ def app_stop(name, **kwargs):
 @click.option('-n', '--name', metavar='', help='Application name.')
 @click.option('-r', '--profile', metavar='', help='Profile name.')
 @with_options
-def app_restart(name, prof, **kwargs):
+def app_restart(name, profile, **kwargs):
     """
     Restart application.
 
@@ -662,7 +662,7 @@ def app_restart(name, prof, **kwargs):
         'node': ctx.repo.create_secure_service('node'),
         'locator': ctx.locator,
         'name': name,
-        'profile': prof
+        'profile': profile,
     })
 
 
@@ -710,7 +710,7 @@ def profile_view(name, **kwargs):
 @click.option('-n', '--name', metavar='', required=True, help='Profile name.')
 @click.option('-r', '--profile', metavar='', required=True, help='Path to profile.')
 @with_options
-def profile_upload(name, prof, **kwargs):
+def profile_upload(name, profile, **kwargs):
     """
     Upload profile into the storage.
     """
@@ -718,7 +718,7 @@ def profile_upload(name, prof, **kwargs):
     ctx.execute_action('profile:upload', **{
         'storage': ctx.repo.create_secure_service('storage'),
         'name': name,
-        'profile': prof,
+        'profile': profile,
     })
 
 
