@@ -592,7 +592,7 @@ def app_remove(name, **kwargs):
     """
     ctx = Context(**kwargs)
     ctx.execute_action('app:remove', **{
-        'node': ctx.repo.create_secure_service('storage'),
+        'storage': ctx.repo.create_secure_service('storage'),
         'name': name,
     })
 
