@@ -6,6 +6,7 @@ import logging
 import os
 
 import click
+from click import Choice
 import collections
 import six
 import yaml
@@ -432,8 +433,8 @@ def timeouts_group():
 
 
 @tools.command()
-@click.option('--ty', default='plain', type=click.Choice(['plain', 'json']), help='Output type.')
-@click.option('--query', metavar='', help='Filtering query.')
+@click.option('--type', 'ty', default='plain', type=Choice(['plain', 'json']), help='Output type.')
+@click.option('--query', help='Filtering query.')
 @click.option('--query-type', default='mql', type=click.Choice(['mql', 'ast']), help='Query type.')
 @with_options
 def metrics(ty, query, query_type, **kwargs):
