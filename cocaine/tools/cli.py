@@ -31,7 +31,8 @@ from tornado.ioloop import IOLoop
 from cocaine.exceptions import ChokeEvent, CocaineError
 from cocaine.decorators import coroutine
 from cocaine.tools import log, interactive
-from cocaine.tools.actions import common, app, profile, runlist, crashlog, group, tracing, timeouts, logging
+from cocaine.tools.actions import common, app, profile, runlist, crashlog, group, tracing, \
+    timeouts, logs
 from cocaine.tools.error import ToolsError
 
 
@@ -188,11 +189,11 @@ NG_ACTIONS = {
     'timeouts:remove': ToolHandler(timeouts.TimeoutsConfigRemove),
     'timeouts:drop': ToolHandler(timeouts.TimeoutsConfigDrop),
 
-    'logging:list_loggers': JsonToolHandler(logging.LoggingConfigListLoggers),
-    'logging:set_filter': JsonToolHandler(logging.LoggingConfigSetFilter),
-    'logging:remove_filter': JsonToolHandler(logging.LoggingConfigRemoveFilter),
-    'logging:list_filters': JsonToolHandler(logging.LoggingConfigListFilters),
-    'logging:set_cluster_filter': JsonToolHandler(logging.LoggingConfigSetClusterFilter),
+    'logging:list_loggers': JsonToolHandler(logs.LoggingConfigListLoggers),
+    'logging:set_filter': JsonToolHandler(logs.LoggingConfigSetFilter),
+    'logging:remove_filter': JsonToolHandler(logs.LoggingConfigRemoveFilter),
+    'logging:list_filters': JsonToolHandler(logs.LoggingConfigListFilters),
+    'logging:set_cluster_filter': JsonToolHandler(logs.LoggingConfigSetClusterFilter),
 }
 
 
