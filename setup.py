@@ -63,6 +63,7 @@ setup(
         "cocaine.proxy",
         "cocaine.tools",
         "cocaine.tools.actions",
+        "cocaine.tools.actions.mql",
         "cocaine.tools.helpers",
         "cocaine.tools.interactive",
         "cocaine.tools.plugins",
