@@ -1,3 +1,4 @@
+import json
 import logging
 
 log = logging.getLogger('cocaine.tools')
@@ -181,5 +182,5 @@ def tokenize(query):
 def compile_query(query):
     expr = Parser(tokenize(query)).expr()
     tree = expr.visit()
-    log.debug('AST: %s', tree)
+    log.debug('AST: %s', json.dumps(tree))
     return tree
