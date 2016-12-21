@@ -7,8 +7,19 @@ log = logging.getLogger('cocaine.tools')
 #
 # EOF (end-of-file) token is used to indicate that there is no more input left for lexical
 # analysis.
-LITERAL, FUNCTION, AND, OR, EQ, DOT, COMMA, LPAREN, RPAREN, EOF = (
-    'LITERAL', 'FUNCTION', 'AND', 'OR', 'EQ', 'DOT', 'COMMA', '(', ')', 'EOF'
+LITERAL, NUMBER, FUNCTION, AND, OR, EQ, GE, DOT, COMMA, LPAREN, RPAREN, EOF = (
+    'LITERAL',
+    'NUMBER',
+    'FUNCTION',
+    'AND',
+    'OR',
+    'EQ',
+    'GE',
+    'DOT',
+    'COMMA',
+    'LPAREN',
+    'RPAREN',
+    'EOF',
 )
 
 OPERATORS = {
@@ -18,7 +29,11 @@ OPERATORS = {
     (AND, '&&'),
     (OR, '||'),
     (EQ, '=='),
+    (GE, '>='),
     (FUNCTION, 'contains'),
+    (FUNCTION, 'name'),
+    (FUNCTION, 'type'),
+    (FUNCTION, 'tag'),
 }
 
 
@@ -44,32 +59,51 @@ class Token(object):
 
 class LiteralToken(Token):
     def __init__(self, value):
-        if not value.isalnum():
-            raise SyntaxError('Invalid literal token')
-        super(LiteralToken, self).__init__(LITERAL, value)
+        try:
+            super(LiteralToken, self).__init__(NUMBER, float(value))
+        except ValueError:
+            if not value.isalnum():
+                raise SyntaxError('Invalid literal token')
+            super(LiteralToken, self).__init__(LITERAL, value)
 
 
 class AST(object):
     pass
 
 
-class BinOp(AST):
-    def __init__(self, op, left, right):
-        self.token = self.op = op
-        self.left = left
-        self.right = right
-
-    def __repr__(self):
-        return 'BinOp(op: {}, left: {}, right: {})'.format(self.op, self.left, self.right)
+class Const(AST):
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
 
     def visit(self):
-        if self.op.value == '&&':
-            op = 'and'
-        elif self.op.value == '||':
-            op = 'or'
-        else:
-            op = 'and'
-        return {op: [self.left.visit(), self.right.visit()]}
+        return {'const': [self.value]}
+
+    def __repr__(self):
+        return 'Num(value: {})'.format(self.value)
+
+
+class Op(AST):
+    def __init__(self, op, children):
+        self.token = self.op = op
+        self._children = children
+
+        self._replace = {
+            '&&': 'and',
+            '||': 'or',
+            '==': 'eq',
+            '!=': 'ne',
+            '<=': 'le',
+            '>=': 'ge',
+            '<': 'lt',
+            '>': 'gt',
+        }
+
+    def __repr__(self):
+        return 'Op(op: {}, children: {})'.format(self.op, self._children)
+
+    def visit(self):
+        return {self._replace.get(self.op.value, self.op.value): [c.visit() for c in self._children]}
 
 
 class Func(AST):
@@ -88,6 +122,7 @@ class Parser(object):
     def __init__(self, lexer):
         self.lexer = lexer
         self.current_token = next(self.lexer)
+        log.debug('token: %s', self.current_token)
 
     @staticmethod
     def error():
@@ -96,20 +131,35 @@ class Parser(object):
     def eat(self, token_type):
         if self.current_token.type == token_type:
             self.current_token = next(self.lexer)
+            log.debug('token: %s', self.current_token)
             return self.current_token
         else:
             self.error()
 
     def term(self):
+        node = self.factor()
+
+        while True:
+            token = self.current_token
+            if token.type == EQ:
+                self.eat(EQ)
+            elif token.type == GE:
+                self.eat(GE)
+            else:
+                break
+            node = Op(op=token, children=[node, self.factor()])
+        return node
+
+    def factor(self):
         token = self.current_token
         if token.type == FUNCTION:
             return self.func(token)
+        elif token.type == NUMBER:
+            self.eat(NUMBER)
+            return Const(token)
         elif token.type == LITERAL:
-            args = [self.current_token]
             self.eat(LITERAL)
-            args.append(self.eat(EQ))
-            self.eat(LITERAL)
-            return Func('eq', args)
+            return Const(token)
         elif token.type == LPAREN:
             self.eat(LPAREN)
             node = self.expr()
@@ -121,22 +171,23 @@ class Parser(object):
         self.eat(LPAREN)
         args = []
         while True:
-            args.append(self.current_token)
-            token = self.eat(LITERAL)
-            if token.type == COMMA:
-                self.eat(COMMA)
-            elif token.type == RPAREN:
+            if self.current_token.type == RPAREN:
                 self.eat(RPAREN)
                 break
-        return Func(name.value, args)
+            args.append(self.expr())
+            if self.current_token.type == COMMA:
+                self.eat(COMMA)
+            else:
+                self.eat(RPAREN)
+                break
+        return Op(name, args)
 
     def expr(self):
         """
-        expr    ::= term ((&& | ||) term)*
-        term    ::= func | eq | ne | LPAREN expr RPAREN
-        func    ::= lit LPAREN lit (,lit)* RPAREN
-        eq      ::= lit EQ lit
-        ne      ::= lit NE lit
+        expr    ::= term ((AND | OR) term)*
+        term    ::= factor ((EQ | NE) factor)*
+        factor  ::= func | LPAREN expr RPAREN
+        func    ::= lit LPAREN expr (,expr)* RPAREN
         lit     ::= alphanum
         """
         node = self.term()
@@ -149,7 +200,7 @@ class Parser(object):
                 self.eat(OR)
             else:
                 break
-            node = BinOp(left=node, op=token, right=self.term())
+            node = Op(op=token, children=[node, self.term()])
         return node
 
     def parse(self):
@@ -180,7 +231,8 @@ def tokenize(query):
 
 
 def compile_query(query):
+    log.debug('tokens: %s', list(tokenize(query)))
     expr = Parser(tokenize(query)).expr()
     tree = expr.visit()
-    log.debug('AST: %s', json.dumps(tree))
+    log.debug('AST: %s', json.dumps(tree, indent=4))
     return tree
