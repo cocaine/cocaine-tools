@@ -274,7 +274,21 @@ class Context(object):
         return self._executor.execute_action(__name, **kwargs)
 
 
-@click.group()
+ALIASES = {
+    'i': 'info',
+}
+
+
+class AliasedGroup(click.Group):
+    def get_command(self, ctx, cmd_name):
+        cmd = ALIASES.get(cmd_name)
+        if cmd is None:
+            return click.Group.get_command(self, ctx, cmd_name)
+        else:
+            return click.Group.get_command(self, ctx, cmd)
+
+
+@click.group(cls=AliasedGroup)
 def tools():
     pass
 
