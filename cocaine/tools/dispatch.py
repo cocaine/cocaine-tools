@@ -549,7 +549,7 @@ def app_view(name, **kwargs):
 
 
 @app_group.command(name='upload')
-@click.argument('path', type=click.Path(exists=True))
+@click.argument('path', default=os.path.curdir, type=click.Path(exists=True))
 @click.option('-n', '--name', metavar='', help='Application name.')
 @click.option('--manifest', metavar='', help='Manifest file name.')
 @click.option('--package', metavar='', help='Path to the application archive.')
