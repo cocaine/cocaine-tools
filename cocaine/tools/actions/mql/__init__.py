@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 
 log = logging.getLogger('cocaine.tools')
 
@@ -62,7 +63,7 @@ class LiteralToken(Token):
         try:
             super(LiteralToken, self).__init__(NUMBER, float(value))
         except ValueError:
-            if not value.isalnum():
+            if not re.match(r'(\w|\.)+', value):
                 raise SyntaxError('Invalid literal token')
             super(LiteralToken, self).__init__(LITERAL, value)
 
@@ -186,7 +187,7 @@ class Parser(object):
         """
         expr    ::= term ((AND | OR) term)*
         term    ::= factor ((EQ | NE) factor)*
-        factor  ::= func | LPAREN expr RPAREN
+        factor  ::= func | const | LPAREN expr RPAREN
         func    ::= lit LPAREN expr (,expr)* RPAREN
         lit     ::= alphanum
         """

@@ -439,7 +439,63 @@ def timeouts_group():
 @with_options
 def metrics(ty, query, query_type, **kwargs):
     """
-    Show collected metrics.
+    Outputs runtime metrics collected from cocaine-runtime and its services.
+
+    This command shows runtime metrics collected from cocaine-runtime and its services during their
+    lifetime.
+    There are four kind of metrics available: gauges, counters, meters and timers.
+
+    \b
+    - Gauges   - an instantaneous measurement of a value.
+    - Counters - just a gauge for an atomic integer instance.
+    - Meters   - measures the rate of events over time (e.g., "requests per second"). In addition
+      to the mean rate, meters also track 1-, 5-, and 15-minute moving averages.
+    - Timers   - measures both the rate that a particular piece of code is called and the
+      distribution of its duration.
+
+
+    Every metric in has a unique name, which is just a dotted-name string like "connections.count"
+    or "node.queue.size".
+
+    An output type can be configured using --type option. The default one results in plain
+    formatting where there is only one depth level.
+
+    As an alternative you can expanded the JSON tree by specifying --type=json option. The depth of
+    the result tree depends on metric name which is split by dot symbol.
+
+    The result output will be probably too large without any customization. To reduce this output
+    there are custom filters, which can be specified using --query option. Technically it's a
+    special metrics query language (MQL) which supports the following operations and functions:
+
+    \b
+    - contains(<expr>, <expr>) - checks whether the result of second expression contains in the
+      result of first expression. These expressions must resolve in strings. An output type of this
+      function is bool.
+    - name() - resolves in metric name.
+    - type() - resolves in metric type (counter, meter, etc.).
+    - tag(<expr>) - extracts custom metric tag and results in string.
+    - && - combines several expressions in one, which applies when all of them apply.
+    - || - combines several expressions in one, which applies when any of them apply.
+    - == - compares two expressions for equality.
+    - != - compares two expressions for an non-equality.
+    - Also string literals (alphanumeric with dots) can be used as an expressions, for
+      example "name() == locator.connections.accepted".
+
+    Priorities can be specified using braces as in usual math expressions.
+
+    The grammar for this query language is:
+
+    \b
+    expr    ::= term ((AND | OR) term)*
+    term    ::= factor ((EQ | NE) factor)*
+    factor  ::= func | literal | number | LPAREN expr RPAREN
+    func    ::= literal LPAREN expr (,expr)* RPAREN
+    literal ::= alphanum | .
+    number  ::= <floating point number>
+
+    An example of the query, which returns all meters (for all services) and the number of accepted
+    connections for the Locator
+    service: "contains(type(), meter) || name() == locator.connections.accepted".
     """
     ctx = Context(**kwargs)
     ctx.execute_action('metrics', **{
