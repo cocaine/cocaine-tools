@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.25) unstable; urgency=low
+
+  * [Tools] Fixed default path for upload tools again.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 23 Dec 2016 22:24:23 +0300
+
 cocaine-tools (0.12.12.24) unstable; urgency=low
 
   * [Tools] Fixed default path for upload tools.
