@@ -63,7 +63,7 @@ class LiteralToken(Token):
         try:
             super(LiteralToken, self).__init__(NUMBER, float(value))
         except ValueError:
-            if not re.match(r'(\w|\.)+', value):
+            if not re.match(r'([\w.-_])+', value):
                 raise SyntaxError('Invalid literal token')
             super(LiteralToken, self).__init__(LITERAL, value)
 
