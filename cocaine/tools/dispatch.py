@@ -29,6 +29,12 @@ CONFIG_PATHS = [CONFIG_GLOB, CONFIG_USER]
 log = logging.getLogger('cocaine.tools')
 
 
+def _print_experimental_warning():
+    click.echo('')
+    click.echo('THIS COMMAND IS EXPERIMENTAL. DO NOT DEPEND ON IT IN YOUR SCRIPTS')
+    click.echo('')
+
+
 class SecureServiceError(CocaineError):
     pass
 
@@ -444,6 +450,22 @@ def timeouts_group():
     Configurable timeout for applications support.
     """
     pass
+
+
+@tools.group(name='auth')
+def auth_group():
+    """
+    Authorization tokens management.
+    """
+    _print_experimental_warning()
+
+
+@tools.group(name='access')
+def access_group():
+    """
+    ACL management for services.
+    """
+    _print_experimental_warning()
 
 
 @tools.command()
@@ -1460,6 +1482,119 @@ def logging_set_cluster_filter(name, filter_def, **kwargs):
         'logging_service': ctx.repo.create_secure_service('logging'),
         'logger_name': name,
         'filter_def': filter_def,
+    })
+
+
+@auth_group.command(name='list')
+@with_options
+def auth_list(**kwargs):
+    """
+    Shows available authorization groups.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('auth:group:list', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+    })
+
+
+@auth_group.command(name='create')
+@click.option('-n', '--name', metavar='', required=True, help='Group name.')
+@click.option('--token', metavar='', required=True, help='Secure token.')
+@click.option('--force', metavar='', is_flag=True, default=False, help='Override if exists.')
+@with_options
+def auth_create(name, token, force, **kwargs):
+    """
+    Creates an authorization group.
+
+    The group sets a named association between an authorization token and the list of services. This
+    is useful for group of applications that want to share a single token.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('auth:group:create', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'token': token,
+        'force': force,
+    })
+
+
+@auth_group.command(name='edit')
+@click.option('-n', '--name', metavar='', required=True, help='Group name.')
+@with_options
+def auth_edit(name, **kwargs):
+    """
+    Interactively edits an authorization group.
+    """
+    ctx = Context(**kwargs)
+    ctx.timeout = None
+    ctx.execute_action('auth:group:edit', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@auth_group.command(name='rm')
+@click.option('-n', '--name', metavar='', required=True, help='Group name.')
+@click.option('--drop/--no-drop', metavar='', default=False, help='Remove members.')
+@with_options
+def auth_remove(name, drop, **kwargs):
+    """
+    Removes an authorization group.
+
+    Removes an authorization group with or without excluding associated members depending on --drop
+    flag (disabled by default).
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('auth:group:remove', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'drop': drop,
+    })
+
+
+@auth_group.command(name='view')
+@click.option('-n', '--name', metavar='', required=True, help='Group name.')
+@with_options
+def auth_view(name, **kwargs):
+    """
+    Shows an authorization group's content.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('auth:group:view', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@auth_group.command(name='add')
+@click.option('-n', '--name', metavar='', required=True, help='Group name.')
+@click.option('--service', metavar='', required=True, help='Service name.')
+@with_options
+def auth_add(name, service, **kwargs):
+    """
+    Adds a member of an authorization group.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('auth:group:members:add', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'service': service,
+    })
+
+
+@auth_group.command(name='exclude')
+@click.option('-n', '--name', metavar='', required=True, help='Group name.')
+@click.option('--service', metavar='', required=True, help='Service name.')
+@with_options
+def auth_exclude(name, service, **kwargs):
+    """
+    Excludes a member of an authorization group.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('auth:group:members:exclude', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'service': service,
     })
 
 

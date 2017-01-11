@@ -25,12 +25,12 @@ import subprocess
 import tempfile
 
 from cocaine.decorators import coroutine
+from cocaine.tools.actions import auth
 from cocaine.tools.actions import group
 from cocaine.tools.actions import profile
 from cocaine.tools.actions import runlist
 from cocaine.tools.helpers.editor import locate_editor
 from cocaine.tools.printer import printer
-
 
 __author__ = 'Evgeny Safronov <division494@gmail.com>'
 
@@ -115,3 +115,16 @@ class GroupEditor(BaseEditor, group.Specific):
 
     def upload(self, data):
         return group.Create(self.storage, self.name, data).execute()
+
+
+class Editor(BaseEditor):
+    def __init__(self, storage, name):
+        super(Editor, self).__init__()
+        self.name = name
+        self._storage = storage
+
+    def view(self):
+        return auth.View(self._storage, self.name).execute()
+
+    def upload(self, data):
+        return auth.Create(self._storage, self.name, data).execute()
