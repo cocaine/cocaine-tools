@@ -66,6 +66,12 @@ class CocaineConfigReader:
         return msgpack.dumps(content)
 
 
+class Action(object):
+    @coroutine
+    def execute(self):
+        raise NotImplementedError
+
+
 class Storage(object):
     def __init__(self, storage=None):
         self.storage = storage
