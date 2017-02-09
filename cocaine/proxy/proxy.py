@@ -641,13 +641,16 @@ class CocaineProxy(object):
         else:
             trace = None
 
+        headers = {}
+        if 'authorization' in request.headers:
+            headers['authorization'] = request.headers['authorization']
+
         while attempts > 0:
-            headers = {}
             body_parts = []
             attempts -= 1
             try:
                 request.logger.debug("%s: enqueue event (attempt %d)", app.id, attempts)
-                channel = yield app.enqueue(event, trace=trace)
+                channel = yield app.enqueue(event, trace=trace, **headers)
                 request.logger.debug("%s: send event data (attempt %d)", app.id, attempts)
                 yield channel.tx.write(msgpack.packb(data), trace=trace)
                 yield channel.tx.close(trace=trace)
