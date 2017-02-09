@@ -47,6 +47,9 @@ class JSONRPC(IPlugin):
         name, method = payload['method'].split('.', 2)
         args = payload['params']
         chunks = payload.get('chunks', [])
+        headers = {}
+        if 'authorization' in request.headers:
+            headers['authorization'] = request.headers['authorization']
 
         try:
             service = yield self.proxy.get_service(name, request)
@@ -67,7 +70,7 @@ class JSONRPC(IPlugin):
         try:
             for match, handle in self._protocols:
                 if match(tx_tree, rx_tree):
-                    result = yield handle(service, method, args, chunks)
+                    result = yield handle(service, method, args, chunks, **headers)
                     break
             else:
                 JSONRPC._send_400_error(request, -32000, 'Protocol type is not supported.')
@@ -87,19 +90,19 @@ class JSONRPC(IPlugin):
         fill_response_in(request, 200, 'OK', json.dumps(body), headers)
 
     @gen.coroutine
-    def _handle_mute(self, service, method, args, _):
-        yield getattr(service, method)(*args)
+    def _handle_mute(self, service, method, args, _, **headers):
+        yield getattr(service, method)(*args, **headers)
         return
 
     @gen.coroutine
-    def _handle_primitive(self, service, method, args, _):
-        channel = yield getattr(service, method)(*args)
+    def _handle_primitive(self, service, method, args, _, **headers):
+        channel = yield getattr(service, method)(*args, **headers)
         result = yield channel.rx.get()
         raise gen.Return(result)
 
     @gen.coroutine
-    def _handle_streaming(self, service, method, args, chunks):
-        channel = yield getattr(service, method)(*args)
+    def _handle_streaming(self, service, method, args, chunks, **headers):
+        channel = yield getattr(service, method)(*args, **headers)
         for name, data in chunks:
             getattr(channel.tx, name)(*data)
 

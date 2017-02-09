@@ -293,7 +293,7 @@ class CocaineProxy(object):
     @gen.coroutine
     def on_routing_groups_update(self):
         uid = gen_uid()
-        self.logger.info("generate new uniqque id %s", uid)
+        self.logger.info("generate new unique id %s", uid)
         maximum_timeout = 32  # sec
         timeout = 1  # sec
         while True:
@@ -331,7 +331,7 @@ class CocaineProxy(object):
                             self.migrate_from_cache_to_inactive(app, group)
             except Exception as err:
                 timeout = min(timeout << 1, maximum_timeout)
-                self.logger.error("error occured while watching for group updates %s. Sleep %d",
+                self.logger.error("error occurred while watching for group updates %s. Sleep %d",
                                   err, timeout)
                 yield gen.sleep(timeout)
 
@@ -383,7 +383,7 @@ class CocaineProxy(object):
             except Exception as err:
                 timeout = min(timeout << 1, maximum_timeout)
                 listing_version = 0
-                self.logger.error("error occured while subscribing for sampling updates %s. Sleep %d",
+                self.logger.error("error occurred while subscribing for sampling updates %s. Sleep %d",
                                   err, timeout)
                 yield gen.sleep(timeout)
 
@@ -433,7 +433,7 @@ class CocaineProxy(object):
             except Exception as err:
                 timeout = min(timeout << 1, maximum_timeout)
                 listing_version = 0
-                self.logger.error("error occured while subscribing for sampling updates %s. Sleep %d",
+                self.logger.error("error occurred while subscribing for sampling updates %s. Sleep %d",
                                   err, timeout)
                 yield gen.sleep(timeout)
 
@@ -641,13 +641,16 @@ class CocaineProxy(object):
         else:
             trace = None
 
+        headers = {}
+        if 'authorization' in request.headers:
+            headers['authorization'] = request.headers['authorization']
+
         while attempts > 0:
-            headers = {}
             body_parts = []
             attempts -= 1
             try:
                 request.logger.debug("%s: enqueue event (attempt %d)", app.id, attempts)
-                channel = yield app.enqueue(event, trace=trace)
+                channel = yield app.enqueue(event, trace=trace, **headers)
                 request.logger.debug("%s: send event data (attempt %d)", app.id, attempts)
                 yield channel.tx.write(msgpack.packb(data), trace=trace)
                 yield channel.tx.close(trace=trace)
