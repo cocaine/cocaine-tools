@@ -115,10 +115,12 @@ NO_SUCH_APP = httplib.SERVICE_UNAVAILABLE
 X_COCAINE_HTTP_PROTO_VERSION = "X-Cocaine-HTTP-Proto-Version"
 
 
-def proxy_error_headers():
-    return httputil.HTTPHeaders({
-        "X-Error-Generated-By": "Cocaine-Tornado-Proxy",
-    })
+def proxy_error_headers(name=None):
+    headers = {}
+    if name is not None:
+        headers['X-Cocaine-Application'] = name
+    headers["X-Error-Generated-By"] = "Cocaine-Tornado-Proxy"
+    return httputil.HTTPHeaders(headers)
 
 
 def generate_request_id(request):
@@ -575,7 +577,7 @@ class CocaineProxy(object):
         if app is None:
             message = "current application %s is unavailable" % name
             fill_response_in(request, NO_SUCH_APP, "No Such Application",
-                             message, proxy_error_headers())
+                             message, proxy_error_headers(name))
             return
 
         try:
@@ -584,7 +586,7 @@ class CocaineProxy(object):
             request.logger.exception("error during processing request %s", err)
             fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                              httplib.responses[httplib.INTERNAL_SERVER_ERROR],
-                             "UID %s: %s" % (request.traceid, str(err)), proxy_error_headers())
+                             "UID %s: %s" % (request.traceid, str(err)), proxy_error_headers(name))
 
         request.logger.info("exit from process")
 
@@ -688,7 +690,7 @@ class CocaineProxy(object):
                 message = "UID %s: application `%s` error: TimeoutError" % (request.traceid, name)
                 fill_response_in(request, httplib.GATEWAY_TIMEOUT,
                                  httplib.responses[httplib.GATEWAY_TIMEOUT],
-                                 message, proxy_error_headers())
+                                 message, proxy_error_headers(name))
 
             except (DisconnectionError, StreamClosedError) as err:
                 self.requests_disconnections += 1
@@ -701,7 +703,7 @@ class CocaineProxy(object):
                     fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                      httplib.responses[httplib.INTERNAL_SERVER_ERROR],
                                      "UID %s: Connection problem" % request.traceid,
-                                     proxy_error_headers())
+                                     proxy_error_headers(name))
                     return
 
                 # Seems on_close callback is not called in case of connecting through IPVS
@@ -721,7 +723,7 @@ class CocaineProxy(object):
                         message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
                         fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                          httplib.responses[httplib.INTERNAL_SERVER_ERROR],
-                                         message, proxy_error_headers())
+                                         message, proxy_error_headers(name))
                         return
 
                     request.logger.error("%s: unable to reconnect: %s (%d attempts left)",
@@ -748,16 +750,17 @@ class CocaineProxy(object):
                 message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                  httplib.responses[httplib.INTERNAL_SERVER_ERROR],
-                                 message, proxy_error_headers())
+                                 message, proxy_error_headers(name))
 
             except Exception as err:
                 request.logger.exception("%s: %s", app.id, err)
                 message = "UID %s: unknown `%s` error: %s" % (request.traceid, name, str(err))
                 fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
                                  httplib.responses[httplib.INTERNAL_SERVER_ERROR],
-                                 message, proxy_error_headers())
+                                 message, proxy_error_headers(name))
             else:
                 message = ''.join(body_parts)
+                headers['X-Cocaine-Application'] = name
                 fill_response_in(request, code,
                                  httplib.responses.get(code, httplib.OK),
                                  message, headers)
