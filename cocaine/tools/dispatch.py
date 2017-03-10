@@ -577,7 +577,7 @@ def app_view(name, **kwargs):
 @click.option('--package', metavar='', help='Path to the application archive.')
 @click.option('--docker_address', metavar='', help='Docker address.')
 @click.option('--registry', metavar='', help='Docker Registry address.')
-@click.option('--manifest_only', metavar='', default=False, help='Upload only manifest.')
+@click.option('--manifest-only', is_flag=True, metavar='', default=False, help='Upload only manifest.')
 @with_options
 def app_upload(path, name, manifest, package, docker_address, registry, manifest_only, **kwargs):
     """
