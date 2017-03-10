@@ -159,6 +159,7 @@ def context(func):
             else:
                 request.logger = NULLLOGGER  # pylint: disable=R0204
             request.traceid = traceid
+            request.tracebit = True
             request.logger.info("start request: %s %s %s", request.host, request.remote_ip, request.uri)
             yield func(self, request)
         finally:
@@ -564,7 +565,7 @@ class CocaineProxy(object):
             if tracing_chance < rolled_dice:
                 request.logger.info('stop tracing the request')
                 request.logger = NULLLOGGER
-                request.traceid = None
+                request.tracebit = False
 
         if self.sticky_header in request.headers:
             seed = request.headers.get(self.sticky_header)
@@ -643,7 +644,9 @@ class CocaineProxy(object):
         else:
             trace = None
 
-        headers = {}
+        headers = {
+            'trace_bit': '{:d}'.format(request.tracebit),
+        }
         if 'authorization' in request.headers:
             headers['authorization'] = request.headers['authorization']
 
