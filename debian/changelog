@@ -1,3 +1,10 @@
+cocaine-tools (0.12.12.30) unstable; urgency=low
+
+  * [Tools] Fixed cocaine-tool app upload --manifest-only flag for backward
+    compatibility.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 10 Mar 2017 19:04:57 +0300
+
 cocaine-tools (0.12.12.29) unstable; urgency=low
 
   * [Proxy] Trace bit support.
