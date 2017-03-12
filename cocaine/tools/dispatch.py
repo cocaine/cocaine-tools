@@ -1472,8 +1472,9 @@ def logging_list_filters(**kwargs):
 @logging_group.command(name='set_cluster_filter')
 @click.option('-n', '--name', metavar='', required=True, help='Logger name.')
 @click.option('--filter_def', metavar='', required=True, help='Filter definition.')
+@click.option('--ttl', metavar='', required=True, help='TTL.')
 @with_options
-def logging_set_cluster_filter(name, filter_def, **kwargs):
+def logging_set_cluster_filter(name, filter_def, ttl, **kwargs):
     """
     Set cluster-wide filter.
     """
@@ -1482,6 +1483,7 @@ def logging_set_cluster_filter(name, filter_def, **kwargs):
         'logging_service': ctx.repo.create_secure_service('logging'),
         'logger_name': name,
         'filter_def': filter_def,
+        'ttl': ttl,
     })
 
 

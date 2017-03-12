@@ -40,7 +40,8 @@ class LoggingConfigurator(object):
 class LoggingConfigListLoggers(LoggingConfigurator):
     @gen.coroutine
     def execute(self):
-        filters = yield (yield self.logging_service.list_loggers()).rx.get()
+        channel = yield self.logging_service.list_loggers()
+        filters = yield channel.rx.get()
         raise gen.Return({"loggers": filters})
 
 
@@ -67,7 +68,8 @@ class LoggingConfigSetFilter(LoggingConfigurator):
 
     @gen.coroutine
     def execute(self):
-        filters = yield (yield self.logging_service.set_filter(self.name, self.filter_def, self.ttl)).rx.get()
+        channel = yield self.logging_service.set_filter(self.name, self.filter_def, self.ttl)
+        filters = yield channel.rx.get()
         raise gen.Return(filters)
 
 
@@ -80,14 +82,16 @@ class LoggingConfigRemoveFilter(LoggingConfigurator):
 
     @gen.coroutine
     def execute(self):
-        filters = yield self.logging_service.remove_filter(self.filter_id)
+        channel = yield self.logging_service.remove_filter(self.filter_id)
+        filters = yield channel.rx.get()
         raise gen.Return(filters)
 
 
 class LoggingConfigListFilters(LoggingConfigurator):
     @gen.coroutine
     def execute(self):
-        filters = yield (yield self.logging_service.list_filters()).rx.get()
+        channel = yield self.logging_service.list_filters()
+        filters = yield channel.rx.get()
         ret = defaultdict(list)
         for logger_name, filter_def, filter_id, deadline in filters:
             ret[logger_name].append({"id": filter_id, "deadline_timestamp": deadline, "filter_definition": filter_def})
@@ -100,5 +104,6 @@ class LoggingConfigSetClusterFilter(LoggingConfigSetFilter):
 
     @gen.coroutine
     def execute(self):
-        filters = yield self.logging_service.set_cluster_filter(self.name, self.filter_def, self.ttl)
+        channel = yield self.logging_service.set_cluster_filter(self.name, self.filter_def, self.ttl)
+        filters = yield channel.rx.get()
         raise gen.Return(filters)
