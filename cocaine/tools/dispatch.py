@@ -258,8 +258,6 @@ class Context(object):
 
         self._repo.secure = self._loader.secure()
 
-        self._executor = Executor(timeout=timeout)
-
     @property
     def timeout(self):
         return self._timeout
@@ -277,7 +275,7 @@ class Context(object):
         return self._repo.create_service('locator')
 
     def execute_action(self, __name, **kwargs):
-        return self._executor.execute_action(__name, **kwargs)
+        return Executor(timeout=self.timeout).execute_action(__name, **kwargs)
 
 
 ALIASES = {
