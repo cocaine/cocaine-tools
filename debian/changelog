@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.33) unstable; urgency=low
+
+  * [Tools] fix finite timeouts for edit commands.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 17 Mar 2017 18:08:45 +0300
+
 cocaine-tools (0.12.12.32) unstable; urgency=low
 
   * [Tools] Fixed reconfigured infinite timeouts for edit tools.
