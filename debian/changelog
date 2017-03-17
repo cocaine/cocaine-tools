@@ -1,3 +1,9 @@
+cocaine-tools (0.12.12.32) unstable; urgency=low
+
+  * [Tools] Fixed reconfigured infinite timeouts for edit tools.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 15 Mar 2017 18:32:45 +0300
+
 cocaine-tools (0.12.12.31) unstable; urgency=low
 
   * [Tools] Make logging tools really work.
