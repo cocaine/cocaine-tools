@@ -190,7 +190,7 @@ class Restart(common.Node):
                 info = yield NodeInfo(self.node, self.locator, self.name).execute()
                 app_info = info['apps'][self.name]
                 if not isinstance(app_info, dict):
-                    raise ToolsError('Unable to determine a profile name from info: %s', app_info)
+                    raise ToolsError('Unable to determine a profile name from info: {0}'.format(app_info))
                 profile = app_info['profile']['name']
             try:
                 yield Stop(self.node, name=self.name).execute()
