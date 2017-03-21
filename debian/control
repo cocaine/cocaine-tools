@@ -18,6 +18,7 @@ Depends: ${misc:Depends},
  cocaine-v12-framework-python (>= 0.12.6.0),
  python-click (>= 5.0),
  python-yaml (>= 3.10),
+ python-cerberus (>= 0.9.1),
  python-tornado (>= 4.3),
  python (>= 2.7),
 XB-Python-Version: >= 2.7

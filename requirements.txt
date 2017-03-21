@@ -3,3 +3,4 @@ cocaine>=0.12.6.0,<0.13
 tornado>=4.3,<5.0
 msgpack_python
 pyyaml
+cerberus==0.9.1
