@@ -13,9 +13,10 @@ log = logging.getLogger(__name__)
 
 
 class TVM(SecurePlugin):
-    def __init__(self, repo, oauth):
+    def __init__(self, repo, client_id, client_secret):
         super(TVM, self).__init__(repo)
-        self._oauth = oauth
+        self._client_id = client_id
+        self._client_secret = client_secret
 
         endpoints = socket.getaddrinfo(socket.gethostname(), None)
         if len(endpoints) == 0:
@@ -29,13 +30,11 @@ class TVM(SecurePlugin):
 
     @coroutine
     def fetch_token(self):
-        channel = yield self._tvm.ticket('oauth', {
-            'type': 'oauth',
-            'userip': self._ip,
-            'oauth_token': self._oauth,
-        })
+        grant_type = 'client_credentials'
+
+        channel = yield self._tvm.ticket_full(self._client_id, self._client_secret, grant_type, {})
         ticket = yield channel.rx.get()
-        log.debug('exchanged OAUTH token with TVM ticket')
+        log.debug('exchanged client secret with TVM ticket')
         raise gen.Return(self._make_header(ticket))
 
     def _make_header(self, ticket):
