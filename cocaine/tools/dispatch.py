@@ -12,6 +12,7 @@ import six
 import yaml
 from tornado import gen
 from tornado.util import import_object
+from cerberus import Validator
 
 from cocaine.tools.cli import Executor
 
@@ -25,6 +26,9 @@ from .version import __version__
 CONFIG_GLOB = '/etc/cocaine/.cocaine/tools.yml'
 CONFIG_USER = '~/.cocaine/tools.yml'
 CONFIG_PATHS = [CONFIG_GLOB, CONFIG_USER]
+
+DEFAULT_LOCATOR_HOST = 'localhost'
+DEFAULT_LOCATOR_PORT = 10053
 
 log = logging.getLogger('cocaine.tools')
 
@@ -72,8 +76,8 @@ def set_verbosity(ctx, param, value):
 
 _global_options = [
     click.option('-v', count=True, callback=set_verbosity, help='Enable additional output.'),
-    click.option('--host', metavar='', default='localhost', help='Locator hostname.'),
-    click.option('--port', metavar='', default=10053, help='Locator port.'),
+    click.option('--host', metavar='', help='Locator hostname.'),
+    click.option('--port', metavar='', help='Locator port.'),
     click.option('--timeout', metavar='', default=20, help='Operation timeout.'),
 ]
 
@@ -156,8 +160,40 @@ class PooledServiceFactory(ServiceFactory):
 
 
 class Configurator(object):
+    SCHEMA = {
+        'locator': {
+            'type': 'dict',
+            'schema': {
+                'host': {
+                    'type': 'string',
+                },
+                'port': {
+                    'type': 'integer',
+                    'min': 0,
+                    'max': 65535,
+                }
+            }
+        },
+        'secure': {
+            'type': 'dict',
+            'schema': {
+                'mod': {
+                    'type': 'string',
+                    'allowed': ['TVM'],
+                },
+                'client_id': {
+                    'type': 'integer',
+                },
+                'client_secret': {
+                    'type': 'string',
+                }
+            }
+        }
+    }
+
     def __init__(self):
         self._config = {}
+        self._validator = Validator(self.SCHEMA)
 
     @property
     def config(self):
@@ -186,6 +222,13 @@ class Configurator(object):
                 used.append(filename)
                 self._config = Configurator._merge_dicts(self._config, config)
             log.info('loaded config(s) from %s', used)
+        self._validate()
+
+    def _validate(self):
+        self._validator.validate(self._config)
+
+        if self._validator.errors:
+            raise ValueError('failed to validate configuration file: {}'.format(self._validator.errors))
 
     @staticmethod
     def _merge_dicts(src, d):
@@ -244,12 +287,19 @@ class PluginLoader(object):
 
 class Context(object):
     def __init__(self, host, port, timeout, **kwargs):
-        self._endpoints = [(host, port)]
         self._timeout = timeout
         self._options = kwargs
 
         self._configurator = Configurator()
         self._configurator.update()
+
+        if host is None:
+            host = self._configurator.config.get('locator', {}).get('host', DEFAULT_LOCATOR_HOST)
+
+        if port is None:
+            port = self._configurator.config.get('locator', {}).get('port', DEFAULT_LOCATOR_PORT)
+
+        self._endpoints = [(host, int(port))]
 
         self._repo = PooledServiceFactory(endpoints=self._endpoints)
 
