@@ -26,6 +26,9 @@ CONFIG_GLOB = '/etc/cocaine/.cocaine/tools.yml'
 CONFIG_USER = '~/.cocaine/tools.yml'
 CONFIG_PATHS = [CONFIG_GLOB, CONFIG_USER]
 
+DEFAULT_LOCATOR_HOST = 'localhost'
+DEFAULT_LOCATOR_PORT = 10053
+
 log = logging.getLogger('cocaine.tools')
 
 
@@ -72,8 +75,8 @@ def set_verbosity(ctx, param, value):
 
 _global_options = [
     click.option('-v', count=True, callback=set_verbosity, help='Enable additional output.'),
-    click.option('--host', metavar='', default='localhost', help='Locator hostname.'),
-    click.option('--port', metavar='', default=10053, help='Locator port.'),
+    click.option('--host', metavar='', help='Locator hostname.'),
+    click.option('--port', metavar='', help='Locator port.'),
     click.option('--timeout', metavar='', default=20, help='Operation timeout.'),
 ]
 
@@ -244,12 +247,21 @@ class PluginLoader(object):
 
 class Context(object):
     def __init__(self, host, port, timeout, **kwargs):
-        self._endpoints = [(host, port)]
         self._timeout = timeout
         self._options = kwargs
 
         self._configurator = Configurator()
         self._configurator.update()
+
+        if host is None:
+            host = self._configurator.config.get('locator', {}).get('host', DEFAULT_LOCATOR_HOST)
+            log.debug('using locator host "%s" from the config', host)
+
+        if port is None:
+            port = self._configurator.config.get('locator', {}).get('port', DEFAULT_LOCATOR_PORT)
+            log.debug('using locator port "%s" from the config', port)
+
+        self._endpoints = [(host, int(port))]
 
         self._repo = PooledServiceFactory(endpoints=self._endpoints)
 
