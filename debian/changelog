@@ -2,6 +2,7 @@ cocaine-tools (0.12.12.34) UNRELEASED; urgency=low
 
   * [Tools] Read `locator` host and port options in the config file. These
     options have less precedence than command-line arguments if specified.
+  * [Tools] Adapt TVM plugin to brand new scheme.
 
  -- Evgeny Safronov <division494@gmail.com>  Tue, 21 Mar 2017 18:03:32 +0300
 
