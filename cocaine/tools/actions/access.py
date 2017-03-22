@@ -16,6 +16,8 @@ _PREFIX = '/acl'
 ERROR_CATEGORY_UNICORN = 16639
 ERROR_CODE_NO_NODE = -101
 
+VERSION_NOT_EXISTS = -1
+
 
 class List(Action):
     def __init__(self, unicorn):
@@ -44,6 +46,7 @@ class View(Action):
     @coroutine
     def _walk(self, ty):
         path = os.path.join(_PREFIX, self._service, ty)
+
         try:
             channel = yield self._unicorn.children_subscribe(path)
             version, ids = yield channel.rx.get()
@@ -55,68 +58,18 @@ class View(Action):
 
         content = {}
         for id_ in ids:
-            path = os.path.join(_PREFIX, self._service, ty, id_)
-            channel = yield self._unicorn.children_subscribe(path)
-            version, events = yield channel.rx.get()
-            for event in events:
-                path = os.path.join(_PREFIX, self._service, ty, id_, event)
-                channel = yield self._unicorn.get(path)
-                data, version = yield channel.rx.get()
+            channel = yield self._unicorn.get(os.path.join(_PREFIX, self._service, ty, id_))
+            value, version = yield channel.rx.get()
 
-                if id_ not in content:
-                    content[id_] = {}
-                if event not in content[id_]:
-                    content[id_][event] = {}
-                content[id_][event] = data
+            content[id_] = value
         raise gen.Return(content)
 
 
 class Add(Action):
-    def __init__(self, service, event, ty, xid, unicorn):
-        self._path = os.path.join(_PREFIX, service, ty, str(xid), event)
-        self._unicorn = unicorn
-
-    @coroutine
-    def execute(self):
-        channel = yield self._unicorn.create(self._path, {})
-        yield channel.rx.get()
-
-
-class AddClient(Add):
-    def __init__(self, service, event, xid, unicorn):
-        super(AddClient, self).__init__(service, event, 'cids', xid, unicorn)
-
-
-class AddUser(Add):
-    def __init__(self, service, event, xid, unicorn):
-        super(AddUser, self).__init__(service, event, 'uids', xid, unicorn)
-
-
-class Remove(Action):
-    def __init__(self, service, event, ty, xid, unicorn):
-        self._path = os.path.join(_PREFIX, service, ty, str(xid), event)
-        self._unicorn = unicorn
-
-    @coroutine
-    def execute(self):
-        channel = yield self._unicorn.remove(self._path, -1)
-        yield channel.rx.get()
-
-
-class RemoveClient(Remove):
-    def __init__(self, service, event, xid, unicorn):
-        super(RemoveClient, self).__init__(service, event, 'cids', xid, unicorn)
-
-
-class RemoveUser(Remove):
-    def __init__(self, service, event, xid, unicorn):
-        super(RemoveUser, self).__init__(service, event, 'uids', xid, unicorn)
-
-
-class Update(Action):
-    def __init__(self, service, event, ty, xid, value, unicorn):
-        self._path = os.path.join(_PREFIX, service, ty, str(xid), event)
-        self._value = value
+    def __init__(self, service, event, scope, id_, unicorn):
+        self._service = service
+        self._event = event
+        self._path = os.path.join(_PREFIX, self._service, scope, '{}'.format(id_))
         self._unicorn = unicorn
 
     @coroutine
@@ -124,19 +77,77 @@ class Update(Action):
         channel = yield self._unicorn.get(self._path)
         value, version = yield channel.rx.get()
 
-        if value != self._value:
-            channel = yield self._unicorn.put(self._path, self._value, version)
-            yield channel.rx.get()
+        if version == VERSION_NOT_EXISTS:
+            channel = yield self._unicorn.create(self._path, {
+                self._event: {}
+            })
+        else:
+            # Do not override if already exists.
+            if self._event not in value:
+                value[self._event] = {}
+            channel = yield self._unicorn.put(self._path, value, version)
+
+        yield channel.rx.get()
 
 
-class UpdateClient(Update):
-    def __init__(self, service, event, xid, value, unicorn):
-        super(UpdateClient, self).__init__(service, event, 'cids', xid, value, unicorn)
+class AddUser(Add):
+    def __init__(self, service, event, uid, unicorn):
+        super(AddUser, self).__init__(service, event, 'uids', uid, unicorn)
 
 
-class UpdateUser(Update):
-    def __init__(self, service, event, xid, value, unicorn):
-        super(UpdateUser, self).__init__(service, event, 'uids', xid, value, unicorn)
+class AddClient(Add):
+    def __init__(self, service, event, cid, unicorn):
+        super(AddClient, self).__init__(service, event, 'cids', cid, unicorn)
+
+
+class AddBoth(Action):
+    def __init__(self, service, event, cids, uids, unicorn):
+        self._service = service
+        self._cids = cids
+        self._uids = uids
+        self._event = event
+        self._unicorn = unicorn
+
+    @coroutine
+    def execute(self):
+        for uid in self._uids:
+            yield AddUser(self._service, self._event, uid, self._unicorn).execute()
+        for cid in self._cids:
+            yield AddClient(self._service, self._event, cid, self._unicorn).execute()
+
+
+class Remove(Action):
+    def __init__(self, service, event, scope, id_, unicorn):
+        self._service = service
+        self._event = event
+        self._path = os.path.join(_PREFIX, self._service, scope, '{}'.format(id_))
+        self._unicorn = unicorn
+
+    @coroutine
+    def execute(self):
+        channel = yield self._unicorn.get(self._path)
+        value, version = yield channel.rx.get()
+
+        print(value, version)
+        if version != VERSION_NOT_EXISTS:
+            value.pop(self._event)
+
+            if len(value) == 0:
+                channel = yield self._unicorn.remove(self._path, VERSION_NOT_EXISTS)
+            else:
+                channel = yield self._unicorn.put(self._path, value, version)
+
+        yield channel.rx.get()
+
+
+class RemoveUser(Remove):
+    def __init__(self, service, event, uid, unicorn):
+        super(RemoveUser, self).__init__(service, event, 'uids', uid, unicorn)
+
+
+class RemoveClient(Remove):
+    def __init__(self, service, event, cid, unicorn):
+        super(RemoveClient, self).__init__(service, event, 'cids', cid, unicorn)
 
 
 class Edit(Action):
@@ -189,32 +200,24 @@ class Edit(Action):
         if self._validator.errors:
             raise ValueError('failed to validate to ACLs: {}'.format(self._validator.errors))
 
-        actions = [
-            ('cids', AddClient, RemoveClient, UpdateClient),
-            ('uids', AddUser, RemoveUser, UpdateUser),
-        ]
+        for scope in ('uids', 'cids'):
+            # Create new records.
+            for id_ in set(updated[scope]) - set(content[scope]):
+                path = os.path.join(_PREFIX, self._service, scope, '{}'.format(id_))
+                channel = yield self._unicorn.create(path, updated[scope][id_])
+                yield channel.rx.get()
+            # Remove old records.
+            for id_ in set(content[scope]) - set(updated[scope]):
+                path = os.path.join(_PREFIX, self._service, scope, '{}'.format(id_))
+                channel = yield self._unicorn.remove(path, VERSION_NOT_EXISTS)
+                yield channel.rx.get()
 
-        # Create new keys.
-        # Remove old keys.
-        # Update non-changed keys with changed values.
-        for ty, create, remove, update in actions:
-            for i in list(set(updated[ty]) - set(content[ty])):
-                for event in updated[ty][i]:
-                    yield create(self._service, event, i, self._unicorn).execute()
-            for i in list(set(content[ty]) - set(updated[ty])):
-                for event in content[ty][i]:
-                    yield remove(self._service, event, i, self._unicorn).execute()
-            for i in list(set(updated[ty]) & set(content[ty])):
-                if updated[ty][i] != content[ty][i]:
-                    for event_prev, event in zip(content[ty][i], updated[ty][i]):
-                        if event_prev != event:
-                            path = os.path.join(_PREFIX, self._service, ty, str(i), event_prev)
-                            channel = yield self._unicorn.remove(path, -1)
-                            yield channel.rx.get()
+            # Update non-changed records with changed values.
+            for id_ in set(updated[scope]) & set(content[scope]):
+                if updated[scope][id_] != content[scope][id_]:
+                    path = os.path.join(_PREFIX, self._service, scope, '{}'.format(id_))
+                    channel = yield self._unicorn.get(path)
+                    value, version = yield channel.rx.get()
 
-                            path = os.path.join(_PREFIX, self._service, ty, str(i), event)
-                            channel = yield self._unicorn.create(path, updated[ty][i][event])
-                            yield channel.rx.get()
-                        else:
-                            yield update(self._service, event, i, updated[ty][i][event],
-                                         self._unicorn).execute()
+                    self._unicorn.put(path, updated[scope][id_], version)
+                    yield channel.rx.get()

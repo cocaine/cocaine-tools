@@ -1677,25 +1677,23 @@ def access_view(name, **kwargs):
 @access_group.command(name='add')
 @click.option('--name', metavar='', required=True, help='Service name.')
 @click.option('--event', metavar='', required=True, help='Event name.')
-@click.option('--item', type=(unicode, int), help='Either cid or uid.')
+@click.option('-c', '--cid', multiple=True, help='Client identifier.')
+@click.option('-u', '--uid', multiple=True, help='User identifier.')
 @with_options
-def access_add(name, event, item, **kwargs):
+def access_add(name, event, cid, uid, **kwargs):
     """
     Creates a new record with specified cid/uid in the event authorization.
 
     Requests with token that contains such cid/uid will have access to the specified event of a
     service.
     """
-    ty, xid = item
-    if ty not in ['cid', 'uid']:
-        raise ValueError('--item option must be a tuple of type (one of `cid`, `uid`) and an id')
-
     ctx = Context(**kwargs)
-    ctx.execute_action('access:add:{}'.format(ty), **{
+    ctx.execute_action('access:add', **{
         'unicorn': ctx.repo.create_secure_service('unicorn'),
         'service': name,
         'event': event,
-        'xid': xid,
+        'cids': cid,
+        'uids': uid,
     })
 
 

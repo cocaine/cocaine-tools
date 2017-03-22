@@ -206,8 +206,7 @@ NG_ACTIONS = {
 
     'access:list': JsonToolHandler(access.List),
     'access:view': JsonToolHandler(access.View),
-    'access:add:cid': ToolHandler(access.AddClient),
-    'access:add:uid': ToolHandler(access.AddUser),
+    'access:add': ToolHandler(access.AddBoth),
     'access:edit': ToolHandler(access.Edit),
 }
 
