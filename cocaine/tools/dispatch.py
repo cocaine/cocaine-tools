@@ -224,12 +224,6 @@ class Configurator(object):
             log.info('loaded config(s) from %s', used)
         self._validate()
 
-    def _validate(self):
-        self._validator.validate(self._config)
-
-        if self._validator.errors:
-            raise ValueError('failed to validate configuration file: {}'.format(self._validator.errors))
-
     @staticmethod
     def _merge_dicts(src, d):
         key = None
@@ -259,6 +253,12 @@ class Configurator(object):
             raise RuntimeError(
                 'TypeError "%s" in key "%s" when merging "%s" into "%s"' % (e, key, d, src))
         return src
+
+    def _validate(self):
+        self._validator.validate(self._config)
+
+        if self._validator.errors:
+            raise ValueError('failed to validate configuration file: {}'.format(self._validator.errors))
 
 
 class PluginLoader(object):
@@ -1648,4 +1648,71 @@ def auth_exclude(name, service, **kwargs):
     })
 
 
+@access_group.command(name='list')
+@with_options
+def access_list(**kwargs):
+    """
+    Shows services for which there are ACL specified.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('access:list', **{
+        'unicorn': ctx.repo.create_secure_service('unicorn'),
+    })
+
+
+@access_group.command(name='view')
+@click.option('--name', metavar='', required=True, help='Service name.')
+@with_options
+def access_view(name, **kwargs):
+    """
+    Shows ACL for the specified service.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('access:view', **{
+        'unicorn': ctx.repo.create_secure_service('unicorn'),
+        'service': name,
+    })
+
+
+@access_group.command(name='add')
+@click.option('--name', metavar='', required=True, help='Service name.')
+@click.option('--event', metavar='', required=True, help='Event name.')
+@click.option('--item', type=(unicode, int), help='Either cid or uid.')
+@with_options
+def access_add(name, event, item, **kwargs):
+    """
+    Creates a new record with specified cid/uid in the event authorization.
+
+    Requests with token that contains such cid/uid will have access to the specified event of a
+    service.
+    """
+    ty, xid = item
+    if ty not in ['cid', 'uid']:
+        raise ValueError('--item option must be a tuple of type (one of `cid`, `uid`) and an id')
+
+    ctx = Context(**kwargs)
+    ctx.execute_action('access:add:{}'.format(ty), **{
+        'unicorn': ctx.repo.create_secure_service('unicorn'),
+        'service': name,
+        'event': event,
+        'xid': xid,
+    })
+
+
+@access_group.command(name='edit')
+@click.option('--name', metavar='', required=True, help='Service name.')
+@with_options
+def access_edit(name, **kwargs):
+    """
+    Edits interactively an access list for a service with further validation.
+    """
+    ctx = Context(**kwargs)
+    ctx.timeout = None
+    ctx.execute_action('access:edit', **{
+        'unicorn': ctx.repo.create_secure_service('unicorn'),
+        'service': name,
+    })
+
+
 cli = click.CommandCollection(sources=[tools])
+
