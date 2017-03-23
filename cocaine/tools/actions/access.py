@@ -218,6 +218,5 @@ class Edit(Action):
                     path = os.path.join(_PREFIX, self._service, scope, '{}'.format(id_))
                     channel = yield self._unicorn.get(path)
                     value, version = yield channel.rx.get()
-
-                    self._unicorn.put(path, updated[scope][id_], version)
+                    channel = yield self._unicorn.put(path, updated[scope][id_], version)
                     yield channel.rx.get()
