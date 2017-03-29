@@ -1716,6 +1716,8 @@ def access_storage_create(name, **kwargs):
 def access_storage_edit(name, cid, uid, perm, **kwargs):
     """
     Edits ACL for the specified collection.
+
+    Creates if necessary.
     """
     ctx = Context(**kwargs)
     ctx.execute_action('access:storage:edit', **{
