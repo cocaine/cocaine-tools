@@ -1,4 +1,3 @@
-import click
 import msgpack
 from tornado import gen
 
@@ -70,11 +69,15 @@ class Edit(Action):
 
     @coroutine
     def execute(self):
-        content = yield View(self._name, self._storage).execute()
+        try:
+            content = yield View(self._name, self._storage).execute()
+        except ServiceError:
+            content = [{}, {}]
+
         if len(content) != 2:
             raise ToolsError('framing error - ACL should be a tuple of 2 maps')
 
-        cids, uids = content[:]
+        cids, uids = content
         for cid in self._cids:
             cids[int(cid)] = self._perm
         for uid in self._uids:
@@ -83,6 +86,21 @@ class Edit(Action):
         content = msgpack.dumps([cids, uids])
         channel = yield self._storage.write(_COLLECTION, self._name, content, _TAGS)
         yield channel.rx.get()
+
+
+class RemoveAclError(ToolsError):
+    def __init__(self, failed):
+        self._failed = failed
+
+    @property
+    def failed(self):
+        return self._failed
+
+    def __str__(self):
+        reasons = []
+        for acl, err in self._failed:
+            reasons.append(' - "{}": {}'.format(acl, err.reason.lower()))
+        return 'Failed to remove all ACL:\n{}'.format('\n'.join(reasons))
 
 
 class Remove(Action):
@@ -110,6 +128,4 @@ class Remove(Action):
                 log.info('ACL %s has been successfully removed', acl)
 
         if len(failed) > 0:
-            click.echo(click.style('Failed to remove the following ACL:', fg='red'))
-            for acl, err in failed:
-                click.echo(' - "{}": {}'.format(acl, err.reason.lower()))
+            raise RemoveAclError(failed)
