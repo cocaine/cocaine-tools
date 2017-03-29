@@ -532,6 +532,14 @@ def access_event_group():
     pass
 
 
+@tools.group(name='keyring')
+def keyring_group():
+    """
+    Public keys management.
+    """
+    pass
+
+
 @tools.command()
 @click.option('--type', 'ty', default='plain', type=Choice(['plain', 'json']), help='Output type.')
 @click.option('--query', help='Filtering query.')
@@ -1811,6 +1819,22 @@ def access_edit(name, **kwargs):
     ctx.execute_action('access:edit', **{
         'unicorn': ctx.repo.create_secure_service('unicorn'),
         'service': name,
+    })
+
+
+@keyring_group.command(name='update')
+@click.option('--cid', metavar='', type=int, required=True, help='Client id.')
+@with_options
+def keyring_update(cid, **kwargs):
+    """
+    Downloads and cache public key(s).
+
+    Downloads and caches in the TVM component public key(s) for a given client id.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('keyring:update', **{
+        'tvm': ctx.repo.create_secure_service('tvm'),
+        'cid': cid,
     })
 
 
