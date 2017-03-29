@@ -100,11 +100,8 @@ class LoggingConfigListFilters(LoggingConfigurator):
             elif disposition_id == 1:
                 disposition = "clusterwide"
             else:
-                disposition = "unknown disposition_id: {}" % disposition_id
-            if deadline > 2**32:
-                time = datetime.fromtimestamp(2**32)
-            else:
-                time = datetime.fromtimestamp(deadline)
+                disposition = "unknown disposition_id: {}".format(disposition_id)
+            time = datetime.fromtimestamp(min(deadline, 2 ** 32))
             ret[logger_name].append({"id": filter_id, "deadline": str(time),
                                      "filter_definition": filter_def, "disposition": disposition})
         raise gen.Return(ret)
