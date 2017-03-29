@@ -516,6 +516,14 @@ def access_group():
     _print_experimental_warning()
 
 
+@access_group.group(name='storage')
+def access_storage_group():
+    """
+    ACL management for storage collections.
+    """
+    pass
+
+
 @access_group.group(name='event')
 def access_event_group():
     """
@@ -1656,7 +1664,91 @@ def auth_exclude(name, service, **kwargs):
     })
 
 
-@access_group.command(name='list')
+@access_storage_group.command(name='list')
+@with_options
+def access_storage_list(**kwargs):
+    """
+    Shows collections with ACL.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('access:storage:list', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+    })
+
+
+@access_storage_group.command(name='view')
+@click.option('-n', '--name', metavar='', required=True, help='Collection name.')
+@with_options
+def access_storage_view(name, **kwargs):
+    """
+    Shows ACL for the specified collection.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('access:storage:view', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@access_storage_group.command(name='create')
+@click.option('-n', '--name', metavar='', required=True, help='Collection name.')
+@with_options
+def access_storage_create(name, **kwargs):
+    """
+    Creates new ACL for the specified collection.
+
+    Does nothing if ACL already exists.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('access:storage:create', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@access_storage_group.command(name='edit')
+@click.option('-n', '--name', metavar='', required=True, help='Collection name.')
+@click.option('-c', '--cid', metavar='', multiple=True, help='Client ID.')
+@click.option('-u', '--uid', metavar='', multiple=True, help='User ID.')
+@click.option('--perm', metavar='', required=True, type=click.Choice(['R', 'W', 'RW', '0']),
+              help='Permissions.')
+@with_options
+def access_storage_edit(name, cid, uid, perm, **kwargs):
+    """
+    Edits ACL for the specified collection.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('access:storage:edit', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+        'cids': cid,
+        'uids': uid,
+        'perm': perm,
+    })
+
+
+@access_storage_group.command(name='rm')
+@click.option('-n', '--name', metavar='', help='Collection name.')
+@click.option('--yes', is_flag=True, default=False, help='Do not prompt.')
+@with_options
+def access_storage_rm(name, yes, **kwargs):
+    """
+    Remove ACL for the specified collection.
+
+    If none is specified - removes ACL for all collections.
+    """
+    if name is None:
+        if not yes:
+            click.confirm('Are you sure you want to remove all ACL?', abort=True)
+
+    ctx = Context(**kwargs)
+    ctx.execute_action('access:storage:rm', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+        'name': name,
+    })
+
+
+@access_event_group.command(name='list')
 @with_options
 def access_list(**kwargs):
     """

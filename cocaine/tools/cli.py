@@ -28,6 +28,7 @@ import time
 
 from tornado.ioloop import IOLoop
 
+import cocaine.tools.actions.access.storage
 import cocaine.tools.actions.access.event
 from cocaine.exceptions import ChokeEvent, CocaineError
 from cocaine.decorators import coroutine
@@ -204,6 +205,12 @@ NG_ACTIONS = {
 
     'auth:group:members:add': ToolHandler(auth.AddMember),
     'auth:group:members:exclude': ToolHandler(auth.ExcludeMember),
+
+    'access:storage:list': JsonToolHandler(access.storage.List),
+    'access:storage:view': JsonToolHandler(access.storage.View),
+    'access:storage:create': ToolHandler(access.storage.Create),
+    'access:storage:edit': ToolHandler(access.storage.Edit),
+    'access:storage:rm': ToolHandler(access.storage.Remove),
 
     'access:list': JsonToolHandler(access.event.List),
     'access:view': JsonToolHandler(access.event.View),
