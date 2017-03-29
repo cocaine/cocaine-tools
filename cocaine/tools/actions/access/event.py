@@ -8,7 +8,7 @@ from tornado import gen
 from cocaine.decorators import coroutine
 from cocaine.exceptions import ServiceError
 
-from . import Action
+from cocaine.tools.actions import Action
 
 
 _PREFIX = '/acl'

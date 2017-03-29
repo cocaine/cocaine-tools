@@ -511,9 +511,17 @@ def auth_group():
 @tools.group(name='access')
 def access_group():
     """
-    ACL management for services.
+    ACL management.
     """
     _print_experimental_warning()
+
+
+@access_group.group(name='event')
+def access_event_group():
+    """
+    ACL management for services.
+    """
+    pass
 
 
 @tools.command()
@@ -1660,7 +1668,7 @@ def access_list(**kwargs):
     })
 
 
-@access_group.command(name='view')
+@access_event_group.command(name='view')
 @click.option('--name', metavar='', required=True, help='Service name.')
 @with_options
 def access_view(name, **kwargs):
@@ -1674,7 +1682,7 @@ def access_view(name, **kwargs):
     })
 
 
-@access_group.command(name='add')
+@access_event_group.command(name='add')
 @click.option('--name', metavar='', required=True, help='Service name.')
 @click.option('--event', metavar='', required=True, help='Event name.')
 @click.option('-c', '--cid', multiple=True, help='Client identifier.')
@@ -1697,7 +1705,7 @@ def access_add(name, event, cid, uid, **kwargs):
     })
 
 
-@access_group.command(name='edit')
+@access_event_group.command(name='edit')
 @click.option('--name', metavar='', required=True, help='Service name.')
 @with_options
 def access_edit(name, **kwargs):
