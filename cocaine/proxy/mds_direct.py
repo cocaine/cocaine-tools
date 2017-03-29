@@ -74,15 +74,17 @@ class MDSDirect(IPlugin):
 
         # disconnect app explicitly to break possibly existing connection
         app.disconnect()
+        app.locator = None
         endpoints_size = len(locator_endpoints)
+
+        # last chance to take app from common pool
+        if endpoints_size == 0:
+            request.logger.info("giving up on connecting to dist-info hosts, falling back to common pool processing")
+            raise gen.Return(self.proxy.reelect_app(request, app))
 
         # try x times, where x is the number of different endpoints in app locator.
         for _ in xrange(0, endpoints_size):
             try:
-                # move first endpoint to the end to start new connection from different endpoint
-                # we do this, as default logic of connection attempts in locator do not fit here
-                locator_endpoints = locator_endpoints[1:] + locator_endpoints[:1]
-
                 # always create new locator to prevent locking as we do connect with timeout
                 # however lock can be still held during TCP timeout
                 locator = Locator(endpoints=locator_endpoints)
@@ -107,6 +109,9 @@ class MDSDirect(IPlugin):
                     continue
                 else:
                     raise err
+            # drop first endpoint to start next connection from different endpoint
+            # we do this, as default logic of connection attempts in locator do not fit here
+            app.locator.endpoints = app.locator.endpoints[1:]
             # return connected app
             raise gen.Return(app)
         raise PluginApplicationError(42, 42, "could not connect to application")
