@@ -69,26 +69,24 @@ class MDSDirect(IPlugin):
     def reelect_app(self, request, app):
         """tries to connect to the same app on differnet host from dist-info"""
 
-        # store current endpoints of locator
-        locator_endpoints = app.locator.endpoints
-
         # disconnect app explicitly to break possibly existing connection
         app.disconnect()
         app.locator = None
-        endpoints_size = len(locator_endpoints)
-
-        # last chance to take app from common pool
-        if endpoints_size == 0:
-            request.logger.info("giving up on connecting to dist-info hosts, falling back to common pool processing")
-            app = yield self.proxy.reelect_app(request, app)
-            raise gen.Return(app)
+        endpoints_size = len(app.locator.endpoints)
 
         # try x times, where x is the number of different endpoints in app locator.
-        for _ in xrange(0, endpoints_size):
+        for _ in xrange(0, endpoints_size + 1):
+            # last chance to take app from common pool
+            if len(app.locator.endpoints) == 0:
+                request.logger.info(
+                    "giving up on connecting to dist-info hosts, falling back to common pool processing")
+                app = yield self.proxy.reelect_app(request, app)
+                raise gen.Return(app)
+
             try:
                 # always create new locator to prevent locking as we do connect with timeout
                 # however lock can be still held during TCP timeout
-                locator = Locator(endpoints=locator_endpoints)
+                locator = Locator(endpoints=app.locator.endpoints)
                 request.logger.info("connecting to locator %s", locator.endpoints[0])
 
                 # first try to connect to locator only on remote host with timeout
@@ -110,9 +108,10 @@ class MDSDirect(IPlugin):
                     continue
                 else:
                     raise err
-            # drop first endpoint to start next connection from different endpoint
-            # we do this, as default logic of connection attempts in locator do not fit here
-            app.locator.endpoints = app.locator.endpoints[1:]
+            finally:
+                # drop first endpoint to start next connection from different endpoint
+                # we do this, as default logic of connection attempts in locator do not fit here
+                app.locator.endpoints = app.locator.endpoints[1:]
             # return connected app
             raise gen.Return(app)
         raise PluginApplicationError(42, 42, "could not connect to application")
