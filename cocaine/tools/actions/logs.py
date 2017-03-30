@@ -21,6 +21,7 @@
 #
 
 from collections import defaultdict
+from datetime import datetime
 import json
 
 from tornado import gen
@@ -93,8 +94,16 @@ class LoggingConfigListFilters(LoggingConfigurator):
         channel = yield self.logging_service.list_filters()
         filters = yield channel.rx.get()
         ret = defaultdict(list)
-        for logger_name, filter_def, filter_id, deadline in filters:
-            ret[logger_name].append({"id": filter_id, "deadline_timestamp": deadline, "filter_definition": filter_def})
+        for logger_name, filter_def, filter_id, deadline, disposition_id in filters:
+            if disposition_id == 0:
+                disposition = "local"
+            elif disposition_id == 1:
+                disposition = "clusterwide"
+            else:
+                disposition = "unknown disposition_id: {}".format(disposition_id)
+            time = datetime.fromtimestamp(min(deadline, 2 ** 32))
+            ret[logger_name].append({"id": filter_id, "deadline": str(time),
+                                     "filter_definition": filter_def, "disposition": disposition})
         raise gen.Return(ret)
 
 
