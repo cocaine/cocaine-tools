@@ -74,9 +74,9 @@ class Edit(Action):
             if updated['token'] != content['token']:
                 yield Create(self._storage, self._name, updated['token'], force=True).execute()
             # Remove excluded members while adding new ones.
-            for member in list(set(updated['members']) - set(content['members'])):
+            for member in set(updated['members']) - set(content['members']):
                 yield AddMember(self._storage, self._name, member).execute()
-            for member in list(set(content['members']) - set(updated['members'])):
+            for member in set(content['members']) - set(updated['members']):
                 yield ExcludeMember(self._storage, self._name, member).execute()
 
 
