@@ -80,7 +80,8 @@ class MDSDirect(IPlugin):
         # last chance to take app from common pool
         if endpoints_size == 0:
             request.logger.info("giving up on connecting to dist-info hosts, falling back to common pool processing")
-            raise gen.Return(self.proxy.reelect_app(request, app))
+            app = yield self.proxy.reelect_app(request, app)
+            raise gen.Return(app)
 
         # try x times, where x is the number of different endpoints in app locator.
         for _ in xrange(0, endpoints_size):
@@ -158,7 +159,8 @@ class MDSDirect(IPlugin):
         app = Service(name, locator=locator, timeout=RESOLVE_TIMEOUT)
         request.logger.info("connecting to app %s", name)
         app = yield self.reelect_app(request, app)
-        yield self.proxy.process(request, name, app, event, pack_httprequest(request), self.reelect_app, timeout)
+        # TODO: attempts should be configurable
+        yield self.proxy.process(request, name, app, event, pack_httprequest(request), self.reelect_app, 4, timeout)
 
     def decode_mulca_dist_info(self, body):
         lines = body.split("\n")
