@@ -12,10 +12,10 @@ Vcs-Git: git://github.com/cocaine/cocaine-framework-python.git
 Vcs-Browser: https://github.com/cocaine/cocaine-framework-python
 XS-Python-Version: >= 2.7
 
-Package: cocaine-v12-tools
+Package: cocaine-tools
 Architecture: any
 Depends: ${misc:Depends},
- cocaine-v12-framework-python (>= 0.12.6.0),
+ cocaine-framework-python (>= 0.12.6.0),
  python-click (>= 5.0),
  python-yaml (>= 3.10),
  python-cerberus (>= 0.9.1),
@@ -28,11 +28,11 @@ Replaces: cocaine-tools
 Description: Cocaine - Toolset
  Various tools to query and manipulate running Cocaine instances.
 
-Package: cocaine-v12-tornado-proxy
+Package: cocaine-tornado-proxy
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, adduser,
- cocaine-v12-framework-python (>=0.12.6.0),
- cocaine-v12-tools (=${source:Version}),
+ cocaine-framework-python (>=0.12.6.0),
+ cocaine-tools (=${source:Version}),
  python-tornado (>= 4.3),
  python (>= 2.7),
 XB-Python-Version: >= 2.7
