@@ -71,7 +71,6 @@ class MDSDirect(IPlugin):
 
         # disconnect app explicitly to break possibly existing connection
         app.disconnect()
-        app.locator = None
         endpoints_size = len(app.locator.endpoints)
 
         # try x times, where x is the number of different endpoints in app locator.
