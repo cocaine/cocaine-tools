@@ -582,7 +582,8 @@ class CocaineProxy(object):
             return
 
         try:
-            yield self.process(request, name, app, event, pack_httprequest(request), self.reelect_app)
+            # TODO: attempts should be configurable
+            yield self.process(request, name, app, event, pack_httprequest(request), self.reelect_app, 2)
         except Exception as err:
             request.logger.exception("error during processing request %s", err)
             fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
@@ -628,14 +629,11 @@ class CocaineProxy(object):
         raise gen.Return(app)
 
     @gen.coroutine
-    def process(self, request, name, app, event, data, reelect_app_fn, timeout=None):
+    def process(self, request, name, app, event, data, reelect_app_fn, attempts, timeout=None):
         if timeout is None:
             timeout = self.get_timeout(name, event)
         request.logger.info("start processing event `%s` for an app `%s` (appid: %s) after %.3f ms with timeout %f",
                             event, app.name, app.id, request.request_time() * 1000, timeout)
-        # allow to reconnect this amount of times.
-        attempts = 2  # make it configurable
-
         parentid = 0
 
         if request.traceid is not None:
@@ -649,6 +647,21 @@ class CocaineProxy(object):
         }
         if 'authorization' in request.headers:
             headers['authorization'] = request.headers['authorization']
+
+        def on_error(app, err, extra_msg, code=httplib.INTERNAL_SERVER_ERROR):
+            if len(extra_msg) > 0 and not extra_msg.endswith(' '):
+                extra_msg += ' '
+            request.logger.error("%s: %s%s", app.id, extra_msg, err)
+
+            message = "UID %s: application `%s` error: %s" % (request.traceid, app.name, str(err))
+            fill_response_in(request, code, httplib.responses[code], message, proxy_error_headers(app.name))
+
+        def check_attempts(app, err):
+            if attempts > 0:
+                return True
+            # we have no attempts more, so quit here
+            on_error(app, err, '(no attempts left) ')
+            return False
 
         while attempts > 0:
             body_parts = []
@@ -689,11 +702,7 @@ class CocaineProxy(object):
                                          app.id, len(body), attempts)
                     body_parts.append(body)
             except gen.TimeoutError as err:
-                request.logger.error("%s %s:  %s", app.id, name, err)
-                message = "UID %s: application `%s` error: TimeoutError" % (request.traceid, name)
-                fill_response_in(request, httplib.GATEWAY_TIMEOUT,
-                                 httplib.responses[httplib.GATEWAY_TIMEOUT],
-                                 message, proxy_error_headers(name))
+                on_error(app, err, '', httplib.GATEWAY_TIMEOUT)
 
             except (DisconnectionError, StreamClosedError) as err:
                 self.requests_disconnections += 1
@@ -701,12 +710,7 @@ class CocaineProxy(object):
                 # I must find the way to determine whether it failed during writing
                 # or reading a reply. And retry only writing fails.
                 request.logger.error("%s: %s", app.id, err)
-                if attempts <= 0:
-                    request.logger.error("%s: no more attempts", app.id)
-                    fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
-                                     httplib.responses[httplib.INTERNAL_SERVER_ERROR],
-                                     "UID %s: Connection problem" % request.traceid,
-                                     proxy_error_headers(name))
+                if not check_attempts(app, err):
                     return
 
                 # Seems on_close callback is not called in case of connecting through IPVS
@@ -720,23 +724,16 @@ class CocaineProxy(object):
                     reconn_time = time.time() - start_time
                     request.logger.info("%s: connecting took %.3fms", app.id, reconn_time * 1000)
                 except Exception as err:
-                    if attempts <= 0:
-                        # we have no attempts more, so quit here
-                        request.logger.error("%s: %s (no attempts left)", app.id, err)
-                        message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
-                        fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
-                                         httplib.responses[httplib.INTERNAL_SERVER_ERROR],
-                                         message, proxy_error_headers(name))
-                        return
-
-                    request.logger.error("%s: unable to reconnect: %s (%d attempts left)",
-                                         err, attempts)
+                    request.logger.error("%s: unable to reconnect: %s (%d attempts left)", err, attempts)
                 # We have an attempt to process request again.
                 # Jump to the begining of `while attempts > 0`, either we connected successfully
                 # or we were failed to connect
                 continue
 
             except ServiceError as err:
+                if not check_attempts(app, err):
+                    return
+
                 # if the application has been restarted, we get broken pipe code
                 # and system category
                 if err.category in SYSTEMCATEGORY and err.code == EAPPSTOPPED:
@@ -746,21 +743,19 @@ class CocaineProxy(object):
 
                 elif err.category in OVERSEERCATEGORY and err.code == EQUEUEISFULL:
                     request.logger.error("%s: queue is full. Pick another application instance", app.id)
-                    app = yield reelect_app_fn(request, app)
+                    try:
+                        app = yield reelect_app_fn(request, app)
+                    except Exception as reelect_err:
+                        on_error(app, reelect_err, '(could not reelect app)')
+                        return
+                    request.logger.info("fetched new app from reelect_app_fn")
                     continue
 
-                request.logger.error("%s: service error: [%d, %d] %s", app.id, err.category, err.code, err.reason)
-                message = "UID %s: application `%s` error: %s" % (request.traceid, name, str(err))
-                fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
-                                 httplib.responses[httplib.INTERNAL_SERVER_ERROR],
-                                 message, proxy_error_headers(name))
+                on_error(app, err, '')
 
             except Exception as err:
-                request.logger.exception("%s: %s", app.id, err)
-                message = "UID %s: unknown `%s` error: %s" % (request.traceid, name, str(err))
-                fill_response_in(request, httplib.INTERNAL_SERVER_ERROR,
-                                 httplib.responses[httplib.INTERNAL_SERVER_ERROR],
-                                 message, proxy_error_headers(name))
+                on_error(app, err, '(unknown error) ')
+
             else:
                 message = ''.join(body_parts)
                 headers['X-Cocaine-Application'] = name
