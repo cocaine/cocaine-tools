@@ -1,3 +1,9 @@
+cocaine-tools (0.12.13.1) unstable; urgency=low
+
+  * Rebuild.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 31 Mar 2017 13:57:08 +0300
+
 cocaine-tools (0.12.13.0) unstable; urgency=low
 
   * [Tools] Read `locator` host and port options in the config file. These
