@@ -11,7 +11,7 @@ from cocaine.exceptions import ServiceError
 from cocaine.tools.actions import Action
 
 
-_PREFIX = '/acl'
+_PREFIX = '/.acls/event'
 
 ERROR_CATEGORY_UNICORN = 16639
 ERROR_CODE_NO_NODE = -101
