@@ -18,11 +18,11 @@ class TVM(SecurePlugin):
         self._client_id = client_id
         self._client_secret = client_secret
 
-        endpoints = socket.getaddrinfo(socket.gethostname(), None)
-        if len(endpoints) == 0:
+        addrinfo = socket.getaddrinfo(socket.gethostname(), None)
+        if len(addrinfo) == 0:
             raise ToolsError('failed to determine local IP address')
 
-        self._ip = endpoints[0][4][0]
+        self._ip = addrinfo[0][4][0]
         self._tvm = repo.create_service('tvm')
 
     def ty(self):
