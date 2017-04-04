@@ -208,6 +208,9 @@ class Configurator(object):
         for path in paths:
             if os.path.exists(os.path.expanduser(path)):
                 content = yaml.safe_load(open(os.path.expanduser(path)).read())
+                if content is None:
+                    log.debug('config %s is empty, skipping', path)
+                    continue
                 configs.append((path, content))
                 log.debug('successfully read config from %s\n%s', path, content)
             else:
