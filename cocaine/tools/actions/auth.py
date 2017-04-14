@@ -126,6 +126,13 @@ class Remove(Action):
 
 class AddMember(Action):
     def __init__(self, storage, name, service):
+        """Adds a member (service) into the specified auth group.
+
+        Args:
+            storage: Storage object as a DI.
+            name (str): Auth group name.
+            service (str): Member to be added into the group.
+        """
         self._name = name
         self._service = service
         self._storage = storage
@@ -142,6 +149,13 @@ class AddMember(Action):
 
 class ExcludeMember(Action):
     def __init__(self, storage, name, service):
+        """Excludes a member (service) from the specified auth group.
+
+        Args:
+            storage: Storage object as a DI.
+            name (str): Auth group name.
+            service (str): Member to be excluded from the group.
+        """
         self._name = name
         self._service = service
         self._storage = storage
