@@ -1,6 +1,7 @@
 import json
 
 import click
+from cerberus import Validator
 
 from cocaine.tools.error import ToolsError
 from tornado import gen
@@ -59,9 +60,25 @@ class View(Action):
 
 
 class Edit(Action):
+    SCHEMA = {
+        'token': {
+            'type': 'string',
+            'required': True,
+            'regex': '^[0-9]+:.+$',
+        },
+        'members': {
+            'type': 'list',
+            'required': True,
+            'schema': {
+                'type': 'string',
+            },
+        },
+    }
+
     def __init__(self, storage, name):
         self._name = name
         self._storage = storage
+        self._validator = Validator(self.SCHEMA)
 
     @coroutine
     def execute(self):
@@ -70,6 +87,10 @@ class Edit(Action):
 
         if updated is not None:
             updated = json.loads(updated)
+            self._validator.validate(updated)
+            if self._validator.errors:
+                raise ValueError('failed to validate format: {}'.format(self._validator.errors))
+
             # Update token only if it was changed.
             if updated['token'] != content['token']:
                 yield Create(self._storage, self._name, updated['token'], force=True).execute()
