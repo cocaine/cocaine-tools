@@ -121,7 +121,7 @@ class Remove(Action):
             members = yield channel.rx.get()
 
             for member in members:
-                yield Remove(self._storage, member).execute()
+                yield ExcludeMember(self._storage, self._name, member).execute()
 
 
 class AddMember(Action):
