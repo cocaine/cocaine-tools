@@ -215,7 +215,11 @@ NG_ACTIONS = {
     'access:add': ToolHandler(event.AddBoth),
     'access:edit': ToolHandler(event.Edit),
 
+    'keyring:view': JsonToolHandler(keyring.View),
     'keyring:update': JsonToolHandler(keyring.Update),
+    'keyring:remove': ToolHandler(keyring.Remove),
+    'keyring:edit': ToolHandler(keyring.Edit),
+    'keyring:refresh': ToolHandler(keyring.Refresh),
 }
 
 

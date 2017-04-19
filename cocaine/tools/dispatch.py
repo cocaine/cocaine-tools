@@ -1825,19 +1825,80 @@ def access_edit(name, **kwargs):
     })
 
 
+@keyring_group.command(name='view')
+@with_options
+def keyring_view(**kwargs):
+    """
+    View saved public keys.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('keyring:view', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+    })
+
+
 @keyring_group.command(name='update')
 @click.option('--cid', metavar='', type=int, required=True, help='Client id.')
 @with_options
 def keyring_update(cid, **kwargs):
     """
-    Downloads and cache public key(s).
+    Downloads and saves public key(s).
 
-    Downloads and caches in the TVM component public key(s) for a given client id.
+    Downloads public key(s) from the TVM service for a given client id and saves in the storage
+    for further usage.
+    Note, that the cocaine-runtime automatically refreshes its keyring after this call.
     """
     ctx = Context(**kwargs)
     ctx.execute_action('keyring:update', **{
         'tvm': ctx.repo.create_secure_service('tvm'),
         'cid': cid,
+    })
+
+
+@keyring_group.command(name='remove')
+@click.option('-k', '--key', metavar='', help='Public key')
+@click.option('--yes', is_flag=True, default=False, help='Do not prompt.')
+@with_options
+def keyring_remove(key, yes, **kwargs):
+    """
+    Removes a public key from the keyring.
+
+    Does nothing if a key is already not in the keyring. If none is specified - clears the keyring.
+    To force the cocaine-runtime to refresh its keyring, call `refresh` method.
+    """
+    if key is None:
+        if not yes:
+            click.confirm('Are you sure you want to remove all keys?', abort=True)
+
+    ctx = Context(**kwargs)
+    ctx.execute_action('keyring:remove', **{
+        'key': key,
+        'storage': ctx.repo.create_secure_service('storage'),
+    })
+
+
+@keyring_group.command(name='edit')
+@with_options
+def keyring_edit(**kwargs):
+    """
+    Edits interactively the keyring.
+    """
+    ctx = Context(**kwargs)
+    ctx.timeout = None
+    ctx.execute_action('keyring:edit', **{
+        'storage': ctx.repo.create_secure_service('storage'),
+    })
+
+
+@keyring_group.command(name='refresh')
+@with_options
+def keyring_refresh(**kwargs):
+    """
+    Refresh the keyring in the cocaine-runtime.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('keyring:refresh', **{
+        'tvm': ctx.repo.create_secure_service('tvm'),
     })
 
 
