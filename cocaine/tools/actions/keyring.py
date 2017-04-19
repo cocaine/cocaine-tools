@@ -69,11 +69,12 @@ class Edit(Action):
         except ServiceError:
             content = []
 
-        updated = click.edit(json.dumps(content, indent=4), require_save=False)
-        updated = json.loads(updated)
-        updated = msgpack.dumps(updated)
-        channel = yield self._storage.write(_COLLECTION_TVM, _KEY_PUBLIC_KEYS, updated, [])
-        yield channel.rx.get()
+        updated = click.edit(json.dumps(content, indent=4))
+        if updated is not None:
+            updated = json.loads(updated)
+            updated = msgpack.dumps(updated)
+            channel = yield self._storage.write(_COLLECTION_TVM, _KEY_PUBLIC_KEYS, updated, [])
+            yield channel.rx.get()
 
 
 class Refresh(Action):
