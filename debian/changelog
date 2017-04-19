@@ -1,12 +1,18 @@
+cocaine-tools (0.12.13.4) unstable; urgency=low
+
+  * [Tools]: Add more keyring management tools.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 19 Apr 2017 14:44:04 +0300
+
 cocaine-tools (0.12.13.3) unstable; urgency=low
 
-  * [Tools]: do not raise on empty config.
+  * [Tools]: Do not raise on empty config.
 
  -- Evgeny Safronov <division494@gmail.com>  Tue, 04 Apr 2017 10:51:50 +0300
 
 cocaine-tools (0.12.13.2) unstable; urgency=low
 
-  * [Tools]: adapt with the latest core changes.
+  * [Tools]: Adapt with the latest core changes.
     Changed prefix for event ACLs to unify them with Unicorn ACLs.
 
  -- Evgeny Safronov <division494@gmail.com>  Mon, 03 Apr 2017 10:57:29 +0300
