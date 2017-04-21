@@ -22,6 +22,7 @@
 import datetime
 import itertools
 import time
+from operator import itemgetter
 
 from tornado import gen
 
@@ -110,8 +111,8 @@ class View(Specific):
         crashlogs = yield channel.rx.get()
         parsed_crashlogs = _parseCrashlogs(crashlogs, timestamp=self.timestamp)
         contents = []
-        if not self.timestamp:
-            parsed_crashlogs = [max(parsed_crashlogs, key=lambda item: item[1])]
+        if not self.timestamp and parsed_crashlogs:
+            parsed_crashlogs = [max(parsed_crashlogs, key=itemgetter(1))]
         for crashlog in parsed_crashlogs:
             key = '%s:%s' % (crashlog[0], crashlog[2])
             channel = yield self.storage.read('crashlogs', key)
