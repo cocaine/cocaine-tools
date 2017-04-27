@@ -67,6 +67,8 @@ from cocaine.detail.trace import Trace
 from cocaine.proxy.helpers import Endpoints
 from cocaine.proxy.helpers import extract_app_and_event
 from cocaine.proxy.helpers import fill_response_in
+from cocaine.proxy.helpers import write_chunk
+from cocaine.proxy.helpers import finalize_chunked_response
 from cocaine.proxy.helpers import header_to_seed
 from cocaine.proxy.helpers import load_srw_config
 from cocaine.proxy.helpers import pack_httprequest
@@ -114,6 +116,49 @@ NO_SUCH_APP = httplib.SERVICE_UNAVAILABLE
 
 X_COCAINE_HTTP_PROTO_VERSION = "X-Cocaine-HTTP-Proto-Version"
 
+class BodyProcessor(object):
+
+    def __init__(self, request, name, code, headers, init=''):
+        self.request = request
+        self.name = name
+        self.code = code
+        self.headers = headers
+        self.message = init
+
+    def __call__(self, part):
+        pass
+
+    def finish(self):
+        pass
+
+class ChunkedBodyProcessor(BodyProcessor):
+
+    def __init__(self, request, name, code, headers, init=''):
+        super(ChunkedBodyProcessor, self).__init__(
+            request, name, code, headers, init)
+
+        self.headers['X-Cocaine-Application'] = self.name
+        self.headers['Transfer-Encoding'] = 'chunked'
+        fill_response_in(self.request, self.code,
+                         httplib.responses.get(self.code, httplib.OK),
+                         self.message, self.headers)
+
+    def __call__(self, part):
+        write_chunk(self.request, part)
+
+    def finish(self):
+        finalize_chunked_response(self.request, self.code)
+
+class CachedBodyProcessor(BodyProcessor):
+
+    def __call__(self, part):
+        self.message += part
+
+    def finish(self):
+        self.headers['X-Cocaine-Application'] = self.name
+        fill_response_in(self.request, self.code,
+                         httplib.responses.get(self.code, httplib.OK),
+                         self.message, self.headers)
 
 def proxy_error_headers(name=None):
     headers = {}
@@ -666,6 +711,7 @@ class CocaineProxy(object):
         while attempts > 0:
             body_parts = []
             attempts -= 1
+            processor = None
             try:
                 request.logger.debug("%s: enqueue event (attempt %d)", app.id, attempts)
                 channel = yield app.enqueue(event, trace=trace, **headers)
@@ -692,6 +738,11 @@ class CocaineProxy(object):
                 else:
                     raise Exception("unsupported X-Cocaine-HTTP-Proto-Version: %s" % cocaine_http_proto_version)
 
+                if headers.get('Content-Length'):
+                    processor = CachedBodyProcessor(request, name, code, headers)
+                else:
+                    processor = ChunkedBodyProcessor(request, name, code, headers)
+
                 while True:
                     body = yield channel.rx.get(timeout=timeout)
                     if stop_condition(body):
@@ -700,7 +751,8 @@ class CocaineProxy(object):
 
                     request.logger.debug("%s: received %d bytes as a body chunk (attempt %d)",
                                          app.id, len(body), attempts)
-                    body_parts.append(body)
+                    processor(body)
+
             except gen.TimeoutError as err:
                 on_error(app, err, '', httplib.GATEWAY_TIMEOUT)
 
@@ -757,11 +809,9 @@ class CocaineProxy(object):
                 on_error(app, err, '(unknown error) ')
 
             else:
-                message = ''.join(body_parts)
-                headers['X-Cocaine-Application'] = name
-                fill_response_in(request, code,
-                                 httplib.responses.get(code, httplib.OK),
-                                 message, headers)
+                if processor:
+                    processor.finish()
+
             # to return from all errors except Disconnection
             # or receiving a good reply
             return
