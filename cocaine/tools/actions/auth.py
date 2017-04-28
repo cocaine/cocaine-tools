@@ -17,14 +17,35 @@ COLLECTION_GROUPS = 'auth-groups'
 
 class Auth(object):
     """Auth groups is a lie"""
+    SCHEMA = {
+        'token': {
+            'type': 'string',
+            'required': True,
+            'regex': '^[0-9]+:.+$',
+        },
+        'members': {
+            'type': 'list',
+            'required': True,
+            'schema': {
+                'type': 'string',
+            },
+        },
+    }
+
     def __init__(self, storage):
         self._storage = storage  # HINT: storage.write(namespace, key, value, tags)
+        self._validator = Validator(self.SCHEMA)
+
+    def _validate(self, group_definition):
+        self._validator.validate(group_definition)
+        if self._validator.errors:
+            raise ValueError('failed to validate format: {}'.format(self._validator.errors))
 
     @coroutine
     def create_group(self, name, token, force=False):
+        self._validate({'token': token, 'members': []})
         if not force:
-            channel = yield self._storage.find(COLLECTION_GROUPS, ['auth'])
-            groups = yield channel.rx.get()
+            groups = yield self.list_groups()
             if name in groups:
                 raise ToolsError('authorization group already exists')
 
@@ -82,18 +103,25 @@ class Auth(object):
     def edit_group(self, name, updated):
         old = yield self.view_group(name)
 
-        assert 'members' in updated, 'New config must contain members field'
-        # Update token only if it was changed.
-        if 'token' in updated and updated['token'] != old['token']:
-            yield self.create_group(name, updated['token'], force=True)
+        # change only parameters present in updated
+        new = {}
+        new.update(old)
+        new.update(updated)
 
-            for member in set(updated['members']) & set(old['members']):
+        self._validate(new)
+
+        # Update token only if it was changed.
+        if new['token'] != old['token']:
+            yield self.create_group(name, new['token'], force=True)
+
+            # update token for members already present in group
+            for member in set(new['members']) & set(old['members']):
                 yield self.add_member(name, member)
 
         # Remove excluded members while adding new ones.
-        for member in set(updated['members']) - set(old['members']):
+        for member in set(new['members']) - set(old['members']):
             yield self.add_member(name, member)
-        for member in set(old['members']) - set(updated['members']):
+        for member in set(old['members']) - set(new['members']):
             yield self.remove_member(name, member)
 
 
@@ -138,33 +166,11 @@ class ExcludeMember(AuthAction):
 class Edit(AuthAction):
     method = Auth.edit_group
 
-    SCHEMA = {
-        'token': {
-            'type': 'string',
-            'required': True,
-            'regex': '^[0-9]+:.+$',
-        },
-        'members': {
-            'type': 'list',
-            'required': True,
-            'schema': {
-                'type': 'string',
-            },
-        },
-    }
-
-    def __init__(self, storage, *args, **kwargs):
-        super(Edit, self).__init__(storage, *args, **kwargs)
-        self._validator = Validator(self.SCHEMA)
-
     @coroutine
     def execute(self):
         content = yield self.instance.view_group(*self.args, **self.kwargs)
         updated = click.edit(json.dumps(content, indent=4))
         if updated is not None:
             updated = json.loads(updated)
-            self._validator.validate(updated)
-            if self._validator.errors:
-                raise ValueError('failed to validate format: {}'.format(self._validator.errors))
             self.kwargs['updated'] = updated
             yield super(Edit, self).execute()
