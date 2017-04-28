@@ -76,11 +76,9 @@ def finalize_response(request, code, status):
                         code, status, 1000.0 * request.request_time())
 
 
-def finalize_chunked_response(request, code):
+def finalize_chunked_response(request, code, status):
     request.connection.write(TERM_CHUNK)
-    finalize_response(
-        request, code,
-        httplib.responses.get(code, httplib.OK))
+    finalize_response(request, code, status)
 
 
 def fill_response_in(request, code, status, message, headers=None, chunked=False):

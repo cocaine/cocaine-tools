@@ -162,7 +162,10 @@ class ChunkedBodyProcessor(BodyProcessor):
         write_chunked(self.request, part)
 
     def finish(self):
-        finalize_chunked_response(self.request, self.code)
+        finalize_chunked_response(
+            self.request, self.code,
+            httplib.responses.get(self.code, httplib.OK))
+
         super(ChunkedBodyProcessor, self).finish()
 
 
