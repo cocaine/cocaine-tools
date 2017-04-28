@@ -39,8 +39,6 @@ import socket
 import sys
 import time
 
-import cStringIO
-
 import msgpack
 import tornado
 from tornado import gen
@@ -121,25 +119,22 @@ X_COCAINE_HTTP_PROTO_VERSION = "X-Cocaine-HTTP-Proto-Version"
 
 class BodyProcessor(object):
 
-    def __init__(self, request, name, code, headers, init=''):
+    def __init__(self, request, name, code, headers):
         self.request = request
         self.name = name
         self.code = code
         self.headers = headers
-        self.message = init
-        self.output = cStringIO.StringIO()
+        self.messages = []
 
     def swallow(self, part):
         raise NotImplementedError
 
-    # Don't forget to call parent's `finish` method as a last expression
-    # from child implementation!
     def finish(self):
-        self.output.close()
+        raise NotImplementedError
 
     @staticmethod
     def make_processor(content_length, request, name, code, headers):
-        if content_length is None:
+        if content_length is None and request.version != 'HTTP/1.0':
             return ChunkedBodyProcessor(request, name, code, headers)
         else:
             return CachedBodyProcessor(request, name, code, headers)
@@ -147,16 +142,16 @@ class BodyProcessor(object):
 
 class ChunkedBodyProcessor(BodyProcessor):
 
-    def __init__(self, request, name, code, headers, init=''):
+    def __init__(self, request, name, code, headers):
         super(ChunkedBodyProcessor, self).__init__(
-            request, name, code, headers, init)
+            request, name, code, headers)
 
         self.headers.add('Transfer-Encoding', 'chunked')
         self.headers['X-Cocaine-Application'] = self.name
 
         fill_response_in(self.request, self.code,
                          httplib.responses.get(self.code, httplib.OK),
-                         self.message, self.headers, chunked=True)
+                         ''.join(self.messages), self.headers, chunked=True)
 
     def swallow(self, part):
         write_chunked(self.request, part)
@@ -166,21 +161,19 @@ class ChunkedBodyProcessor(BodyProcessor):
             self.request, self.code,
             httplib.responses.get(self.code, httplib.OK))
 
-        super(ChunkedBodyProcessor, self).finish()
-
 
 class CachedBodyProcessor(BodyProcessor):
 
     def swallow(self, part):
-        self.output.write(part)
+        self.messages.append(part)
 
     def finish(self):
         self.headers['X-Cocaine-Application'] = self.name
 
-        fill_response_in(self.request, self.code,
-                         httplib.responses.get(self.code, httplib.OK),
-                         self.output.getvalue(), self.headers)
-        super(CachedBodyProcessor, self).finish()
+        fill_response_in(
+            self.request, self.code,
+            httplib.responses.get(self.code, httplib.OK),
+            ''.join(self.messages), self.headers)
 
 
 def proxy_error_headers(name=None):
@@ -732,7 +725,6 @@ class CocaineProxy(object):
             return False
 
         while attempts > 0:
-            body_parts = []
             attempts -= 1
             processor = None
             try:

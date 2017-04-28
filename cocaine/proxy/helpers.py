@@ -4,10 +4,8 @@ import json
 from operator import xor
 import re
 import struct
-import cStringIO
 
 from tornado import httputil
-from tornado import gen
 
 CRLF = '\r\n'
 
@@ -57,17 +55,9 @@ class Endpoints(object):
 
 
 def write_chunked(request, chunk):
-    # TODO: should it be a heap (and possibly GC inderectly) pressure on hight
-    #       chunked rates?
-    buf = cStringIO.StringIO()
-    try:
-        buf.write(SIZE_OF_CHUNK_FMT.format(len(chunk)))
-        buf.write(chunk)
-        buf.write(CRLF)
-
-        request.connection.write(buf.getvalue())
-    finally:
-        buf.close()
+    request.connection.write(SIZE_OF_CHUNK_FMT.format(len(chunk)))
+    request.connection.write(chunk)
+    request.connection.write(CRLF)
 
 
 def finalize_response(request, code, status):
