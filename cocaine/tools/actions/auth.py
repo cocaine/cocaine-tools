@@ -110,18 +110,21 @@ class Auth(object):
 
         self._validate(new)
 
+        new['members'] = set(new['members'])
+        old['members'] = set(old['members'])
+
         # Update token only if it was changed.
         if new['token'] != old['token']:
             yield self.create_group(name, new['token'], force=True)
 
             # update token for members already present in group
-            for member in set(new['members']) & set(old['members']):
+            for member in new['members'] & old['members']:
                 yield self.add_member(name, member)
 
         # Remove excluded members while adding new ones.
-        for member in set(new['members']) - set(old['members']):
+        for member in new['members'] - old['members']:
             yield self.add_member(name, member)
-        for member in set(old['members']) - set(new['members']):
+        for member in old['members'] - new['members']:
             yield self.remove_member(name, member)
 
 
