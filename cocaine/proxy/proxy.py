@@ -39,6 +39,8 @@ import socket
 import sys
 import time
 
+import cStringIO
+
 import msgpack
 import tornado
 from tornado import gen
@@ -67,7 +69,7 @@ from cocaine.detail.trace import Trace
 from cocaine.proxy.helpers import Endpoints
 from cocaine.proxy.helpers import extract_app_and_event
 from cocaine.proxy.helpers import fill_response_in
-from cocaine.proxy.helpers import write_chunk
+from cocaine.proxy.helpers import write_chunked
 from cocaine.proxy.helpers import finalize_chunked_response
 from cocaine.proxy.helpers import header_to_seed
 from cocaine.proxy.helpers import load_srw_config
@@ -116,6 +118,7 @@ NO_SUCH_APP = httplib.SERVICE_UNAVAILABLE
 
 X_COCAINE_HTTP_PROTO_VERSION = "X-Cocaine-HTTP-Proto-Version"
 
+
 class BodyProcessor(object):
 
     def __init__(self, request, name, code, headers, init=''):
@@ -124,12 +127,23 @@ class BodyProcessor(object):
         self.code = code
         self.headers = headers
         self.message = init
+        self.output = cStringIO.StringIO()
 
-    def __call__(self, part):
-        pass
+    def swallow(self, part):
+        raise NotImplementedError
 
+    # Don't forget to call parent's `finish` method as a last expression
+    # from child implementation!
     def finish(self):
-        pass
+        self.output.close()
+
+    @staticmethod
+    def make_processor(content_length, request, name, code, headers):
+        if content_length is None:
+            return ChunkedBodyProcessor(request, name, code, headers)
+        else:
+            return CachedBodyProcessor(request, name, code, headers)
+
 
 class ChunkedBodyProcessor(BodyProcessor):
 
@@ -137,28 +151,34 @@ class ChunkedBodyProcessor(BodyProcessor):
         super(ChunkedBodyProcessor, self).__init__(
             request, name, code, headers, init)
 
+        self.headers.add('Transfer-Encoding', 'chunked')
         self.headers['X-Cocaine-Application'] = self.name
-        self.headers['Transfer-Encoding'] = 'chunked'
+
         fill_response_in(self.request, self.code,
                          httplib.responses.get(self.code, httplib.OK),
-                         self.message, self.headers)
+                         self.message, self.headers, chunked=True)
 
-    def __call__(self, part):
-        write_chunk(self.request, part)
+    def swallow(self, part):
+        write_chunked(self.request, part)
 
     def finish(self):
         finalize_chunked_response(self.request, self.code)
+        super(ChunkedBodyProcessor, self).finish()
+
 
 class CachedBodyProcessor(BodyProcessor):
 
-    def __call__(self, part):
-        self.message += part
+    def swallow(self, part):
+        self.output.write(part)
 
     def finish(self):
         self.headers['X-Cocaine-Application'] = self.name
+
         fill_response_in(self.request, self.code,
                          httplib.responses.get(self.code, httplib.OK),
-                         self.message, self.headers)
+                         self.output.getvalue(), self.headers)
+        super(CachedBodyProcessor, self).finish()
+
 
 def proxy_error_headers(name=None):
     headers = {}
@@ -738,10 +758,9 @@ class CocaineProxy(object):
                 else:
                     raise Exception("unsupported X-Cocaine-HTTP-Proto-Version: %s" % cocaine_http_proto_version)
 
-                if headers.get('Content-Length'):
-                    processor = CachedBodyProcessor(request, name, code, headers)
-                else:
-                    processor = ChunkedBodyProcessor(request, name, code, headers)
+                processor = BodyProcessor.make_processor(
+                    headers.get('Content-Length'),
+                    request, name, code, headers)
 
                 while True:
                     body = yield channel.rx.get(timeout=timeout)
@@ -751,7 +770,8 @@ class CocaineProxy(object):
 
                     request.logger.debug("%s: received %d bytes as a body chunk (attempt %d)",
                                          app.id, len(body), attempts)
-                    processor(body)
+
+                    processor.swallow(body)
 
             except gen.TimeoutError as err:
                 on_error(app, err, '', httplib.GATEWAY_TIMEOUT)

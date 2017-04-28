@@ -4,8 +4,10 @@ import json
 from operator import xor
 import re
 import struct
+import cStringIO
 
 from tornado import httputil
+from tornado import gen
 
 CRLF = '\r\n'
 
@@ -54,16 +56,25 @@ class Endpoints(object):
                 raise ValueError("Endpoint has to begin either unix:// or tcp:// %s" % i)
 
 
-def write_chunk(request, chunk):
-    request.connection.write(SIZE_OF_CHUNK_FMT.format(len(chunk)))
+def write_chunked(request, chunk):
+    # TODO: should it be a heap (and possibly GC inderectly) pressure on hight
+    #       chunked rates?
+    buf = cStringIO.StringIO()
+    try:
+        buf.write(SIZE_OF_CHUNK_FMT.format(len(chunk)))
+        buf.write(chunk)
+        buf.write(CRLF)
 
-    chunk += CRLF
-    request.connection.write(chunk)
+        request.connection.write(buf.getvalue())
+    finally:
+        buf.close()
+
 
 def finalize_response(request, code, status):
     request.connection.finish()
     request.logger.info("finish request: %d %s %.2fms",
                         code, status, 1000.0 * request.request_time())
+
 
 def finalize_chunked_response(request, code):
     request.connection.write(TERM_CHUNK)
@@ -71,15 +82,9 @@ def finalize_chunked_response(request, code):
         request, code,
         httplib.responses.get(code, httplib.OK))
 
-def fill_response_in(request, code, status, message, headers=None):
-    headers = headers or httputil.HTTPHeaders()
 
-    transfer = headers.get('Transfer-Encoding')
-    # TODO: substring search could be bit costly
-    if transfer and 'chunked' in transfer:
-        chunked = True
-    else:
-        chunked = False
+def fill_response_in(request, code, status, message, headers=None, chunked=False):
+    headers = headers or httputil.HTTPHeaders()
 
     if not ("Content-Length" in headers or chunked):
         content_length = str(len(message))
