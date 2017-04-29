@@ -67,6 +67,8 @@ from cocaine.detail.trace import Trace
 from cocaine.proxy.helpers import Endpoints
 from cocaine.proxy.helpers import extract_app_and_event
 from cocaine.proxy.helpers import fill_response_in
+from cocaine.proxy.helpers import write_chunked
+from cocaine.proxy.helpers import finalize_chunked_response
 from cocaine.proxy.helpers import header_to_seed
 from cocaine.proxy.helpers import load_srw_config
 from cocaine.proxy.helpers import pack_httprequest
@@ -113,6 +115,65 @@ EQUEUEISFULL = 1
 NO_SUCH_APP = httplib.SERVICE_UNAVAILABLE
 
 X_COCAINE_HTTP_PROTO_VERSION = "X-Cocaine-HTTP-Proto-Version"
+
+
+class BodyProcessor(object):
+
+    def __init__(self, request, name, code, headers):
+        self.request = request
+        self.name = name
+        self.code = code
+        self.headers = headers
+        self.messages = []
+
+    def swallow(self, part):
+        raise NotImplementedError
+
+    def finish(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def make_processor(content_length, request, name, code, headers):
+        if content_length is None and request.version != 'HTTP/1.0':
+            return ChunkedBodyProcessor(request, name, code, headers)
+        else:
+            return CachedBodyProcessor(request, name, code, headers)
+
+
+class ChunkedBodyProcessor(BodyProcessor):
+
+    def __init__(self, request, name, code, headers):
+        super(ChunkedBodyProcessor, self).__init__(
+            request, name, code, headers)
+
+        self.headers.add('Transfer-Encoding', 'chunked')
+        self.headers['X-Cocaine-Application'] = self.name
+
+        fill_response_in(self.request, self.code,
+                         httplib.responses.get(self.code, httplib.OK),
+                         ''.join(self.messages), self.headers, chunked=True)
+
+    def swallow(self, part):
+        write_chunked(self.request, part)
+
+    def finish(self):
+        finalize_chunked_response(
+            self.request, self.code,
+            httplib.responses.get(self.code, httplib.OK))
+
+
+class CachedBodyProcessor(BodyProcessor):
+
+    def swallow(self, part):
+        self.messages.append(part)
+
+    def finish(self):
+        self.headers['X-Cocaine-Application'] = self.name
+
+        fill_response_in(
+            self.request, self.code,
+            httplib.responses.get(self.code, httplib.OK),
+            ''.join(self.messages), self.headers)
 
 
 def proxy_error_headers(name=None):
@@ -664,8 +725,8 @@ class CocaineProxy(object):
             return False
 
         while attempts > 0:
-            body_parts = []
             attempts -= 1
+            processor = None
             try:
                 request.logger.debug("%s: enqueue event (attempt %d)", app.id, attempts)
                 channel = yield app.enqueue(event, trace=trace, **headers)
@@ -692,6 +753,10 @@ class CocaineProxy(object):
                 else:
                     raise Exception("unsupported X-Cocaine-HTTP-Proto-Version: %s" % cocaine_http_proto_version)
 
+                processor = BodyProcessor.make_processor(
+                    headers.get('Content-Length'),
+                    request, name, code, headers)
+
                 while True:
                     body = yield channel.rx.get(timeout=timeout)
                     if stop_condition(body):
@@ -700,7 +765,9 @@ class CocaineProxy(object):
 
                     request.logger.debug("%s: received %d bytes as a body chunk (attempt %d)",
                                          app.id, len(body), attempts)
-                    body_parts.append(body)
+
+                    processor.swallow(body)
+
             except gen.TimeoutError as err:
                 on_error(app, err, '', httplib.GATEWAY_TIMEOUT)
 
@@ -757,11 +824,9 @@ class CocaineProxy(object):
                 on_error(app, err, '(unknown error) ')
 
             else:
-                message = ''.join(body_parts)
-                headers['X-Cocaine-Application'] = name
-                fill_response_in(request, code,
-                                 httplib.responses.get(code, httplib.OK),
-                                 message, headers)
+                if processor:
+                    processor.finish()
+
             # to return from all errors except Disconnection
             # or receiving a good reply
             return
