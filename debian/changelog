@@ -1,3 +1,9 @@
+cocaine-tools (0.12.13.6) unstable; urgency=low
+
+  * [Tools] refactor auth tools.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 02 May 2017 13:30:36 +0300
+
 cocaine-tools (0.12.13.5) unstable; urgency=low
 
   * [Proxy]: send response without `content-length` header in chunks.
