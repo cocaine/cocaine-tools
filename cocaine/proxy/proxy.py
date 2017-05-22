@@ -64,6 +64,9 @@ from cocaine.exceptions import DisconnectionError
 from cocaine.services import EmptyResponse
 from cocaine.detail.trace import Trace
 
+from cocaine.tools.dispatch import PooledServiceFactory
+from cocaine.tools.plugins.secure.tvm import TVM
+
 from cocaine.proxy.helpers import Endpoints
 from cocaine.proxy.helpers import extract_app_and_event
 from cocaine.proxy.helpers import fill_response_in
@@ -267,6 +270,8 @@ class CocaineProxy(object):
                  forcegen_request_header=False,
                  default_tracing_chance=DEFAULT_TRACING_CHANCE,
                  configuration_service="unicorn",
+                 client_id=0,
+                 client_secret='',
                  tracing_conf_path="/zipkin_sampling",
                  timeouts_conf_path="/proxy_apps_timeouts",
                  srw_config=None,
@@ -313,7 +318,15 @@ class CocaineProxy(object):
 
         self.logger.info("conf path in `%s` configuration service: %s",
                          configuration_service, tracing_conf_path)
-        self.unicorn = Service(configuration_service, locator=self.locator)
+        repo = PooledServiceFactory(self.locator_endpoints)
+        repo.secure = TVM(repo, client_id, client_secret)
+
+        if client_id == 0 or client_secret == '':
+            self.logger.info("using non-authenticated unicorn access")
+            self.unicorn = repo.create_service(configuration_service)
+        else:
+            self.logger.info("using authenticated unicorn access")
+            self.unicorn = repo.create_secure_service(configuration_service)
         self.sampled_apps = {}
         self.default_tracing_chance = default_tracing_chance
         self.tracing_conf_path = tracing_conf_path
@@ -984,6 +997,8 @@ def main():
     opts.define("utilport", default=8081, type=int, help="listening port number for an util server")
     opts.define("utiladdress", default="127.0.0.1", type=str, help="address for an util server")
     opts.define("enableutil", default=False, type=bool, help="enable util server")
+    opts.define("client_id", default=0, type=int, help="client id used for authentication")
+    opts.define("client_secret", default='', type=str, help="client secret used for authentication")
     opts.parse_command_line()
 
     srw_config = None
@@ -1031,7 +1046,9 @@ def main():
                              forcegen_request_header=opts.forcegen_request_header,
                              default_tracing_chance=opts.tracing_chance,
                              srw_config=srw_config,
-                             allow_json_rpc=opts.allow_json_rpc)
+                             allow_json_rpc=opts.allow_json_rpc,
+                             client_id=opts.client_id,
+                             client_secret=opts.client_secret)
         server = HTTPServer(proxy)
         server.add_sockets(sockets)
 
