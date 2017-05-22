@@ -1,13 +1,19 @@
+cocaine-tools (0.12.14.1) unstable; urgency=low
+
+  * [Proxy]: Allow to specify credentials for proxy.
+
+ -- Evgeny Safronov <division494@gmail.com>  Mon, 22 May 2017 16:23:05 +0300
+
 cocaine-tools (0.12.13.6) unstable; urgency=low
 
-  * [Tools] refactor auth tools.
+  * [Tools]: Refactor auth tools.
 
  -- Evgeny Safronov <division494@gmail.com>  Tue, 02 May 2017 13:30:36 +0300
 
 cocaine-tools (0.12.13.5) unstable; urgency=low
 
-  * [Proxy]: send response without `content-length` header in chunks.
-  * [Tools]: fix max of empty crashlogs.
+  * [Proxy]: Send response without `content-length` header in chunks.
+  * [Tools]: Fix max of empty crashlogs.
 
  -- Evgeny Safronov <division494@gmail.com>  Tue, 02 May 2017 13:26:04 +0300
 
