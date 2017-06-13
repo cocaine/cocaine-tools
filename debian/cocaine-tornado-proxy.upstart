@@ -22,5 +22,5 @@ script
         . /etc/default/$UPSTART_JOB
     fi
 
-   exec sudo -u cocaine /usr/bin/cocaine-tornado-proxy --config=$CONFIG_PATH
+    start-stop-daemon --start --user cocaine --exec /usr/bin/cocaine-tornado-proxy -- --config=$CONFIG_PATH
 end script
