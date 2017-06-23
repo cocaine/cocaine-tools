@@ -32,7 +32,7 @@ from cocaine.exceptions import ChokeEvent, CocaineError
 from cocaine.decorators import coroutine
 from cocaine.tools import log, interactive
 from cocaine.tools.actions import common, app, auth, profile, runlist, crashlog, group, \
-    tracing, timeouts, logs, keyring
+    tracing, timeouts, logs, keyring, unicorn
 from cocaine.tools.actions.access import storage, event, edit
 from cocaine.tools.error import ToolsError
 
@@ -223,6 +223,8 @@ NG_ACTIONS = {
     'keyring:remove': ToolHandler(keyring.Remove),
     'keyring:edit': ToolHandler(keyring.Edit),
     'keyring:refresh': ToolHandler(keyring.Refresh),
+
+    'unicorn:edit': ToolHandler(unicorn.Edit)
 }
 
 

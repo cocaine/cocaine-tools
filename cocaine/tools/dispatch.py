@@ -487,6 +487,14 @@ def tracing_group():
     pass
 
 
+@tools.group(name='unicorn')
+def unicorn_group():
+    """
+    Unicorn specific commands.
+    """
+    pass
+
+
 @tools.group(name='logging')
 def logging_group():
     """
@@ -1435,6 +1443,20 @@ def tracing_view(name, **kwargs):
     ctx.execute_action('tracing:view', **{
         'configuration_service': ctx.repo.create_secure_service('unicorn'),
         'name': name,
+    })
+
+
+@unicorn_group.command(name='edit')
+@click.option('--path', metavar='', required=True, help='Unicorn path.')
+@with_options
+def unicorn_edit(path, **kwargs):
+    """Edit Unicorn node interactively.
+    """
+    ctx = Context(**kwargs)
+    ctx.timeout = None
+    ctx.execute_action('unicorn:edit', **{
+        'unicorn': ctx.repo.create_secure_service('unicorn'),
+        'path': path,
     })
 
 
