@@ -1,3 +1,10 @@
+cocaine-tools (0.12.14.3) unstable; urgency=low
+
+  * [Tools]: Add Unicorn path edit tool.
+  * [Tools]: Add access:grant/revoke command.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 23 Jun 2017 15:46:30 +0300
+
 cocaine-tools (0.12.14.2) unstable; urgency=low
 
   * [Proxy]: Use tracing chance in mds direct.
