@@ -1,8 +1,4 @@
-from tornado import gen
-
 from cocaine.decorators import coroutine
-from cocaine.exceptions import ServiceError
-from cocaine.tools import log
 from cocaine.tools.actions import Action
 
 
