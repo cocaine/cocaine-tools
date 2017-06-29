@@ -592,6 +592,18 @@ class CocaineProxy(object):
                          httplib.responses[httplib.SERVICE_UNAVAILABLE],
                          "Failed", proxy_error_headers())
 
+    def setup_tracing(self, request, name):
+        if getattr(request, "traceid", None) is not None:
+            tracing_chance = self.sampled_apps.get(name, self.default_tracing_chance)
+            rolled_dice = random.uniform(0, 100)
+            request.logger.debug("tracing_chance %f, rolled dice %f", tracing_chance, rolled_dice)
+            if tracing_chance < rolled_dice:
+                request.logger.info('stop tracing the request')
+                request.logger = NULLLOGGER
+                request.tracebit = False
+        else:
+            request.tracebit = False
+
     @context
     @gen.coroutine
     def __call__(self, request):
@@ -632,14 +644,7 @@ class CocaineProxy(object):
                                  "Invalid url", proxy_error_headers())
             return
 
-        if getattr(request, "traceid", None) is not None:
-            tracing_chance = self.sampled_apps.get(name, self.default_tracing_chance)
-            rolled_dice = random.uniform(0, 100)
-            request.logger.debug("tracing_chance %f, rolled dice %f", tracing_chance, rolled_dice)
-            if tracing_chance < rolled_dice:
-                request.logger.info('stop tracing the request')
-                request.logger = NULLLOGGER
-                request.tracebit = False
+        self.setup_tracing(request, name)
 
         if self.sticky_header in request.headers:
             seed = request.headers.get(self.sticky_header)

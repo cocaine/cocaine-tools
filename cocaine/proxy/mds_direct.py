@@ -131,6 +131,7 @@ class MDSDirect(IPlugin):
         key = request.headers["X-Srw-Key"]
 
         name, event = extract_app_and_event(request)
+        self.proxy.setup_tracing(request, name)
         timeout = self.proxy.get_timeout(name, event)
         name = self.proxy.resolve_group_to_version(name)
         if self.is_stid_request(request):
