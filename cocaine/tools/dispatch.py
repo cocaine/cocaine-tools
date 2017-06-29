@@ -1675,6 +1675,56 @@ def auth_exclude(name, service, **kwargs):
     })
 
 
+@access_group.command(name='grant')
+@click.option('-t', '--tp', metavar='', required=True, help='Entity type (storage, unicorn).')
+@click.option('-n', '--name', metavar='', required=True, help='Entity name (storage collection, unicorn path).')
+@click.option('-c', '--cid', metavar='', multiple=True, help='Client ID.')
+@click.option('-u', '--uid', metavar='', multiple=True, help='User ID.')
+@click.option('--perm', metavar='', required=True, type=click.Choice(['R', 'W', 'RW', '0']),
+              help='Permissions.')
+@with_options
+def access_grant(tp, name, cid, uid, perm, **kwargs):
+    """
+    Add rights to ACL for specified entity (collection, path, etc.).
+
+    Creates if necessary.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('access:edit:grant', **{
+        'unicat': ctx.repo.create_service('unicat'),
+        'tp': tp,
+        'name': name,
+        'cids': cid,
+        'uids': uid,
+        'perm': perm,
+    })
+
+
+@access_group.command(name='revoke')
+@click.option('-t', '--tp', metavar='', required=True, help='Entity type (storage, unicorn).')
+@click.option('-n', '--name', metavar='', required=True, help='Entity name (storage collection, unicorn path).')
+@click.option('-c', '--cid', metavar='', multiple=True, help='Client ID.')
+@click.option('-u', '--uid', metavar='', multiple=True, help='User ID.')
+@click.option('--perm', metavar='', required=True, type=click.Choice(['R', 'W', 'RW', '0']),
+              help='Permissions.')
+@with_options
+def access_revoke(tp, name, cid, uid, perm, **kwargs):
+    """
+    Remove rights from ACL for specified entity (collection, path, etc.).
+
+    Creates if necessary.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('access:edit:revoke', **{
+        'unicat': ctx.repo.create_service('unicat'),
+        'tp': tp,
+        'name': name,
+        'cids': cid,
+        'uids': uid,
+        'perm': perm,
+    })
+
+
 @access_storage_group.command(name='list')
 @with_options
 def access_storage_list(**kwargs):
