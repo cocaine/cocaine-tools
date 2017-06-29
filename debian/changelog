@@ -1,3 +1,9 @@
+cocaine-tools (0.12.14.2) unstable; urgency=low
+
+  * [Proxy]: Use tracing chance in mds direct.
+
+ -- Anton Matveenko <antmat@me.com>  Thu, 29 Jun 2017 13:20:05 +0300
+
 cocaine-tools (0.12.14.1) unstable; urgency=low
 
   * [Proxy]: Allow to specify credentials for proxy.
