@@ -33,7 +33,7 @@ from cocaine.decorators import coroutine
 from cocaine.tools import log, interactive
 from cocaine.tools.actions import common, app, auth, profile, runlist, crashlog, group, \
     tracing, timeouts, logs, keyring
-from cocaine.tools.actions.access import storage, event
+from cocaine.tools.actions.access import storage, event, edit
 from cocaine.tools.error import ToolsError
 
 __author__ = 'EvgenySafronov <division494@gmail.com>'
@@ -209,6 +209,9 @@ NG_ACTIONS = {
     'access:storage:create': ToolHandler(storage.Create),
     'access:storage:edit': ToolHandler(storage.Edit),
     'access:storage:rm': ToolHandler(storage.Remove),
+
+    'access:edit:grant': ToolHandler(edit.Grant),
+    'access:edit:revoke': ToolHandler(edit.Revoke),
 
     'access:list': JsonToolHandler(event.List),
     'access:view': JsonToolHandler(event.View),
