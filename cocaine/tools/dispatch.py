@@ -1691,7 +1691,7 @@ def access_grant(tp, name, cid, uid, perm, **kwargs):
     """
     ctx = Context(**kwargs)
     ctx.execute_action('access:edit:grant', **{
-        'unicat': ctx.repo.create_service('unicat'),
+        'unicat': ctx.repo.create_secure_service('unicat'),
         'tp': tp,
         'name': name,
         'cids': cid,
@@ -1716,7 +1716,7 @@ def access_revoke(tp, name, cid, uid, perm, **kwargs):
     """
     ctx = Context(**kwargs)
     ctx.execute_action('access:edit:revoke', **{
-        'unicat': ctx.repo.create_service('unicat'),
+        'unicat': ctx.repo.create_secure_service('unicat'),
         'tp': tp,
         'name': name,
         'cids': cid,
