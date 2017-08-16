@@ -1,10 +1,32 @@
+import json
+
+
 class Profile(object):
-    def __init__(self, name, content):
-        pass
+    """Represents "always valid" profile.
+    """
+
+    def __init__(self, content):
+        self._content = content
+
+    @property
+    def content(self):
+        return self._content
 
     @staticmethod
-    def load(name, path):
-        pass
+    def load(path):
+        """Loads a profile from a file validating its content.
+
+        :param path: Path to the file.
+
+        :return: Validated profile object.
+
+        :raise IOError: On any I/O error occurred during load a file from the filesystem.
+        :raise ValueError: On content decoding error.
+        """
+        with open(path) as fh:
+            content = fh.read()
+
+        return Profile(json.loads(content))
 
 
 class ClusterConfiguration(object):
