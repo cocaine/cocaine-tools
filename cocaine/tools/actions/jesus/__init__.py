@@ -30,6 +30,7 @@ class Profile(object):
 
 
 class ClusterConfiguration(object):
+    @coroutine
     def upload_mapping(self, name, mapping):
         """Uploads a resource mapping to the configuration service.
 
@@ -38,6 +39,7 @@ class ClusterConfiguration(object):
         """
         raise NotImplementedError()
 
+    @coroutine
     def upload_runlist(self, name, runlist):
         """Uploads a runlist to the configuration service.
 
@@ -46,6 +48,7 @@ class ClusterConfiguration(object):
         """
         raise NotImplementedError()
 
+    @coroutine
     def upload_profile(self, name, profile):
         """Uploads a profile to the configuration service.
 
