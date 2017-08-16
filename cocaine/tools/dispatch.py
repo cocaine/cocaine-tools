@@ -1,27 +1,27 @@
 # coding=utf-8
 
+import collections
 import contextlib
 import copy
 import logging
 import os
 
 import click
-from click import Choice
-import collections
 import six
 import yaml
-from tornado import gen
-from tornado.util import import_object
 from cerberus import Validator
-
-from cocaine.tools.cli import Executor
-
+from click import Choice
 from cocaine.decorators import coroutine
 from cocaine.exceptions import CocaineError
 from cocaine.services import Locator, Service
-from .plugins.secure.promiscuous import Promiscuous
-from .version import __version__
+from tornado import gen
+from tornado.util import import_object
 
+from .actions import jesus
+from .cli import Executor
+from .plugins.secure.promiscuous import Promiscuous
+from .ext import MutuallyExclusiveOption
+from .version import __version__
 
 CONFIG_GLOB = '/etc/cocaine/.cocaine/tools.yml'
 CONFIG_USER = '~/.cocaine/tools.yml'
@@ -547,6 +547,15 @@ def access_event_group():
 def keyring_group():
     """
     Public keys management.
+    """
+    pass
+
+
+@tools.group(name='jesus')
+def jesus_group():
+    """Jesus cluster management.
+
+    Evolution of application, profile and runlist management. This time - cluster wide.
     """
     pass
 
@@ -1973,5 +1982,54 @@ def keyring_refresh(**kwargs):
         'tvm': ctx.repo.create_secure_service('tvm'),
     })
 
+
+@jesus_group.group(name='mapping')
+def jesus_mapping_group():
+    """Resource mapping.
+    """
+    pass
+
+
+@jesus_mapping_group.command('upload')
+@click.option('-n', '--name', required=True, metavar='', help='Resource mapping name.')
+@click.option('-c', '--cluster', required=True, metavar='', help='Cluster type.')
+@click.option('--path', cls=MutuallyExclusiveOption, mutually_exclusive=['--mapping'], metavar='',
+              help='Path to the resource mapping file.')
+@click.option('--mapping', cls=MutuallyExclusiveOption, mutually_exclusive=['--path'], metavar='',
+              help='JSON resource mapping content.')
+@with_options
+def jesus_mapping_upload(name, cluster, path, mapping, **kwargs):
+    """Uploads a resource mapping to the configuration service.
+    """
+    if path is None:
+        mapping = jesus.Mapping.from_string(mapping)
+    else:
+        mapping = jesus.Mapping.from_file(path)
+
+    ctx = Context(**kwargs)
+    ctx.execute_action('config:mapping:upload', **{
+        'name': name,
+        'cluster': cluster,
+        'unicorn': ctx.repo.create_secure_service('unicorn'),
+        'mapping': mapping,
+    })
+
+
+@jesus_group.group(name='profile')
+def jesus_profile_group():
+    """Profile management.
+    """
+    pass
+
+
+@jesus_profile_group.command('upload')
+@with_options
+def jesus_profile_upload():
+    """Upload a new profile with the specified name to ... TODO: COMPLETE.
+    """
+    pass
+
+# TODO: Runlist.
+# TODO: Resource mapping.
 
 cli = click.CommandCollection(sources=[tools])

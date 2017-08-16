@@ -69,7 +69,7 @@ class CocaineConfigReader:
 class Action(object):
     @coroutine
     def execute(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class Storage(object):
