@@ -2015,6 +2015,38 @@ def jesus_mapping_upload(name, cluster, path, mapping, **kwargs):
     })
 
 
+@jesus_group.group(name='runlist')
+def jesus_runlist_group():
+    """Runlist management.
+    """
+    pass
+
+
+@jesus_runlist_group.command('upload')
+@click.option('-n', '--name', required=True, metavar='', help='Runlist name.')
+@click.option('-c', '--cluster', required=True, metavar='', help='Cluster type.')
+@click.option('--path', cls=MutuallyExclusiveOption, mutually_exclusive=['--runlist'], metavar='',
+              help='Path to the runlist file.')
+@click.option('--runlist', cls=MutuallyExclusiveOption, mutually_exclusive=['--path'], metavar='',
+              help='JSON runlist content.')
+@with_options
+def jesus_runlist_upload(name, cluster, path, runlist, **kwargs):
+    """Uploads a runlist to the configuration service.
+    """
+    if path is None:
+        runlist = jesus.Runlist.from_string(runlist)
+    else:
+        runlist = jesus.Runlist.from_file(path)
+
+    ctx = Context(**kwargs)
+    ctx.execute_action('config:runlist:upload', **{
+        'name': name,
+        'cluster': cluster,
+        'unicorn': ctx.repo.create_secure_service('unicorn'),
+        'runlist': runlist,
+    })
+
+
 @jesus_group.group(name='profile')
 def jesus_profile_group():
     """Profile management.

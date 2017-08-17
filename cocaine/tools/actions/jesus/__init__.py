@@ -43,6 +43,39 @@ class Mapping(object):
         return Mapping(json.loads(v))
 
 
+class Runlist(object):
+    """List of applications that must be run in the cluster.
+   """
+
+    def __init__(self, content):
+        if not isinstance(content, dict):
+            raise ValueError('Content must be a dict')
+        self._content = content
+
+    @property
+    def content(self):
+        return self._content
+
+    @staticmethod
+    def from_file(path):
+        """Loads a runlist from a file validating its content.
+
+        :param path: Path to the file.
+        :return: Validated runlist object.
+        :raise IOError: On any I/O error occurred during load a file from the filesystem.
+        :raise ValueError: On content decoding error.
+        """
+        return Runlist.from_string(open(path).read())
+
+    @staticmethod
+    def from_string(v):
+        """Constructs a new runlist from its string representation.
+
+        :param v: Valid JSON string with runlist content.
+        """
+        return Runlist(json.loads(v))
+
+
 class Profile(object):
     """Represents "always valid" profile.
     """
@@ -68,7 +101,15 @@ class Profile(object):
         with open(path) as fh:
             content = fh.read()
 
-        return Profile(json.loads(content))
+        return Profile.from_string(content)
+
+    @staticmethod
+    def from_string(v):
+        """Constructs a new profile from its string representation.
+
+        :param v: Valid JSON string with profile content.
+        """
+        return Profile(json.loads(v))
 
 
 class ClusterConfiguration(object):
@@ -127,9 +168,21 @@ class UnicornClusterConfiguration(ClusterConfiguration):
 
         yield channel.rx.get()
 
+    @coroutine
     def upload_runlist(self, name, runlist):
-        pass
+        path = '{}/{}/runlist/{}'.format(self._prefix, self._cluster, name)
 
+        channel = yield self._unicorn.get(path)
+        content, version = yield channel.rx.get()
+
+        if version == -1:
+            channel = yield self._unicorn.create(path, runlist.content)
+        else:
+            channel = yield self._unicorn.put(path, runlist.content, version)
+
+        yield channel.rx.get()
+
+    @coroutine
     def upload_profile(self, name, profile):
         pass
 
@@ -144,3 +197,15 @@ class UploadMapping(Action):
     @coroutine
     def execute(self):
         yield self._config.upload_mapping(self._name, self._mapping)
+
+
+class UploadRunlist(Action):
+    def __init__(self, name, cluster, unicorn, runlist):
+        self._name = name
+        self._runlist = runlist
+
+        self._config = UnicornClusterConfiguration(unicorn, cluster)
+
+    @coroutine
+    def execute(self):
+        yield self._config.upload_runlist(self._name, self._runlist)

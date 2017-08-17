@@ -227,6 +227,7 @@ NG_ACTIONS = {
     'unicorn:edit': ToolHandler(unicorn.Edit),
 
     'config:mapping:upload': ToolHandler(jesus.UploadMapping),
+    'config:runlist:upload': ToolHandler(jesus.UploadRunlist),
 }
 
 
