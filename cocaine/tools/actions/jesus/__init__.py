@@ -28,9 +28,9 @@ class Mapping(object):
         """Loads a resource mapping from a file validating its content.
 
         :param path: Path to the file.
-        :return: Validated resource mapping object.
         :raise IOError: On any I/O error occurred during load a file from the filesystem.
         :raise ValueError: On content decoding error.
+        :return: Validated resource mapping object.
         """
         return Mapping.from_string(open(path).read())
 
@@ -61,9 +61,9 @@ class Runlist(object):
         """Loads a runlist from a file validating its content.
 
         :param path: Path to the file.
-        :return: Validated runlist object.
         :raise IOError: On any I/O error occurred during load a file from the filesystem.
         :raise ValueError: On content decoding error.
+        :return: Validated runlist object.
         """
         return Runlist.from_string(open(path).read())
 
@@ -92,11 +92,9 @@ class Profile(object):
         """Loads a profile from a file validating its content.
 
         :param path: Path to the file.
-
-        :return: Validated profile object.
-
         :raise IOError: On any I/O error occurred during load a file from the filesystem.
         :raise ValueError: On content decoding error.
+        :return: Validated profile object.
         """
         with open(path) as fh:
             content = fh.read()
