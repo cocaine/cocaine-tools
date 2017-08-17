@@ -155,34 +155,28 @@ class UnicornClusterConfiguration(ClusterConfiguration):
     @coroutine
     def upload_mapping(self, name, mapping):
         path = '{}/{}/mapping/{}'.format(self._prefix, self._cluster, name)
-
-        channel = yield self._unicorn.get(path)
-        content, version = yield channel.rx.get()
-
-        if version == -1:
-            channel = yield self._unicorn.create(path, mapping.content)
-        else:
-            channel = yield self._unicorn.put(path, mapping.content, version)
-
-        yield channel.rx.get()
+        yield self._put(path, mapping.content)
 
     @coroutine
     def upload_runlist(self, name, runlist):
         path = '{}/{}/runlist/{}'.format(self._prefix, self._cluster, name)
-
-        channel = yield self._unicorn.get(path)
-        content, version = yield channel.rx.get()
-
-        if version == -1:
-            channel = yield self._unicorn.create(path, runlist.content)
-        else:
-            channel = yield self._unicorn.put(path, runlist.content, version)
-
-        yield channel.rx.get()
+        yield self._put(path, runlist.content)
 
     @coroutine
     def upload_profile(self, name, profile):
         pass
+
+    @coroutine
+    def _put(self, path, data):
+        channel = yield self._unicorn.get(path)
+        content, version = yield channel.rx.get()
+
+        if version == -1:
+            channel = yield self._unicorn.create(path, data)
+        else:
+            channel = yield self._unicorn.put(path, data, version)
+
+        yield channel.rx.get()
 
 
 class UploadMapping(Action):
