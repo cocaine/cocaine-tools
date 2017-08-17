@@ -228,6 +228,7 @@ NG_ACTIONS = {
 
     'config:mapping:upload': ToolHandler(jesus.UploadMapping),
     'config:runlist:upload': ToolHandler(jesus.UploadRunlist),
+    'config:profile:upload': ToolHandler(jesus.UploadProfile),
 }
 
 

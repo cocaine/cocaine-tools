@@ -164,7 +164,8 @@ class UnicornClusterConfiguration(ClusterConfiguration):
 
     @coroutine
     def upload_profile(self, name, profile):
-        pass
+        path = '{}/{}/profile/{}'.format(self._prefix, self._cluster, name)
+        yield self._put(path, profile.content)
 
     @coroutine
     def _put(self, path, data):
@@ -180,7 +181,18 @@ class UnicornClusterConfiguration(ClusterConfiguration):
 
 
 class UploadMapping(Action):
+    """Uploads a resource mapping to the configuration service.
+    """
+
     def __init__(self, name, cluster, unicorn, mapping):
+        """Constructs a new upload action.
+
+        :param name: Resource mapping name.
+        :param cluster: Cluster name that describes the purpose of the cluster The commonly used
+            names are "develop", "testing", "production"
+        :param unicorn: Unicorn service.
+        :param mapping: Resource mapping.
+        """
         self._name = name
         self._mapping = mapping
 
@@ -192,7 +204,18 @@ class UploadMapping(Action):
 
 
 class UploadRunlist(Action):
+    """Uploads a runlist to the configuration service.
+    """
+
     def __init__(self, name, cluster, unicorn, runlist):
+        """Constructs a new upload action.
+
+        :param name: Runlist name.
+        :param cluster: Cluster name that describes the purpose of the cluster The commonly used
+            names are "develop", "testing", "production"
+        :param unicorn: Unicorn service.
+        :param runlist: Runlist content.
+        """
         self._name = name
         self._runlist = runlist
 
@@ -201,3 +224,26 @@ class UploadRunlist(Action):
     @coroutine
     def execute(self):
         yield self._config.upload_runlist(self._name, self._runlist)
+
+
+class UploadProfile(Action):
+    """Uploads a profile to the configuration service.
+    """
+
+    def __init__(self, name, cluster, unicorn, profile):
+        """Constructs a new upload action.
+
+        :param name: Profile name.
+        :param cluster: Cluster name that describes the purpose of the cluster The commonly used
+            names are "develop", "testing", "production"
+        :param unicorn: Unicorn service.
+        :param profile: Profile content.
+        """
+        self._name = name
+        self._profile = profile
+
+        self._config = UnicornClusterConfiguration(unicorn, cluster)
+
+    @coroutine
+    def execute(self):
+        yield self._config.upload_profile(self._name, self._profile)

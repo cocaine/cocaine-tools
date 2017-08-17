@@ -19,8 +19,8 @@ from tornado.util import import_object
 
 from .actions import jesus
 from .cli import Executor
-from .plugins.secure.promiscuous import Promiscuous
 from .ext import MutuallyExclusiveOption
+from .plugins.secure.promiscuous import Promiscuous
 from .version import __version__
 
 CONFIG_GLOB = '/etc/cocaine/.cocaine/tools.yml'
@@ -2055,13 +2055,28 @@ def jesus_profile_group():
 
 
 @jesus_profile_group.command('upload')
+@click.option('-n', '--name', required=True, metavar='', help='Profile name.')
+@click.option('-c', '--cluster', required=True, metavar='', help='Cluster type.')
+@click.option('--path', cls=MutuallyExclusiveOption, mutually_exclusive=['--profile'], metavar='',
+              help='Path to the profile file.')
+@click.option('--profile', cls=MutuallyExclusiveOption, mutually_exclusive=['--path'], metavar='',
+              help='JSON profile content.')
 @with_options
-def jesus_profile_upload():
-    """Upload a new profile with the specified name to ... TODO: COMPLETE.
+def jesus_profile_upload(name, cluster, path, profile, **kwargs):
+    """Upload a new profile to the configuration service.
     """
-    pass
+    if path is None:
+        profile = jesus.Runlist.from_string(profile)
+    else:
+        profile = jesus.Runlist.from_file(path)
 
-# TODO: Runlist.
-# TODO: Resource mapping.
+    ctx = Context(**kwargs)
+    ctx.execute_action('config:profile:upload', **{
+        'name': name,
+        'cluster': cluster,
+        'unicorn': ctx.repo.create_secure_service('unicorn'),
+        'profile': profile,
+    })
+
 
 cli = click.CommandCollection(sources=[tools])
