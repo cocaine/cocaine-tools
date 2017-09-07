@@ -272,6 +272,7 @@ class CocaineProxy(object):
                  configuration_service="unicorn",
                  client_id=0,
                  client_secret='',
+                 mapped_headers=[],
                  tracing_conf_path="/zipkin_sampling",
                  timeouts_conf_path="/proxy_apps_timeouts",
                  srw_config=None,
@@ -305,6 +306,8 @@ class CocaineProxy(object):
                          ','.join("%s:%d" % (h, p) for h, p in self.locator_endpoints))
 
         self.sticky_header = sticky_header
+        self.mapped_headers = mapped_headers
+        self.logger.info("mapping headers - %s", str(self.mapped_headers))
 
         self.plugins = []
         if srw_config:
@@ -727,6 +730,10 @@ class CocaineProxy(object):
         if 'authorization' in request.headers:
             headers['authorization'] = request.headers['authorization']
 
+        for mapped in self.mapped_headers:
+            if mapped in request.headers:
+                headers[mapped] = request.headers[mapped]
+
         def on_error(app, err, extra_msg, code=httplib.INTERNAL_SERVER_ERROR):
             if len(extra_msg) > 0 and not extra_msg.endswith(' '):
                 extra_msg += ' '
@@ -970,6 +977,8 @@ def main():
     opts.define("gcstats", default=False, type=bool, help="print garbage collector stats to stderr")
     opts.define("srwconfig", default="", type=str, help="path to srwconfig")
     opts.define("allow_json_rpc", default=True, type=bool, help="allow JSON RPC module")
+    opts.define("mapped_headers", default=[], type=str, multiple=True,
+                help="pass specified headers as cocaine headers")
 
     # tracing options
     opts.define("tracing_chance", default=DEFAULT_TRACING_CHANCE,
@@ -1053,7 +1062,8 @@ def main():
                              srw_config=srw_config,
                              allow_json_rpc=opts.allow_json_rpc,
                              client_id=opts.client_id,
-                             client_secret=opts.client_secret)
+                             client_secret=opts.client_secret,
+                             mapped_headers=opts.mapped_headers)
         server = HTTPServer(proxy)
         server.add_sockets(sockets)
 
