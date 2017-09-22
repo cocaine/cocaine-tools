@@ -494,6 +494,13 @@ def unicorn_group():
     """
     pass
 
+@tools.group(name='vicodyn')
+def vicodyn_group():
+    """
+    Vicodyn specific commands.
+    """
+    pass
+
 
 @tools.group(name='logging')
 def logging_group():
@@ -1457,6 +1464,50 @@ def unicorn_edit(path, **kwargs):
     ctx.execute_action('unicorn:edit', **{
         'unicorn': ctx.repo.create_secure_service('unicorn'),
         'path': path,
+    })
+
+
+@vicodyn_group.command(name='info')
+@with_options
+def vicodyn_info(**kwargs):
+    """Vicodyn info
+    """
+    ctx = Context(**kwargs)
+    ctx.timeout = None
+    ctx.execute_action('vicodyn:info', **{
+        'vicodyn': ctx.repo.create_secure_service('vicodyn'),
+    })
+
+
+@vicodyn_group.command(name='apps')
+@click.option('-n', '--name', metavar='', help='select by app.')
+@with_options
+def vicodyn_apps(name, **kwargs):
+    """List vicodyn apps (uuids with apps)
+    """
+    ctx = Context(**kwargs)
+    ctx.timeout = None
+    if name == None:
+        name = ""
+    ctx.execute_action('vicodyn:apps', **{
+        'vicodyn': ctx.repo.create_secure_service('vicodyn'),
+        'name': name,
+    })
+
+
+@vicodyn_group.command(name='peers')
+@click.option('-n', '--name', metavar='', help='select by peer uuid.')
+@with_options
+def vicodyn_peers(name, **kwargs):
+    """List vicodyn peers
+    """
+    ctx = Context(**kwargs)
+    ctx.timeout = None
+    if name == None:
+        name = ""
+    ctx.execute_action('vicodyn:peers', **{
+        'vicodyn': ctx.repo.create_secure_service('vicodyn'),
+        'name': name,
     })
 
 
