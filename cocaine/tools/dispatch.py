@@ -494,6 +494,7 @@ def unicorn_group():
     """
     pass
 
+
 @tools.group(name='vicodyn')
 def vicodyn_group():
     """
@@ -1487,7 +1488,7 @@ def vicodyn_apps(name, **kwargs):
     """
     ctx = Context(**kwargs)
     ctx.timeout = None
-    if name == None:
+    if name is None:
         name = ""
     ctx.execute_action('vicodyn:apps', **{
         'vicodyn': ctx.repo.create_secure_service('vicodyn'),
@@ -1503,7 +1504,7 @@ def vicodyn_peers(name, **kwargs):
     """
     ctx = Context(**kwargs)
     ctx.timeout = None
-    if name == None:
+    if name is None:
         name = ""
     ctx.execute_action('vicodyn:peers', **{
         'vicodyn': ctx.repo.create_secure_service('vicodyn'),

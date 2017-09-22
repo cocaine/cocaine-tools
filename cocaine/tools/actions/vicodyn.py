@@ -2,6 +2,7 @@ from tornado import gen
 
 from cocaine.tools.actions import Action
 
+
 class Info(Action):
     def __init__(self, vicodyn):
         self._vicodyn = vicodyn
@@ -11,6 +12,7 @@ class Info(Action):
         channel = yield self._vicodyn.info()
         data = yield channel.rx.get()
         raise gen.Return(data)
+
 
 class Apps(Action):
     def __init__(self, vicodyn, name):
@@ -23,6 +25,7 @@ class Apps(Action):
         data = yield channel.rx.get()
         raise gen.Return(data)
 
+
 class Peers(Action):
     def __init__(self, vicodyn, name):
         self._vicodyn = vicodyn
@@ -33,4 +36,3 @@ class Peers(Action):
         channel = yield self._vicodyn.peers(self._name)
         data = yield channel.rx.get()
         raise gen.Return(data)
-
