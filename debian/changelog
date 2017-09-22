@@ -1,3 +1,9 @@
+cocaine-tools (0.12.14.5) unstable; urgency=low
+
+  * [Tools]: Vicodyn support.
+
+ -- Anton Matveenko <antmat@me.com>  Fri, 22 Sep 2017 17:50:30 +0300
+
 cocaine-tools (0.12.14.4) unstable; urgency=low
 
   * [Proxy]: Optionally proxy http headers as cocaine ones.
