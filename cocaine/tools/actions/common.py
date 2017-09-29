@@ -131,6 +131,16 @@ class Routing(object):
 
         raise gen.Return(groups)
 
+class Uuid(object):
+    def __init__(self, locator):
+        self.locator = locator
+
+    @coroutine
+    def execute(self):
+        channel = yield self.locator.uuid()
+        uuid = yield channel.rx.get()
+        raise gen.Return(uuid)
+
 
 class RuntimeMetrics(object):
     def __init__(self, ty, query, query_type, metrics):

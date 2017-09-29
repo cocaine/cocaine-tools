@@ -129,6 +129,7 @@ NG_ACTIONS = {
     'metrics': JsonToolHandler(common.RuntimeMetrics),
     'locate': JsonToolHandler(common.Locate),
     'routing': JsonToolHandler(common.Routing),
+    'uuid': JsonToolHandler(common.Uuid),
 
     'app:check': ToolHandler(app.Check),
     'app:list': JsonToolHandler(app.List),
