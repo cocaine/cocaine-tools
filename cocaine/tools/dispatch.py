@@ -387,6 +387,18 @@ def routing(name, **kwargs):
 
 
 @tools.command()
+@with_options
+def uuid(**kwargs):
+    """
+    Uuid of the cocaine daemon.
+    """
+    ctx = Context(**kwargs)
+    ctx.execute_action('uuid', **{
+        'locator': ctx.locator,
+    })
+
+
+@tools.command()
 @click.option('--resolve', metavar='', default=False, help='Show IPs instead of hostname.')
 @with_options
 def cluster(resolve, **kwargs):
